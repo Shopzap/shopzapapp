@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import StoreBuilder from "./pages/StoreBuilder";
 import EmbedGenerator from "./pages/EmbedGenerator";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/store-builder" element={<StoreBuilder />} />
           <Route path="/embed-generator" element={<EmbedGenerator />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

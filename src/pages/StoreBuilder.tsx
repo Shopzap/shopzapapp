@@ -6,27 +6,94 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 
 const StoreBuilder = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeUsername, setStoreUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API request
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        toast({
+          title: "Authentication error",
+          description: "Please log in to create a store",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      const userId = sessionData.session.user.id;
+      
+      // Check username availability
+      const { data: usernameCheck } = await supabase
+        .rpc('check_username_availability', { username: storeUsername });
+      
+      if (!usernameCheck) {
+        toast({
+          title: "Username not available",
+          description: "Please choose a different store URL",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create store
+      const { data: store, error: storeError } = await supabase
+        .from('stores')
+        .insert([
+          {
+            name: storeName,
+            username: storeUsername,
+            phone_number: whatsappNumber,
+            user_id: userId,
+            business_email: sessionData.session.user.email,
+            plan: 'free'
+          }
+        ])
+        .select()
+        .single();
+      
+      if (storeError) {
+        console.error("Store creation error:", storeError);
+        toast({
+          title: "Error creating store",
+          description: storeError.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       toast({
         title: "Store created successfully!",
         description: `Your store is now available at shopzap.io/${storeUsername}`,
       });
-    }, 1500);
+      
+      // Redirect to dashboard
+      navigate(`/dashboard`);
+    } catch (error) {
+      console.error("Error:", error);
+      toast({
+        title: "An error occurred",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   // Auto-generate username from store name

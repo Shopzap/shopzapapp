@@ -9,6 +9,136 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      order_items: {
+        Row: {
+          id: string
+          order_id: string
+          price_at_purchase: number
+          product_id: string
+          quantity: number
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          price_at_purchase?: number
+          product_id: string
+          quantity?: number
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          price_at_purchase?: number
+          product_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          buyer_address: string | null
+          buyer_email: string | null
+          buyer_name: string
+          buyer_phone: string | null
+          created_at: string | null
+          id: string
+          status: string
+          store_id: string
+          total_price: number
+          updated_at: string | null
+        }
+        Insert: {
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_name: string
+          buyer_phone?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string
+          store_id: string
+          total_price?: number
+          updated_at?: string | null
+        }
+        Update: {
+          buyer_address?: string | null
+          buyer_email?: string | null
+          buyer_name?: string
+          buyer_phone?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string
+          store_id?: string
+          total_price?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          status: string
+          store_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price?: number
+          status?: string
+          store_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          status?: string
+          store_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null
@@ -21,6 +151,7 @@ export type Database = {
           logo_image: string | null
           name: string
           phone_number: string
+          plan: string
           tagline: string | null
           theme: Json | null
           updated_at: string | null
@@ -38,6 +169,7 @@ export type Database = {
           logo_image?: string | null
           name: string
           phone_number: string
+          plan?: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
@@ -55,6 +187,7 @@ export type Database = {
           logo_image?: string | null
           name?: string
           phone_number?: string
+          plan?: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
