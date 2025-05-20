@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { X, Loader2, ImagePlus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { uuid } from '@/lib/utils';
 
 type Product = {
   id: string;
@@ -27,7 +27,18 @@ interface EditProductFormProps {
   onCancel: () => void;
 }
 
-const EditProductForm: React.FC<EditProductFormProps> = ({
+const categories = [
+  'Electronics',
+  'Clothing',
+  'Home & Kitchen',
+  'Beauty & Personal Care',
+  'Books',
+  'Toys & Games',
+  'Sports & Outdoors',
+  'Other'
+];
+
+const EditProductForm: React.FC<EditProductFormProps> = ({ 
   product,
   onSuccess,
   onCancel
@@ -44,96 +55,127 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(product.image_url || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImageRemoved, setIsImageRemoved] = useState(false);
   const { toast } = useToast();
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Preview image
+    
+    if (!file.type.includes('image/')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload an image file',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setImageFile(file);
+    
+    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-    setImageFile(file);
-    setIsImageRemoved(false);
-  };
-
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setIsImageRemoved(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    
+    // Validate required fields
+    if (!name || !price) {
+      toast({
+        title: 'Missing required fields',
+        description: 'Product name and price are required',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
-      let imageUrl = isImageRemoved ? null : product.image_url;
+      setIsSubmitting(true);
 
-      // Upload new image if provided
+      // Get the user's store ID for image path
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session.session) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please login to update products',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const { data: storeData, error: storeError } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', session.session.user.id)
+        .single();
+
+      if (storeError || !storeData) {
+        toast({
+          title: 'Store not found',
+          description: 'Please complete the onboarding process',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      let imageUrl = product.image_url;
+
+      // Upload new image if available
       if (imageFile) {
-        const { data: session } = await supabase.auth.getSession();
-        const { data: storeData } = await supabase
-          .from('products')
-          .select('store_id')
-          .eq('id', product.id)
-          .single();
-          
-        if (!storeData) {
-          throw new Error("Could not find product's store");
-        }
-
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `products/${storeData.store_id}/${fileName}`;
-
+        const filePath = `${storeData.id}/${uuid()}.${fileExt}`;
+        
         const { error: uploadError } = await supabase.storage
           .from('product-images')
           .upload(filePath, imageFile);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          throw uploadError;
+        }
 
         // Get the public URL
-        const { data: urlData } = supabase.storage
+        const { data: { publicUrl } } = supabase.storage
           .from('product-images')
           .getPublicUrl(filePath);
-
-        imageUrl = urlData.publicUrl;
+        
+        imageUrl = publicUrl;
       }
 
-      // Update product in database
-      const { error } = await supabase
+      // Update product data
+      const { error: updateError } = await supabase
         .from('products')
         .update({
           name,
           description: description || null,
-          price: parseFloat(price) || 0,
+          price: parseFloat(price),
           category: category || null,
           sku: sku || null,
           inventory_count: inventoryCount ? parseInt(inventoryCount) : null,
           status,
           image_url: imageUrl,
+          updated_at: new Date().toISOString()
         })
         .eq('id', product.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       toast({
-        title: "Product updated",
-        description: "Your product has been updated successfully",
+        title: 'Product updated',
+        description: 'Your product has been updated successfully',
       });
-      
+
       onSuccess();
     } catch (error) {
       console.error('Error updating product:', error);
       toast({
-        title: "Error updating product",
-        description: "Please try again later",
-        variant: "destructive"
+        title: 'Error updating product',
+        description: error instanceof Error ? error.message : 'Please try again later',
+        variant: 'destructive'
       });
     } finally {
       setIsSubmitting(false);
@@ -145,153 +187,121 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <Label htmlFor="edit-name" className="text-sm font-medium">
-              Product Name*
-            </Label>
+            <Label htmlFor="name">Product Name *</Label>
             <Input 
-              id="edit-name" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)} 
-              required 
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="edit-description" className="text-sm font-medium">
-              Description
-            </Label>
-            <Textarea 
-              id="edit-description" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)} 
-              rows={4}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="edit-price" className="text-sm font-medium">
-              Price*
-            </Label>
-            <Input 
-              id="edit-price" 
-              type="number" 
-              min="0" 
-              step="0.01" 
-              value={price} 
-              onChange={(e) => setPrice(e.target.value)} 
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter product name"
               required
             />
+          </div>
+          
+          <div>
+            <Label htmlFor="price">Price *</Label>
+            <Input 
+              id="price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.00"
+              required
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
         <div className="space-y-4">
           <div>
-            <Label htmlFor="edit-image" className="text-sm font-medium">
-              Product Image
-            </Label>
-            {!imagePreview ? (
-              <div className="mt-1 border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center">
-                <div className="flex flex-col items-center justify-center text-center">
-                  <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Click to upload or drag and drop
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPG up to 5MB
-                  </p>
-                </div>
-                <Input
-                  id="edit-image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <label 
-                  htmlFor="edit-image" 
-                  className="mt-4 btn-hover inline-flex cursor-pointer items-center justify-center rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2"
-                >
-                  Select Image
-                </label>
-              </div>
-            ) : (
-              <div className="relative mt-1 h-[200px] rounded-md overflow-hidden">
-                <img 
-                  src={imagePreview} 
-                  alt="Product preview" 
-                  className="w-full h-full object-contain" 
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="absolute top-2 right-2"
-                  onClick={removeImage}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <Label htmlFor="sku">SKU</Label>
+            <Input 
+              id="sku"
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              placeholder="Product SKU (optional)"
+            />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="edit-category" className="text-sm font-medium">
-                Category
-              </Label>
-              <Input 
-                id="edit-category" 
-                value={category} 
-                onChange={(e) => setCategory(e.target.value)} 
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="edit-sku" className="text-sm font-medium">
-                SKU
-              </Label>
-              <Input 
-                id="edit-sku" 
-                value={sku} 
-                onChange={(e) => setSku(e.target.value)} 
-              />
-            </div>
+          <div>
+            <Label htmlFor="inventory">Inventory Count</Label>
+            <Input 
+              id="inventory"
+              type="number"
+              min="0"
+              value={inventoryCount}
+              onChange={(e) => setInventoryCount(e.target.value)}
+              placeholder="Available quantity"
+            />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="edit-inventory" className="text-sm font-medium">
-                Inventory
-              </Label>
-              <Input 
-                id="edit-inventory" 
-                type="number" 
-                min="0" 
-                step="1" 
-                value={inventoryCount} 
-                onChange={(e) => setInventoryCount(e.target.value)} 
+          <div>
+            <Label htmlFor="edit-image">Product Image</Label>
+            <div className="mt-1 flex items-center">
+              <Input
+                id="edit-image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
               />
-            </div>
-            
-            <div>
-              <Label htmlFor="edit-status" className="text-sm font-medium">
-                Status
-              </Label>
-              <Select 
-                value={status} 
-                onValueChange={setStatus}
+              <Label 
+                htmlFor="edit-image" 
+                className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 w-full"
               >
-                <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                </SelectContent>
-              </Select>
+                {imagePreview ? (
+                  <img 
+                    src={imagePreview} 
+                    alt="Preview" 
+                    className="max-h-32 object-contain"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Click to upload an image</p>
+                  </div>
+                )}
+              </Label>
             </div>
           </div>
         </div>
+      </div>
+      
+      <div>
+        <Label htmlFor="description">Description</Label>
+        <Textarea 
+          id="description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Enter product description"
+          rows={4}
+        />
       </div>
       
       <div className="flex justify-end gap-2">
@@ -303,18 +313,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
         >
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Updating...
-            </>
-          ) : (
-            'Update Product'
-          )}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Updating...' : 'Update Product'}
         </Button>
       </div>
     </form>

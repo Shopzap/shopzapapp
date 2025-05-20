@@ -1,13 +1,12 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { AlertCircle, Check, FileSpreadsheet, Upload } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { AlertCircle, CheckCircle, Download, FileUp, Loader2, X } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface CsvUploadModalProps {
   open: boolean;
@@ -15,346 +14,355 @@ interface CsvUploadModalProps {
   onProductsUploaded: (count: number) => void;
 }
 
-const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
-  open,
+type ProductCsvRow = {
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  category?: string;
+  sku?: string;
+  inventory_count?: number;
+  status?: string;
+};
+
+const CsvUploadModal: React.FC<CsvUploadModalProps> = ({ 
+  open, 
   onClose,
   onProductsUploaded
 }) => {
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadResults, setUploadResults] = useState<{
-    success: number;
-    failed: number;
-    errors: string[];
-  } | null>(null);
+  const [results, setResults] = useState<{success: number, failed: number, errors: string[]}>({
+    success: 0,
+    failed: 0,
+    errors: []
+  });
+  const [showResults, setShowResults] = useState(false);
   const { toast } = useToast();
+
+  const resetForm = () => {
+    setFile(null);
+    setShowResults(false);
+    setResults({success: 0, failed: 0, errors: []});
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
-      setCsvFile(file);
-      setUploadResults(null);
-    } else {
+    if (!file) return;
+    
+    if (!file.name.endsWith('.csv')) {
       toast({
-        title: "Invalid file format",
-        description: "Please upload a CSV file",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!csvFile) {
-      toast({
-        title: "No file selected",
-        description: "Please select a CSV file to upload",
-        variant: "destructive"
+        title: 'Invalid file type',
+        description: 'Please upload a CSV file',
+        variant: 'destructive'
       });
       return;
     }
+    
+    setFile(file);
+  };
 
-    setIsUploading(true);
-    setUploadResults(null);
+  const parseCsvFile = (csvText: string): ProductCsvRow[] => {
+    // Parse CSV to array of objects
+    const lines = csvText.split('\n');
+    const headers = lines[0].split(',').map(header => header.trim());
+    
+    return lines
+      .slice(1)
+      .filter(line => line.trim() !== '')
+      .map(line => {
+        const values = line.split(',').map(value => value.trim());
+        const row: Record<string, any> = {};
+        
+        headers.forEach((header, index) => {
+          const value = values[index];
+          
+          // Skip empty values
+          if (!value) return;
+          
+          // Parse numeric fields
+          if (header === 'price') {
+            row[header] = parseFloat(value);
+          } else if (header === 'inventory_count') {
+            row[header] = parseInt(value);
+          } else {
+            row[header] = value;
+          }
+        });
+        
+        return row as ProductCsvRow;
+      });
+  };
 
+  const handleUpload = async () => {
+    if (!file) {
+      toast({
+        title: 'No file selected',
+        description: 'Please select a CSV file to upload',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
-      // Get user's session to identify their store
+      setIsUploading(true);
+      setResults({success: 0, failed: 0, errors: []});
+      
+      // Get store ID for the current user
       const { data: session } = await supabase.auth.getSession();
+      
       if (!session.session) {
         toast({
-          title: "Authentication required",
-          description: "Please login to upload products",
-          variant: "destructive"
+          title: 'Authentication required',
+          description: 'Please login to upload products',
+          variant: 'destructive'
         });
         return;
       }
 
-      // Get the user's store
-      const { data: storeData } = await supabase
+      const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', session.session.user.id)
         .single();
 
-      if (!storeData) {
+      if (storeError || !storeData) {
         toast({
-          title: "Store not found",
-          description: "Please complete the onboarding process",
-          variant: "destructive"
+          title: 'Store not found',
+          description: 'Please complete the onboarding process',
+          variant: 'destructive'
         });
         return;
       }
 
-      // Parse CSV
-      const text = await csvFile.text();
-      const rows = text.split('\n');
+      // Read CSV file
+      const text = await file.text();
+      const products = parseCsvFile(text);
       
-      // Extract headers
-      const headers = rows[0].split(',').map(h => h.trim());
-      
-      // Define required fields
-      const requiredFields = ['name', 'price'];
-      
-      // Check for required fields
-      const missingFields = requiredFields.filter(field => !headers.includes(field));
-      if (missingFields.length > 0) {
+      if (products.length === 0) {
         toast({
-          title: "Invalid CSV format",
-          description: `Missing required fields: ${missingFields.join(', ')}`,
-          variant: "destructive"
+          title: 'Empty CSV file',
+          description: 'No valid product data found in the CSV file',
+          variant: 'destructive'
         });
-        setIsUploading(false);
         return;
       }
       
-      // Process rows
-      const products = [];
-      const errors = [];
-      
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i].trim();
-        if (!row) continue; // Skip empty rows
-        
-        // Split by comma, but preserve commas in quotes
-        const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-        
-        if (values.length !== headers.length) {
-          errors.push(`Row ${i}: Column count mismatch`);
-          continue;
-        }
-        
-        // Create object from headers and values
-        const product = headers.reduce((obj, header, index) => {
-          obj[header] = values[index];
-          return obj;
-        }, {} as Record<string, string>);
-        
-        // Validate required fields
-        if (!product.name || !product.price) {
-          errors.push(`Row ${i}: Missing required fields`);
-          continue;
-        }
-        
-        // Convert price to number
-        const price = parseFloat(product.price);
-        if (isNaN(price)) {
-          errors.push(`Row ${i}: Invalid price format`);
-          continue;
-        }
-        
-        // Add to products array
-        products.push({
-          store_id: storeData.id,
-          name: product.name,
-          description: product.description || null,
-          price: price,
-          category: product.category || null,
-          sku: product.sku || null,
-          inventory_count: product.inventory !== undefined ? parseInt(product.inventory) : null,
-          status: product.status?.toLowerCase() === 'draft' ? 'draft' : 'active',
-          image_url: product.image_url || null,
-        });
-      }
-      
-      // Insert products in batches
       let successCount = 0;
+      let failedCount = 0;
+      let errorMessages: string[] = [];
       
-      if (products.length > 0) {
-        const { error } = await supabase
-          .from('products')
-          .insert(products);
-          
-        if (error) {
-          errors.push(`Database error: ${error.message}`);
-        } else {
-          successCount = products.length;
+      // Insert each product
+      for (const product of products) {
+        if (!product.name || product.price === undefined) {
+          failedCount++;
+          errorMessages.push(`Missing required fields for product: ${product.name || 'Unknown'}`);
+          continue;
+        }
+        
+        try {
+          const { error } = await supabase
+            .from('products')
+            .insert({
+              store_id: storeData.id,
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              image_url: product.image_url,
+              category: product.category,
+              sku: product.sku,
+              inventory_count: product.inventory_count,
+              status: product.status || 'active'
+            });
+            
+          if (error) {
+            failedCount++;
+            errorMessages.push(`Error adding product "${product.name}": ${error.message}`);
+          } else {
+            successCount++;
+          }
+        } catch (error) {
+          failedCount++;
+          errorMessages.push(`Error adding product "${product.name}": ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
       
-      // Set results
-      setUploadResults({
+      setResults({
         success: successCount,
-        failed: errors.length,
-        errors: errors
+        failed: failedCount,
+        errors: errorMessages
       });
       
-      // If at least one product was added successfully
+      setShowResults(true);
+      
       if (successCount > 0) {
         onProductsUploaded(successCount);
       }
       
     } catch (error) {
-      console.error('Error processing CSV:', error);
+      console.error('Error processing CSV file:', error);
       toast({
-        title: "Error processing CSV",
-        description: "Please check the file format and try again",
-        variant: "destructive"
+        title: 'Error processing CSV file',
+        description: error instanceof Error ? error.message : 'Please check your file format and try again',
+        variant: 'destructive'
       });
     } finally {
       setIsUploading(false);
     }
   };
 
-  const downloadTemplate = () => {
-    const template = 'name,description,price,category,sku,inventory,status,image_url\n' +
-      'Sample Product,This is a sample product description,19.99,Electronics,SKU123,100,active,https://example.com/image.jpg\n' +
-      'Draft Product,This is a draft product,29.99,Clothing,SKU456,50,draft,';
+  const handleDownloadTemplate = () => {
+    const headers = 'name,description,price,image_url,category,sku,inventory_count,status';
+    const sampleData = 'Example Product,This is a sample product description,19.99,https://example.com/image.jpg,Electronics,PROD-001,100,active';
+    const csvContent = `${headers}\n${sampleData}`;
     
-    const blob = new Blob([template], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'shopzap_product_template.csv';
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'product_import_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(open) => {
+      if (!open) {
+        onClose();
+        if (!isUploading) resetForm();
+      }
+    }}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Import Products from CSV</DialogTitle>
-          <DialogDescription>
-            Upload a CSV file with your product data.
-          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6">
-          {!uploadResults ? (
-            <>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="csv-file" className="text-sm font-medium">
-                    CSV File
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={downloadTemplate}
-                    className="h-8 px-2 text-xs"
-                  >
-                    <Download className="mr-1 h-3 w-3" />
-                    Download Template
-                  </Button>
-                </div>
-                {!csvFile ? (
-                  <div className="mt-1 border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center">
-                    <div className="flex flex-col items-center justify-center text-center">
-                      <FileUp className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Click to upload or drag and drop
-                      </p>
+        
+        {!showResults ? (
+          <div className="space-y-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>CSV Format Requirements</AlertTitle>
+              <AlertDescription className="text-sm">
+                Your CSV file should include: name, description, price, image_url, category, sku, inventory_count, and status columns.
+                Only name and price are required.
+              </AlertDescription>
+            </Alert>
+            
+            <div>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleDownloadTemplate}
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Download CSV Template
+              </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="csv-file">Upload CSV File</Label>
+              <div className="mt-1">
+                <input
+                  id="csv-file"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <Label 
+                  htmlFor="csv-file" 
+                  className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-6 w-full"
+                >
+                  {file ? (
+                    <div className="text-center">
+                      <FileSpreadsheet className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      <p>{file.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        CSV file only
+                        {(file.size / 1024).toFixed(2)} KB
                       </p>
                     </div>
-                    <Input
-                      id="csv-file"
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="csv-file" 
-                      className="mt-4 btn-hover inline-flex cursor-pointer items-center justify-center rounded-md text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2"
-                    >
-                      Select CSV File
-                    </label>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex items-center p-3 bg-accent/30 rounded-md">
-                    <FileUp className="h-5 w-5 mr-2 flex-shrink-0" />
-                    <span className="text-sm truncate flex-1">
-                      {csvFile.name}
-                    </span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => setCsvFile(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              <Alert>
-                <AlertDescription className="text-xs">
-                  The CSV file should include columns: name, description, price, category, sku, inventory, status, image_url. 
-                  Name and price are required fields.
-                </AlertDescription>
-              </Alert>
-              
-              <div className="flex justify-end gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={onClose}
-                  disabled={isUploading}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="button"
-                  onClick={handleUpload} 
-                  disabled={isUploading || !csvFile}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
                   ) : (
-                    'Upload and Import'
+                    <div className="text-center">
+                      <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                      <p>Click to select a CSV file</p>
+                      <p className="text-xs text-muted-foreground">
+                        or drag and drop here
+                      </p>
+                    </div>
                   )}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-center">
-                {uploadResults.success > 0 ? (
-                  <CheckCircle className="h-16 w-16 text-success" />
-                ) : (
-                  <AlertCircle className="h-16 w-16 text-destructive" />
-                )}
-              </div>
-              
-              <div className="text-center">
-                <h3 className="text-lg font-medium mb-1">
-                  {uploadResults.success > 0 
-                    ? "Products Imported Successfully!" 
-                    : "Import Failed"}
-                </h3>
-                <p className="text-muted-foreground">
-                  {uploadResults.success} products imported successfully.
-                  {uploadResults.failed > 0 && (
-                    ` ${uploadResults.failed} products failed to import.`
-                  )}
-                </p>
-              </div>
-              
-              {uploadResults.errors.length > 0 && (
-                <div className="max-h-40 overflow-y-auto p-3 text-xs bg-accent/30 rounded-md space-y-1">
-                  {uploadResults.errors.map((error, index) => (
-                    <p key={index} className="text-destructive">{error}</p>
-                  ))}
-                </div>
-              )}
-              
-              <div className="flex justify-center pt-2">
-                <Button onClick={onClose}>
-                  {uploadResults.success > 0 ? "Done" : "Close"}
-                </Button>
+                </Label>
               </div>
             </div>
-          )}
-        </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  onClose();
+                  resetForm();
+                }}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleUpload} 
+                disabled={!file || isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Upload and Import'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">{results.success}</div>
+                <div className="text-sm text-muted-foreground">Products imported</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-destructive">{results.failed}</div>
+                <div className="text-sm text-muted-foreground">Failed imports</div>
+              </div>
+            </div>
+            
+            {results.errors.length > 0 && (
+              <div className="border rounded-md p-4 max-h-[200px] overflow-y-auto">
+                <h3 className="font-medium mb-2">Import Errors:</h3>
+                <ul className="text-sm space-y-1">
+                  {results.errors.map((error, index) => (
+                    <li key={index} className="text-destructive">{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => {
+                  if (results.success > 0) {
+                    onClose();
+                    resetForm();
+                  } else {
+                    setShowResults(false);
+                  }
+                }} 
+              >
+                {results.success > 0 ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Done
+                  </>
+                ) : (
+                  'Try Again'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
