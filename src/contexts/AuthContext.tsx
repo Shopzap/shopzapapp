@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -160,13 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Continue even if this fails
       }
       
+      // Fix: Remove redirectTo from options and use correctly formatted options
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          // Add redirect URL for auth callback
-          redirectTo: `${window.location.origin}/auth-callback`,
-        }
       });
       
       if (error) throw error;
