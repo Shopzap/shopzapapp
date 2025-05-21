@@ -8,10 +8,12 @@ import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/contexts/AuthContext';
 
 const StoreBuilder = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeUsername, setStoreUsername] = useState("");
@@ -22,9 +24,7 @@ const StoreBuilder = () => {
     setIsLoading(true);
     
     try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !sessionData.session) {
+      if (!user) {
         toast({
           title: "Authentication error",
           description: "Please log in to create a store",
@@ -34,7 +34,7 @@ const StoreBuilder = () => {
         return;
       }
       
-      const userId = sessionData.session.user.id;
+      const userId = user.id;
       
       // Check username availability
       const { data: usernameCheck } = await supabase
@@ -59,7 +59,7 @@ const StoreBuilder = () => {
             username: storeUsername,
             phone_number: whatsappNumber,
             user_id: userId,
-            business_email: sessionData.session.user.email,
+            business_email: user.email || '',
             plan: 'free'
           }
         ])

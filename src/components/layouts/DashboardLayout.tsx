@@ -4,7 +4,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut } from 'lucide-react';
+import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
@@ -14,19 +15,10 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
+  const { signOut, profile } = useAuth();
   
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast({ title: "Logged out successfully" });
-      navigate('/login');
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({ 
-        title: "Logout failed", 
-        variant: "destructive" 
-      });
-    }
+    await signOut();
   };
   
   const navItems = [
@@ -53,6 +45,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <Link to="/" className="flex items-center gap-2">
             <div className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ShopZap.io</div>
           </Link>
+        </div>
+        
+        {/* User profile section */}
+        <div className="mb-6 p-4 bg-accent/20 rounded-md">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 text-primary rounded-full p-2">
+              <User size={20} />
+            </div>
+            <div>
+              <h3 className="font-medium">{profile?.full_name || 'User'}</h3>
+              <p className="text-xs text-muted-foreground">Logged in</p>
+            </div>
+          </div>
         </div>
         
         <nav className="space-y-1 flex-1">

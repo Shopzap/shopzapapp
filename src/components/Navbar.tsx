@@ -2,10 +2,19 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { X, Menu } from 'lucide-react';
+import { X, Menu, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, signOut, profile } = useAuth();
 
   return (
     <nav className="py-4 px-4 md:px-6 lg:px-8 border-b">
@@ -22,12 +31,37 @@ const Navbar = () => {
         </div>
         
         <div className="hidden md:flex items-center space-x-4">
-          <Button variant="outline" asChild>
-            <Link to="/login">Login</Link>
-          </Button>
-          <Button asChild>
-            <Link to="/onboarding">Create Store</Link>
-          </Button>
+          {isAuthenticated ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <User size={16} />
+                  {profile?.full_name || 'Account'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="cursor-pointer">Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/settings" className="cursor-pointer">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-red-500 hover:text-red-600">
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/auth">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/onboarding">Create Store</Link>
+              </Button>
+            </>
+          )}
         </div>
         
         {/* Mobile menu button */}
@@ -44,12 +78,25 @@ const Navbar = () => {
             <Link to="/pricing" className="font-medium text-foreground hover:text-primary transition-colors py-2">Pricing</Link>
             <Link to="/features" className="font-medium text-foreground hover:text-primary transition-colors py-2">Features</Link>
             <div className="flex flex-col space-y-2 pt-2">
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/login">Login</Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link to="/onboarding">Create Store</Link>
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link to="/dashboard">Dashboard</Link>
+                  </Button>
+                  <Button variant="outline" onClick={() => signOut()} className="w-full text-red-500 hover:text-red-600">
+                    Sign out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" asChild className="w-full">
+                    <Link to="/auth">Login</Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link to="/onboarding">Create Store</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
