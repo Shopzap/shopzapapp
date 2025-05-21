@@ -21,46 +21,52 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
+// Create a separate App component wrapper to ensure proper provider nesting
+const AppContent = () => (
+  <Routes>
+    {/* Public routes */}
+    <Route path="/" element={<Index />} />
+    <Route path="/auth" element={<Auth />} />
+    
+    {/* Protected routes */}
+    <Route path="/onboarding" element={
+      <ProtectedRoute>
+        <Onboarding />
+      </ProtectedRoute>
+    } />
+    <Route path="/store-builder" element={
+      <ProtectedRoute>
+        <StoreBuilder />
+      </ProtectedRoute>
+    } />
+    <Route path="/embed-generator" element={
+      <ProtectedRoute>
+        <EmbedGenerator />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard" element={
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/products" element={
+      <ProtectedRoute>
+        <ProductManager />
+      </ProtectedRoute>
+    } />
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
+
+// Main App component with properly nested providers
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            
-            {/* Protected routes */}
-            <Route path="/onboarding" element={
-              <ProtectedRoute>
-                <Onboarding />
-              </ProtectedRoute>
-            } />
-            <Route path="/store-builder" element={
-              <ProtectedRoute>
-                <StoreBuilder />
-              </ProtectedRoute>
-            } />
-            <Route path="/embed-generator" element={
-              <ProtectedRoute>
-                <EmbedGenerator />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/products" element={
-              <ProtectedRoute>
-                <ProductManager />
-              </ProtectedRoute>
-            } />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AppContent />
+          <Toaster />
+          <Sonner />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
