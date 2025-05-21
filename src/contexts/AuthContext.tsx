@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change event:', event);
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -124,6 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             full_name: fullName,
           },
+          // Add redirect URL for auth callback
+          emailRedirectTo: `${window.location.origin}/auth-callback`,
         },
       });
       
@@ -159,6 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          // Add redirect URL for auth callback
+          redirectTo: `${window.location.origin}/auth-callback`,
+        }
       });
       
       if (error) throw error;
