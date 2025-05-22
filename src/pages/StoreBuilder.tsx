@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { ArrowLeft, Check, Loader } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const StoreBuilder = () => {
   const { toast } = useToast();
@@ -20,18 +22,32 @@ const StoreBuilder = () => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState("");
   const [isUsernameAvailable, setIsUsernameAvailable] = useState(false);
+  const [suggestedUsernames, setSuggestedUsernames] = useState<string[]>([]);
   
-  // Check username availability when storeUsername changes
+  // Generate alternative usernames based on the current username
+  const generateAlternativeUsernames = (username: string): string[] => {
+    return [
+      `${username}store`,
+      `${username}shop`,
+      `my${username}`,
+      `${username}official`,
+      `get${username}`
+    ];
+  };
+  
+  // Check username availability and suggest alternatives if not available
   useEffect(() => {
     const checkUsernameAvailability = async () => {
       if (!storeUsername || storeUsername.length < 3) {
         setUsernameError("");
         setIsUsernameAvailable(false);
+        setSuggestedUsernames([]);
         return;
       }
       
       setIsCheckingUsername(true);
       setUsernameError("");
+      setSuggestedUsernames([]);
       
       try {
         const trimmedUsername = storeUsername.trim().toLowerCase();
@@ -53,8 +69,28 @@ const StoreBuilder = () => {
             description: `The URL shopzap.io/${trimmedUsername} is available for your store.`,
           });
         } else {
+          // Username is not available, generate and check alternatives
           setUsernameError("Username not available. Please choose a different store URL");
           setIsUsernameAvailable(false);
+          
+          // Generate alternative usernames
+          const alternatives = generateAlternativeUsernames(trimmedUsername);
+          
+          // Check availability of alternatives
+          const availableAlternatives: string[] = [];
+          
+          for (const alt of alternatives) {
+            const { data: altCheck } = await supabase
+              .rpc('check_username_availability', { username: alt });
+              
+            if (altCheck === true) {
+              availableAlternatives.push(alt);
+              // Stop after finding 3 available alternatives
+              if (availableAlternatives.length >= 3) break;
+            }
+          }
+          
+          setSuggestedUsernames(availableAlternatives);
         }
       } catch (error) {
         console.error("Error checking username:", error);
@@ -161,6 +197,11 @@ const StoreBuilder = () => {
     setStoreUsername(slug);
   };
   
+  // Handle suggested username selection
+  const handleSuggestedUsernameClick = (username: string) => {
+    setStoreUsername(username);
+  };
+  
   return (
     <div className="min-h-screen bg-accent/30 p-4">
       <div className="container mx-auto max-w-2xl py-8">
@@ -237,6 +278,27 @@ const StoreBuilder = () => {
                   </div>
                   {usernameError && (
                     <p className="text-sm text-destructive">{usernameError}</p>
+                  )}
+                  
+                  {/* Suggested usernames */}
+                  {suggestedUsernames.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-muted-foreground mb-2">Suggested available usernames:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedUsernames.map((username) => (
+                          <Button 
+                            key={username} 
+                            variant="outline" 
+                            size="sm" 
+                            type="button"
+                            onClick={() => handleSuggestedUsernameClick(username)}
+                            className="flex items-center"
+                          >
+                            {username}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
                 
