@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check, Loader } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,9 +18,66 @@ const StoreBuilder = () => {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeUsername, setStoreUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [isUsernameAvailable, setIsUsernameAvailable] = useState(false);
+  
+  // Check username availability when storeUsername changes
+  useEffect(() => {
+    const checkUsernameAvailability = async () => {
+      if (!storeUsername || storeUsername.length < 3) {
+        setUsernameError("");
+        setIsUsernameAvailable(false);
+        return;
+      }
+      
+      setIsCheckingUsername(true);
+      try {
+        const trimmedUsername = storeUsername.trim().toLowerCase();
+        const { data: usernameCheck } = await supabase
+          .rpc('check_username_availability', { username: trimmedUsername });
+        
+        if (!usernameCheck) {
+          setUsernameError("Username not available. Please choose a different store URL");
+          setIsUsernameAvailable(false);
+        } else {
+          setUsernameError("");
+          setIsUsernameAvailable(true);
+          toast({
+            title: "Store available ✅",
+            description: `The URL shopzap.io/${trimmedUsername} is available for your store.`,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking username:", error);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    };
+    
+    // Add debounce to prevent too many requests
+    const debounceTimeout = setTimeout(() => {
+      if (storeUsername) {
+        checkUsernameAvailability();
+      }
+    }, 500);
+    
+    return () => clearTimeout(debounceTimeout);
+  }, [storeUsername, toast]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Don't proceed if username is not available
+    if (!isUsernameAvailable) {
+      toast({
+        title: "Invalid store URL",
+        description: "Please choose a different store URL that is available.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -35,20 +92,7 @@ const StoreBuilder = () => {
       }
       
       const userId = user.id;
-      
-      // Check username availability
-      const { data: usernameCheck } = await supabase
-        .rpc('check_username_availability', { username: storeUsername });
-      
-      if (!usernameCheck) {
-        toast({
-          title: "Username not available",
-          description: "Please choose a different store URL",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
+      const trimmedUsername = storeUsername.trim().toLowerCase();
       
       // Create store
       const { data: store, error: storeError } = await supabase
@@ -56,7 +100,7 @@ const StoreBuilder = () => {
         .insert([
           {
             name: storeName,
-            username: storeUsername,
+            username: trimmedUsername,
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -79,7 +123,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/${storeUsername}`,
+        description: `Your store is now available at shopzap.io/${trimmedUsername}`,
       });
       
       // Redirect to dashboard
@@ -162,15 +206,30 @@ const StoreBuilder = () => {
                     <div className="bg-muted px-3 py-2 rounded-l-md border-y border-l border-input text-muted-foreground">
                       shopzap.io/
                     </div>
-                    <Input
-                      id="storeUrl"
-                      className="rounded-l-none"
-                      placeholder="your-store-name" 
-                      value={storeUsername}
-                      onChange={(e) => setStoreUsername(e.target.value)}
-                      required
-                    />
+                    <div className="relative flex-1">
+                      <Input
+                        id="storeUrl"
+                        className="rounded-l-none"
+                        placeholder="your-store-name" 
+                        value={storeUsername}
+                        onChange={(e) => setStoreUsername(e.target.value)}
+                        required
+                      />
+                      {isCheckingUsername && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <Loader className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      {isUsernameAvailable && !isCheckingUsername && storeUsername && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <Check className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {usernameError && (
+                    <p className="text-sm text-destructive">{usernameError}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -185,8 +244,17 @@ const StoreBuilder = () => {
             </form>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={handleSubmit} disabled={isLoading}>
-              {isLoading ? "Creating Store..." : "Create Store"}
+            <Button 
+              className="w-full" 
+              onClick={handleSubmit} 
+              disabled={isLoading || isCheckingUsername || !isUsernameAvailable}
+            >
+              {isLoading ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Store...
+                </>
+              ) : "Create Store"}
             </Button>
           </CardFooter>
         </Card>
