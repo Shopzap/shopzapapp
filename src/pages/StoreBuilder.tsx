@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,21 +31,30 @@ const StoreBuilder = () => {
       }
       
       setIsCheckingUsername(true);
+      setUsernameError("");
+      
       try {
         const trimmedUsername = storeUsername.trim().toLowerCase();
-        const { data: usernameCheck } = await supabase
+        const { data: usernameCheck, error } = await supabase
           .rpc('check_username_availability', { username: trimmedUsername });
         
-        if (!usernameCheck) {
-          setUsernameError("Username not available. Please choose a different store URL");
+        if (error) {
+          console.error("Error checking username:", error);
+          setUsernameError("Error checking availability. Please try again.");
           setIsUsernameAvailable(false);
-        } else {
+          return;
+        }
+        
+        if (usernameCheck === true) {
           setUsernameError("");
           setIsUsernameAvailable(true);
           toast({
             title: "Store available ✅",
             description: `The URL shopzap.io/${trimmedUsername} is available for your store.`,
           });
+        } else {
+          setUsernameError("Username not available. Please choose a different store URL");
+          setIsUsernameAvailable(false);
         }
       } catch (error) {
         console.error("Error checking username:", error);
@@ -247,7 +255,7 @@ const StoreBuilder = () => {
             <Button 
               className="w-full" 
               onClick={handleSubmit} 
-              disabled={isLoading || isCheckingUsername || !isUsernameAvailable}
+              disabled={isLoading || isCheckingUsername || !isUsernameAvailable && storeUsername.length >= 3}
             >
               {isLoading ? (
                 <>
