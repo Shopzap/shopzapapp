@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check, Loader } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
@@ -51,10 +52,18 @@ const StoreBuilder = () => {
       try {
         const trimmedUsername = storeUsername.trim().toLowerCase();
         
-        // Fixed: Add explicit timeout and catch database errors properly
-        const { data: usernameCheck, error } = await supabase
-          .rpc('check_username_availability', { username: trimmedUsername })
-          .timeout(5000);
+        // Fixed: Use Promise.race for timeout instead of .timeout() method
+        const timeoutPromise = new Promise<{data: null, error: Error}>((_, reject) => {
+          setTimeout(() => reject(new Error("Request timed out")), 5000);
+        });
+        
+        const rpcPromise = supabase.rpc('check_username_availability', { username: trimmedUsername });
+        
+        // Race between the RPC call and the timeout
+        const { data: usernameCheck, error } = await Promise.race([
+          rpcPromise,
+          timeoutPromise
+        ]) as any;
         
         if (error) {
           console.error("Error checking username:", error);
