@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,19 +50,24 @@ const StoreBuilder = () => {
       
       try {
         const trimmedUsername = storeUsername.trim().toLowerCase();
+        
+        // Fixed: Add explicit timeout and catch database errors properly
         const { data: usernameCheck, error } = await supabase
-          .rpc('check_username_availability', { username: trimmedUsername });
+          .rpc('check_username_availability', { username: trimmedUsername })
+          .timeout(5000);
         
         if (error) {
           console.error("Error checking username:", error);
           setUsernameError("Error checking availability. Please try again.");
           setIsUsernameAvailable(false);
+          setSuggestedUsernames([]);
           return;
         }
         
         if (usernameCheck === true) {
           setUsernameError("");
           setIsUsernameAvailable(true);
+          setSuggestedUsernames([]);
           toast({
             title: "Store available ✅",
             description: `The URL shopzap.io/${trimmedUsername} is available for your store.`,
@@ -76,16 +80,19 @@ const StoreBuilder = () => {
           // Generate alternative usernames
           const alternatives = generateAlternativeUsernames(trimmedUsername);
           
-          // Check availability of alternatives
+          // Check availability of alternatives in parallel for better performance
           const availableAlternatives: string[] = [];
+          const checkPromises = alternatives.map(alt => 
+            supabase.rpc('check_username_availability', { username: alt })
+          );
           
-          for (const alt of alternatives) {
-            const { data: altCheck } = await supabase
-              .rpc('check_username_availability', { username: alt });
-              
-            if (altCheck === true) {
-              availableAlternatives.push(alt);
-              // Stop after finding 3 available alternatives
+          const results = await Promise.all(checkPromises);
+          
+          // Process results
+          for (let i = 0; i < results.length; i++) {
+            const { data: altCheck, error: altError } = results[i];
+            if (!altError && altCheck === true) {
+              availableAlternatives.push(alternatives[i]);
               if (availableAlternatives.length >= 3) break;
             }
           }
@@ -94,6 +101,9 @@ const StoreBuilder = () => {
         }
       } catch (error) {
         console.error("Error checking username:", error);
+        setUsernameError("Error checking availability. Please try again.");
+        setIsUsernameAvailable(false);
+        setSuggestedUsernames([]);
       } finally {
         setIsCheckingUsername(false);
       }
@@ -200,6 +210,21 @@ const StoreBuilder = () => {
   // Handle suggested username selection
   const handleSuggestedUsernameClick = (username: string) => {
     setStoreUsername(username);
+    // Trigger immediate availability check for better UX
+    setTimeout(() => {
+      supabase
+        .rpc('check_username_availability', { username })
+        .then(({ data }) => {
+          if (data === true) {
+            setIsUsernameAvailable(true);
+            setUsernameError("");
+            toast({
+              title: "Store available ✅",
+              description: `The URL shopzap.io/${username} is available for your store.`,
+            });
+          }
+        });
+    }, 0);
   };
   
   return (
@@ -317,7 +342,7 @@ const StoreBuilder = () => {
             <Button 
               className="w-full" 
               onClick={handleSubmit} 
-              disabled={isLoading || isCheckingUsername || !isUsernameAvailable && storeUsername.length >= 3}
+              disabled={isLoading || isCheckingUsername || (!isUsernameAvailable && storeUsername.length >= 3)}
             >
               {isLoading ? (
                 <>
