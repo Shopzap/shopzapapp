@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { uuid } from '@/lib/utils';
 
@@ -82,6 +82,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Starting product submission...');
+    console.log('Form data:', { name, price, description, category, sku, inventoryCount, status });
+    
     // Validate required fields
     if (!name || !price) {
       toast({
@@ -94,11 +97,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
     try {
       setIsSubmitting(true);
+      console.log('Getting user session...');
 
-      // First get the user's store ID
-      const { data: session } = await supabase.auth.getSession();
+      // First get the user's session
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
       
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error('Failed to get user session');
+      }
+
       if (!session.session) {
+        console.error('No active session found');
         toast({
           title: 'Authentication required',
           description: 'Please login to add products',
@@ -107,13 +117,18 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
       }
 
+      console.log('User ID:', session.session.user.id);
+
+      // Get the user's store
+      console.log('Fetching store data...');
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', session.session.user.id)
         .single();
 
-      if (storeError || !storeData) {
+      if (storeError) {
+        console.error('Store fetch error:', storeError);
         toast({
           title: 'Store not found',
           description: 'Please complete the onboarding process',
@@ -122,53 +137,81 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
       }
 
+      if (!storeData) {
+        console.error('No store found for user');
+        toast({
+          title: 'Store not found',
+          description: 'Please complete the onboarding process',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      console.log('Store ID:', storeData.id);
+
       let imageUrl = null;
 
       // Upload image if available
       if (imageFile) {
+        console.log('Uploading image...');
         const fileExt = imageFile.name.split('.').pop();
         const filePath = `${storeData.id}/${uuid()}.${fileExt}`;
         
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('product-images')
           .upload(filePath, imageFile);
 
         if (uploadError) {
-          throw uploadError;
+          console.error('Image upload error:', uploadError);
+          // Don't fail the entire process for image upload issues
+          console.warn('Continuing without image due to upload error');
+        } else {
+          // Get the public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          imageUrl = publicUrl;
+          console.log('Image uploaded successfully:', imageUrl);
         }
-
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-        
-        imageUrl = publicUrl;
       }
+
+      // Prepare product data
+      const productData = {
+        store_id: storeData.id,
+        name: name.trim(),
+        description: description.trim() || null,
+        price: parseFloat(price),
+        category: category || null,
+        sku: sku.trim() || null,
+        inventory_count: inventoryCount ? parseInt(inventoryCount) : null,
+        status,
+        image_url: imageUrl
+      };
+
+      console.log('Inserting product with data:', productData);
 
       // Insert product data
       const { error: insertError } = await supabase
         .from('products')
-        .insert({
-          store_id: storeData.id,
-          name,
-          description: description || null,
-          price: parseFloat(price),
-          category: category || null,
-          sku: sku || null,
-          inventory_count: inventoryCount ? parseInt(inventoryCount) : null,
-          status,
-          image_url: imageUrl
-        });
+        .insert(productData);
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error('Product insert error:', insertError);
+        throw insertError;
+      }
+
+      console.log('Product added successfully!');
 
       toast({
-        title: 'Product added',
-        description: 'Your product has been added successfully',
+        title: 'Product added successfully!',
+        description: 'Your product has been added to your store',
       });
 
       resetForm();
       onProductAdded();
+      onClose();
+
     } catch (error) {
       console.error('Error adding product:', error);
       toast({
