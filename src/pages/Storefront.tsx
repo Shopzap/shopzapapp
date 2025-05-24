@@ -9,22 +9,22 @@ import StorefrontHeader from "@/components/storefront/StorefrontHeader";
 import ProductGrid from "@/components/storefront/ProductGrid";
 
 const Storefront = () => {
-  const { storeSlug } = useParams<{ storeSlug: string }>();
+  const { storeName } = useParams<{ storeName: string }>();
   
-  // Fetch store data based on slug
+  // Fetch store data based on name (not username field anymore)
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store', storeSlug],
+    queryKey: ['store', storeName],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('username', storeSlug)
+        .eq('name', storeName)
         .single();
         
       if (error) throw error;
       return data;
     },
-    enabled: !!storeSlug,
+    enabled: !!storeName,
   });
   
   // Fetch products for the store

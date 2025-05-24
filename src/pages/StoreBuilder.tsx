@@ -10,7 +10,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { uuid } from "@/lib/utils";
 
 const StoreBuilder = () => {
   const { toast } = useToast();
@@ -26,7 +25,7 @@ const StoreBuilder = () => {
     const name = e.target.value;
     setStoreName(name);
     
-    // Generate slug from store name
+    // Generate clean slug from store name
     const slug = name.toLowerCase()
       .replace(/[^\w\s]/gi, '')
       .replace(/\s+/g, '-');
@@ -51,25 +50,35 @@ const StoreBuilder = () => {
       
       const userId = user.id;
       
-      // Create a unique username by appending a random string if necessary
-      let finalUsername = storeUsername.trim().toLowerCase();
+      // Clean store name for the URL
+      let cleanStoreName = storeName.trim().toLowerCase()
+        .replace(/[^\w\s]/gi, '')
+        .replace(/\s+/g, '-');
       
-      // If username is too short, add a random string
-      if (finalUsername.length < 3) {
-        finalUsername = `store-${uuid().substring(0, 8)}`;
+      // Check if store name already exists
+      const { data: existingStore, error: checkError } = await supabase
+        .from('stores')
+        .select('name')
+        .eq('name', cleanStoreName)
+        .single();
+      
+      if (existingStore) {
+        toast({
+          title: "Store name already taken",
+          description: "Please choose a different store name",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
       }
       
-      // Add a unique suffix to ensure uniqueness
-      const uniqueSuffix = `-${uuid().substring(0, 6)}`;
-      finalUsername = `${finalUsername}${uniqueSuffix}`;
-      
-      // Create store with the unique username
+      // Create store with the clean name
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
-            name: storeName,
-            username: finalUsername,
+            name: cleanStoreName,
+            username: storeUsername, // Keep username for backward compatibility
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -92,7 +101,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/${finalUsername}`,
+        description: `Your store is now available at shopzap.io/store/${cleanStoreName}`,
       });
       
       // Redirect to dashboard
@@ -160,7 +169,7 @@ const StoreBuilder = () => {
                   <Label htmlFor="storeUrl">Your Store URL</Label>
                   <div className="flex items-center">
                     <div className="bg-muted px-3 py-2 rounded-l-md border-y border-l border-input text-muted-foreground">
-                      shopzap.io/
+                      shopzap.io/store/
                     </div>
                     <Input
                       id="storeUrl"
@@ -172,7 +181,7 @@ const StoreBuilder = () => {
                     />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    A unique suffix will be added to ensure your store URL is unique
+                    Choose a unique name for your store URL
                   </p>
                 </div>
                 
