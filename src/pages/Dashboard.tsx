@@ -3,11 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalLink } from 'lucide-react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import RecentOrdersList from '@/components/dashboard/RecentOrdersList';
 import StoreStats from '@/components/dashboard/StoreStats';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
@@ -18,21 +17,22 @@ const Dashboard = () => {
   const [storeData, setStoreData] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [productCount, setProductCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
   
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Check if user is authenticated
+        // Get current user from Supabase auth
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (!sessionData?.session?.user) {
-          navigate('/login');
+          navigate('/auth');
           return;
         }
         
         const userId = sessionData.session.user.id;
         
-        // Fetch store data
+        // Get store data from 'stores' table where user_id = current_user.id
         const { data: storeData, error: storeError } = await supabase
           .from('stores')
           .select('*')
@@ -51,27 +51,30 @@ const Dashboard = () => {
         
         setStoreData(storeData);
         
-        // Fetch recent orders
-        const { data: ordersData, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('store_id', storeData.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-        
-        if (!ordersError && ordersData) {
-          setRecentOrders(ordersData);
-        }
-        
-        // Get product count
-        const { count, error: productError } = await supabase
+        // Fetch all products from 'products' table where store_id = store.id and count them
+        const { count: productsCount, error: productError } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
           .eq('store_id', storeData.id);
         
-        if (!productError && count !== null) {
-          setProductCount(count);
+        if (!productError && productsCount !== null) {
+          setProductCount(productsCount);
         }
+        
+        // Fetch all orders from 'orders' table where store_id = current_user.store_id
+        const { data: ordersData, error: ordersError, count: totalOrdersCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact' })
+          .eq('store_id', storeData.id)
+          .order('created_at', { ascending: false });
+        
+        if (!ordersError && ordersData) {
+          // Set recent orders (limit 3 for display)
+          setRecentOrders(ordersData.slice(0, 3));
+          // Set total order count
+          setOrderCount(totalOrdersCount || 0);
+        }
+        
       } catch (error) {
         console.error("Dashboard data fetch error:", error);
         toast({
@@ -86,6 +89,23 @@ const Dashboard = () => {
     
     fetchDashboardData();
   }, [navigate, toast]);
+  
+  // Copy store link to clipboard
+  const handleCopyStoreLink = () => {
+    if (storeData) {
+      const storeLink = `https://shopzapapp.lovable.app/store/${storeData.name}`;
+      navigator.clipboard.writeText(storeLink);
+      toast({ title: "Store link copied!" });
+    }
+  };
+  
+  // Open store in new tab
+  const handleOpenStore = () => {
+    if (storeData) {
+      const storeLink = `https://shopzapapp.lovable.app/store/${storeData.name}`;
+      window.open(storeLink, '_blank');
+    }
+  };
   
   if (isLoading) {
     return (
@@ -114,8 +134,6 @@ const Dashboard = () => {
     );
   }
   
-  const storeLink = `shopzap.io/${storeData.username}`;
-  
   return (
     <DashboardLayout>
       <div className="container p-4 mx-auto space-y-6">
@@ -124,11 +142,18 @@ const Dashboard = () => {
             <h1 className="text-2xl font-bold tracking-tight">{storeData.name}</h1>
             <p className="text-muted-foreground">Welcome to your store dashboard</p>
           </div>
-          <Button onClick={() => navigate('/dashboard/products/new')} className="self-start">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Product
-          </Button>
+          {productCount === 0 ? (
+            <Button onClick={() => navigate('/dashboard/products')} className="self-start">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add your first product
+            </Button>
+          ) : (
+            <Button onClick={() => navigate('/dashboard/products')} className="self-start">
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+            </Button>
+          )}
         </div>
         
+        {/* Your Store Link Box */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Your Store Link</CardTitle>
@@ -136,27 +161,26 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex items-center gap-2">
               <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate">
-                {storeLink}
+                https://shopzapapp.lovable.app/store/{storeData.name}
               </div>
-              <Button variant="outline" size="sm" onClick={() => {
-                navigator.clipboard.writeText(`https://${storeLink}`);
-                toast({ title: "Link copied to clipboard" });
-              }}>
+              <Button variant="outline" size="sm" onClick={handleCopyStoreLink}>
                 Copy
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleOpenStore}>
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </div>
           </CardContent>
         </Card>
         
+        {/* Stats Cards - Total Products, Total Orders, Current Plan */}
         <StoreStats 
           productCount={productCount} 
-          orderCount={recentOrders.length} 
+          orderCount={orderCount} 
           plan={storeData.plan} 
         />
         
+        {/* Recent Orders Section */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -205,10 +229,7 @@ const Dashboard = () => {
                 <p className="text-muted-foreground mt-2">
                   Share your store link with customers to start receiving orders
                 </p>
-                <Button variant="outline" className="mt-4" onClick={() => {
-                  navigator.clipboard.writeText(`https://${storeLink}`);
-                  toast({ title: "Link copied to clipboard" });
-                }}>
+                <Button variant="outline" className="mt-4" onClick={handleCopyStoreLink}>
                   Copy Store Link
                 </Button>
               </div>
@@ -217,23 +238,28 @@ const Dashboard = () => {
         </Card>
         
         <div className="grid md:grid-cols-2 gap-6">
+          {/* Quick Actions Buttons */}
           <Card className="flex flex-col">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4">
+              {/* Manage Products - Navigate to '/dashboard/products' */}
               <Button variant="outline" onClick={() => navigate('/dashboard/products')} className="justify-start">
                 <Package className="mr-2 h-4 w-4" /> Manage Products
               </Button>
+              {/* Customize Theme - Navigate to '/dashboard/customize' */}
               <Button variant="outline" onClick={() => navigate('/dashboard/customize')} className="justify-start">
                 <Palette className="mr-2 h-4 w-4" /> Customize Theme
               </Button>
+              {/* Store Settings - Navigate to '/dashboard/settings' */}
               <Button variant="outline" onClick={() => navigate('/dashboard/settings')} className="justify-start">
                 <Settings className="mr-2 h-4 w-4" /> Store Settings
               </Button>
             </CardContent>
           </Card>
           
+          {/* Your Plan Section */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium">Your Plan</CardTitle>
@@ -256,7 +282,7 @@ const Dashboard = () => {
                     <p className="flex items-center"><span className="bg-red-100 text-red-800 p-1 rounded-full mr-2 text-xs">✕</span> No CSV imports</p>
                     <p className="flex items-center"><span className="bg-red-100 text-red-800 p-1 rounded-full mr-2 text-xs">✕</span> No custom themes</p>
                   </div>
-                  <Button className="w-full" onClick={() => navigate('/pricing')}>
+                  <Button className="w-full" onClick={() => navigate('/dashboard/settings/upgrade')}>
                     Upgrade to Pro
                   </Button>
                 </div>
