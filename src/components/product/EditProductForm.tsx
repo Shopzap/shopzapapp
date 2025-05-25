@@ -27,17 +27,6 @@ interface EditProductFormProps {
   onCancel: () => void;
 }
 
-const categories = [
-  'Electronics',
-  'Clothing',
-  'Home & Kitchen',
-  'Beauty & Personal Care',
-  'Books',
-  'Toys & Games',
-  'Sports & Outdoors',
-  'Other'
-];
-
 const EditProductForm: React.FC<EditProductFormProps> = ({ 
   product,
   onSuccess,
@@ -46,11 +35,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || '');
   const [price, setPrice] = useState(product.price.toString());
-  const [category, setCategory] = useState(product.category || '');
-  const [sku, setSku] = useState(product.sku || '');
-  const [inventoryCount, setInventoryCount] = useState(
-    product.inventory_count !== undefined ? product.inventory_count.toString() : ''
-  );
   const [status, setStatus] = useState(product.status);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(product.image_url || null);
@@ -82,6 +66,9 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('Starting product update...');
+    console.log('Form data:', { name, price, description, status });
     
     // Validate required fields
     if (!name || !price) {
@@ -127,6 +114,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
 
       // Upload new image if available
       if (imageFile) {
+        console.log('Uploading new image...');
         const fileExt = imageFile.name.split('.').pop();
         const filePath = `${storeData.id}/${uuid()}.${fileExt}`;
         
@@ -135,34 +123,43 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
           .upload(filePath, imageFile);
 
         if (uploadError) {
-          throw uploadError;
+          console.error('Image upload error:', uploadError);
+          // Don't fail the entire process for image upload issues
+          console.warn('Continuing without image due to upload error');
+        } else {
+          // Get the public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+          
+          imageUrl = publicUrl;
+          console.log('Image uploaded successfully:', imageUrl);
         }
-
-        // Get the public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-        
-        imageUrl = publicUrl;
       }
 
-      // Update product data
+      // Update product data - only include fields that exist in the database schema
+      const updateData = {
+        name: name.trim(),
+        description: description.trim() || null,
+        price: parseFloat(price),
+        status,
+        image_url: imageUrl,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('Updating product with data:', updateData);
+
       const { error: updateError } = await supabase
         .from('products')
-        .update({
-          name,
-          description: description || null,
-          price: parseFloat(price),
-          category: category || null,
-          sku: sku || null,
-          inventory_count: inventoryCount ? parseInt(inventoryCount) : null,
-          status,
-          image_url: imageUrl,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', product.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Product update error:', updateError);
+        throw updateError;
+      }
+
+      console.log('Product updated successfully!');
 
       toast({
         title: 'Product updated',
@@ -212,20 +209,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
           </div>
           
           <div>
-            <Label htmlFor="category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div>
             <Label htmlFor="status">Status</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger>
@@ -240,28 +223,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({
         </div>
         
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="sku">SKU</Label>
-            <Input 
-              id="sku"
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              placeholder="Product SKU (optional)"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="inventory">Inventory Count</Label>
-            <Input 
-              id="inventory"
-              type="number"
-              min="0"
-              value={inventoryCount}
-              onChange={(e) => setInventoryCount(e.target.value)}
-              placeholder="Available quantity"
-            />
-          </div>
-          
           <div>
             <Label htmlFor="edit-image">Product Image</Label>
             <div className="mt-1 flex items-center">
