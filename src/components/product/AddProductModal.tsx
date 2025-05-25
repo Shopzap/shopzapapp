@@ -83,7 +83,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     e.preventDefault();
     
     console.log('Starting product submission...');
-    console.log('Form data:', { name, price, description, category, sku, inventoryCount, status });
+    console.log('Form data:', { name, price, description, status });
     
     // Validate required fields
     if (!name || !price) {
@@ -176,15 +176,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
       }
 
-      // Prepare product data
+      // Prepare product data - only include fields that exist in the database schema
       const productData = {
         store_id: storeData.id,
         name: name.trim(),
         description: description.trim() || null,
         price: parseFloat(price),
-        category: category || null,
-        sku: sku.trim() || null,
-        inventory_count: inventoryCount ? parseInt(inventoryCount) : null,
         status,
         image_url: imageUrl
       };
@@ -264,20 +261,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               </div>
               
               <div>
-                <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
                 <Label htmlFor="status">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
@@ -292,28 +275,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             </div>
             
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="sku">SKU</Label>
-                <Input 
-                  id="sku"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="Product SKU (optional)"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="inventory">Inventory Count</Label>
-                <Input 
-                  id="inventory"
-                  type="number"
-                  min="0"
-                  value={inventoryCount}
-                  onChange={(e) => setInventoryCount(e.target.value)}
-                  placeholder="Available quantity"
-                />
-              </div>
-              
               <div>
                 <Label htmlFor="image">Product Image</Label>
                 <div className="mt-1 flex items-center">
