@@ -56,6 +56,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setPaymentMethod('');
     setImageFile(null);
     setImagePreview(null);
+    setPaymentMethod('');
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,31 +264,30 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 />
               </div>
               
-              <div>
+              <div className="grid gap-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a status" />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Payment Method */}
-              <div className="space-y-2">
+              <div className="grid gap-2">
                 <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Select onValueChange={setPaymentMethod} value={paymentMethod}>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a payment method" />
+                    <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="online_only">Online Only</SelectItem>
-                    <SelectItem value="cash_on_delivery_only">Cash on Delivery Only</SelectItem>
-                    <SelectItem value="online_and_cod">Online & COD</SelectItem>
+                    <SelectItem value="online">Online Only</SelectItem>
+                    <SelectItem value="cod">Cash on Delivery Only</SelectItem>
+                    <SelectItem value="both">Online & COD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
