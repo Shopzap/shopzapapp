@@ -53,8 +53,8 @@ const CustomizeStore: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  useEffect(() => {
-    const fetchStoreData = async () => {
+  const fetchStoreData = async () => {
+    if (user) {
       if (user) {
         const { data, error } = await supabase
           .from('stores')
@@ -79,6 +79,10 @@ const CustomizeStore: React.FC = () => {
       }
     };
 
+    fetchStoreData();
+  };
+
+  useEffect(() => {
     fetchStoreData();
   }, [user]);
 
@@ -118,9 +122,9 @@ const CustomizeStore: React.FC = () => {
 
     const { data, error } = await supabase
       .from('stores')
-      .upsert<Database['public']['Tables']['stores']['Insert']>(
+      .update<Database['public']['Tables']['stores']['Update']>( 
         {
-          id: storeId,
+
           user_id: user.id,
           name: storeName,
           logo_image: logoUrl,
@@ -137,22 +141,22 @@ const CustomizeStore: React.FC = () => {
           created_at: null,
           description: null,
           is_active: true
-        }, { onConflict: 'user_id' })
+        })
+        .eq('user_id', user.id)
         .single();
 
       if (error) {
       console.error('Error saving store data:', error.message);
       setIsSaving(false);
     } else if (data) {
-      setStoreId((data as Database['public']['Tables']['stores']['Row']).id); // Update storeId if it was a new insert
       setIsSaving(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      fetchStoreData(); // Re-fetch data to update the UI
     } else {
-      // Handle case where upsert was successful but no data was returned (shouldn't happen with onConflict: 'user_id', but good practice)
-      console.warn('Upsert successful but no data returned.');
+      console.warn('Update successful but no data returned.');
       setIsSaving(false);
-      setSaveSuccess(true); // Still indicate success if no error
+      setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     }
   };
