@@ -95,21 +95,23 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           <Link to="/" className="flex items-center gap-2">
             <div className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ShopZap</div>
           </Link>
-          <Button variant="outline" size="sm" onClick={() => document.getElementById('mobile-menu')?.classList.toggle('hidden')}>
+          <Button variant="outline" size="sm" onClick={() => {
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (mobileMenu) mobileMenu.classList.toggle('hidden');
+          }}>
             Menu
           </Button>
         </div>
-        <div id="mobile-menu" className="hidden mt-3 border rounded-md overflow-hidden">
+        <div id="mobile-menu" className="hidden mt-3 border rounded-md overflow-hidden shadow-lg">
           {navItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center py-2 px-4 ${
-                isActive(item.path)
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-accent/50'
-              }`}
-              onClick={() => document.getElementById('mobile-menu')?.classList.add('hidden')}
+              className={`flex items-center py-2 px-4 ${isActive(item.path) ? 'bg-primary/10 text-primary' : 'hover:bg-accent/50'}`}
+              onClick={() => {
+                const mobileMenu = document.getElementById('mobile-menu');
+                if (mobileMenu) mobileMenu.classList.add('hidden');
+              }}
             >
               {item.icon}
               {item.label}
@@ -127,8 +129,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto pt-16 md:pt-0">
+      <div className="flex-1 flex flex-col overflow-hidden pt-[60px] md:pt-0">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

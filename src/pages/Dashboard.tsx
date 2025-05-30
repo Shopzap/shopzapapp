@@ -144,11 +144,11 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Welcome to your store dashboard</p>
           </div>
           {productCount === 0 ? (
-            <Button onClick={() => navigate('/dashboard/products')} className="self-start">
+            <Button onClick={() => navigate('/dashboard/products')} className="self-start w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add your first product
             </Button>
           ) : (
-            <Button onClick={() => navigate('/dashboard/products')} className="self-start">
+            <Button onClick={() => navigate('/dashboard/products')} className="self-start w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" /> Add Product
             </Button>
           )}
@@ -160,16 +160,18 @@ const Dashboard = () => {
             <CardTitle className="text-sm font-medium">Your Store Link</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate">
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
                 {siteConfig.store.generateUrl(storeData.name)}
               </div>
-              <Button variant="outline" size="sm" onClick={handleCopyStoreLink}>
-                Copy
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleOpenStore}>
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleOpenStore} className="flex-1">
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -193,122 +195,53 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {recentOrders.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentOrders.map(order => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.buyer_name}</TableCell>
-                      <TableCell>₹{order.total_price}</TableCell>
-                      <TableCell>
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </span>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8">
-                <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium">No orders yet</h3>
-                <p className="text-muted-foreground mt-2">
-                  Share your store link with customers to start receiving orders
-                </p>
-                <Button variant="outline" className="mt-4" onClick={handleCopyStoreLink}>
-                  Copy Store Link
-                </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {recentOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.customer_email}</TableCell>
+                        <TableCell>${order.total_amount.toFixed(2)}</TableCell>
+                        <TableCell>{order.status}</TableCell>
+                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
+            ) : (
+              <p className="text-muted-foreground">No recent orders.</p>
             )}
           </CardContent>
         </Card>
         
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Quick Actions Buttons */}
-          <Card className="flex flex-col">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col gap-4">
-              {/* Manage Products - Navigate to '/dashboard/products' */}
-              <Button variant="outline" onClick={() => navigate('/dashboard/products')} className="justify-start">
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-medium">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/products')}>
                 <Package className="mr-2 h-4 w-4" /> Manage Products
               </Button>
-              {/* Customize Theme - Navigate to '/dashboard/customize' */}
-              <Button variant="outline" onClick={() => navigate('/dashboard/customize')} className="justify-start">
-                <Palette className="mr-2 h-4 w-4" /> Customize Theme
+              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/customize')}>
+                <Palette className="mr-2 h-4 w-4" /> Customize Storefront
               </Button>
-              {/* Store Settings - Navigate to '/dashboard/settings' */}
-              <Button variant="outline" onClick={() => navigate('/dashboard/settings')} className="justify-start">
+              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/settings')}>
                 <Settings className="mr-2 h-4 w-4" /> Store Settings
               </Button>
-            </CardContent>
-          </Card>
-          
-          {/* Your Plan Section */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium">Your Plan</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {storeData.plan === 'free' ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary/10 text-primary p-2 rounded-full">
-                      <Store className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Free Plan</h4>
-                      <p className="text-xs text-muted-foreground">Limited features</p>
-                    </div>
-                  </div>
-                  <div className="text-sm space-y-2">
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> Up to 5 products</p>
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> Basic store theme</p>
-                    <p className="flex items-center"><span className="bg-red-100 text-red-800 p-1 rounded-full mr-2 text-xs">✕</span> No CSV imports</p>
-                    <p className="flex items-center"><span className="bg-red-100 text-red-800 p-1 rounded-full mr-2 text-xs">✕</span> No custom themes</p>
-                  </div>
-                  <Button className="w-full" onClick={() => navigate('/dashboard/settings/upgrade')}>
-                    Upgrade to Pro
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-primary/10 text-primary p-2 rounded-full">
-                      <Store className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{storeData.plan.charAt(0).toUpperCase() + storeData.plan.slice(1)} Plan</h4>
-                      <p className="text-xs text-muted-foreground">All features unlocked</p>
-                    </div>
-                  </div>
-                  <div className="text-sm space-y-2">
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> Unlimited products</p>
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> Custom themes</p>
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> CSV imports</p>
-                    <p className="flex items-center"><span className="bg-green-100 text-green-800 p-1 rounded-full mr-2 text-xs">✓</span> Advanced analytics</p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

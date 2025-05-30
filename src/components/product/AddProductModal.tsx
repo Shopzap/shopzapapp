@@ -225,160 +225,145 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(open) => {
-      if (!open) {
-        onClose();
-        if (!isSubmitting) resetForm();
-      }
-    }}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Product Name *</Label>
-                <Input 
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter product name"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="price">Price *</Label>
-                <Input 
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={setStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="paymentMethod">Payment Method</label>
-                <select
-                  id="paymentMethod"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  required
-                >
-                  <option value="online">Only Online Payment</option>
-                  <option value="cod">Only Cash on Delivery</option>
-                  <option value="both">Online & COD</option>
-                </select>
-              </div>
-              
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="image">Product Image</Label>
-                <div className="mt-1 flex items-center">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  <Label 
-                    htmlFor="image" 
-                    className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 w-full"
-                  >
-                    {imagePreview ? (
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="max-h-32 object-contain"
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground">Click to upload an image</p>
-                      </div>
-                    )}
-                  </Label>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="image">Product Image</Label>
-                <div className="mt-1 flex items-center">
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  <Label 
-                    htmlFor="image" 
-                    className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 w-full"
-                  >
-                    {imagePreview ? (
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="max-h-32 object-contain"
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground">Click to upload an image</p>
-                      </div>
-                    )}
-                  </Label>
-                </div>
-              </div>
-            </div>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4 overflow-y-auto pr-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Name
+            </Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="col-span-3"
+              required
+            />
           </div>
-          
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea 
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Description
+            </Label>
+            <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter product description"
-              rows={4}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="flex justify-end gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => {
-                onClose();
-                resetForm();
-              }}
-              disabled={isSubmitting}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="price" className="text-right">
+              Price
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="col-span-3"
+              required
+              step="0.01"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="category" className="text-right">
+              Category
+            </Label>
+            <Select onValueChange={setCategory} value={category}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="sku" className="text-right">
+              SKU
+            </Label>
+            <Input
+              id="sku"
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="inventoryCount" className="text-right">
+              Inventory Count
+            </Label>
+            <Input
+              id="inventoryCount"
+              type="number"
+              value={inventoryCount}
+              onChange={(e) => setInventoryCount(e.target.value)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="status" className="text-right">
+              Status
+            </Label>
+            <Select onValueChange={setStatus} value={status}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="paymentMethod" className="text-right">
+              Payment Method
+            </Label>
+            <select
+              id="paymentMethod"
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="col-span-3 p-2 border rounded-md"
             >
+              <option value="online">Only Online Payment</option>
+              <option value="cod">Only Cash on Delivery</option>
+              <option value="both">Online & COD</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="image" className="text-right">
+              Product Image
+            </Label>
+            <Input
+              id="image"
+              type="file"
+              onChange={handleImageChange}
+              className="col-span-3"
+              accept="image/*"
+            />
+          </div>
+          {imagePreview && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="col-span-1"></div>
+              <div className="col-span-3">
+                <img src={imagePreview} alt="Product Preview" className="max-w-full h-auto rounded-md" />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 mt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding Product...' : 'Add Product'}
+              {isSubmitting ? 'Adding...' : 'Add Product'}
             </Button>
           </div>
         </form>

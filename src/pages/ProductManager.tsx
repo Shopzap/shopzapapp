@@ -161,14 +161,15 @@ const ProductManager: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="p-6 sm:p-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold">Products</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => setShowAddModal(true)}
               disabled={isAtProductLimit}
               title={isAtProductLimit ? "Upgrade your plan to add more products" : "Add a new product"}
+              className="w-full sm:w-auto"
             >
               <Plus className="mr-2 h-4 w-4" /> Add Product
             </Button>
@@ -177,6 +178,7 @@ const ProductManager: React.FC = () => {
               <Button 
                 variant="outline"
                 onClick={() => setShowUploadModal(true)}
+                className="w-full sm:w-auto"
               >
                 <Upload className="mr-2 h-4 w-4" /> Import CSV
               </Button>
@@ -194,52 +196,63 @@ const ProductManager: React.FC = () => {
         )}
         
         <div className="mb-6">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search products by name or category..."
-                className="pl-9"
+                type="text"
+                placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 w-full"
               />
             </div>
+            <Tabs defaultValue="all" className="w-full sm:w-auto">
+              <TabsList className="grid w-full sm:w-auto grid-cols-3">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="draft">Draft</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
         
-        <Tabs defaultValue="grid">
-          <TabsList className="mb-4">
-            <TabsTrigger value="grid">Grid View</TabsTrigger>
-            <TabsTrigger value="list">List View</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="grid">
-            <ProductGrid 
-              products={filteredProducts} 
-              isLoading={isLoading} 
-              onDelete={handleProductDeleted}
-              onUpdate={handleProductUpdated}
-            />
-          </TabsContent>
-          
-          <TabsContent value="list">
-            <div className="bg-muted p-8 rounded-md text-center">
-              <p>List view coming soon</p>
-            </div>
-          </TabsContent>
-        </Tabs>
+        <TabsContent value="all">
+          <ProductGrid 
+            products={filteredProducts}
+            onProductDeleted={handleProductDeleted}
+            onProductUpdated={handleProductUpdated}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+        <TabsContent value="active">
+          <ProductGrid 
+            products={filteredProducts.filter(p => p.status === 'active')}
+            onProductDeleted={handleProductDeleted}
+            onProductUpdated={handleProductUpdated}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+        <TabsContent value="draft">
+          <ProductGrid 
+            products={filteredProducts.filter(p => p.status === 'draft')}
+            onProductDeleted={handleProductDeleted}
+            onProductUpdated={handleProductUpdated}
+            isLoading={isLoading}
+          />
+        </TabsContent>
       </div>
-      
-      <AddProductModal 
-        open={showAddModal} 
+
+      <AddProductModal
+        open={showAddModal}
         onClose={() => setShowAddModal(false)}
         onProductAdded={handleProductAdded}
       />
-      
+
       <CsvUploadModal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onProductsUploaded={handleCsvUploaded}
+        onCsvUploaded={handleCsvUploaded}
       />
     </DashboardLayout>
   );
