@@ -39,7 +39,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [sku, setSku] = useState('');
   const [inventoryCount, setInventoryCount] = useState('');
   const [status, setStatus] = useState('active');
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setPaymentMethod('');
     setImageFile(null);
     setImagePreview(null);
-    setPaymentMethod('');
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,20 +277,20 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </Select>
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="online">Online Only</SelectItem>
-                    <SelectItem value="cod">Cash on Delivery Only</SelectItem>
-                    <SelectItem value="both">Online & COD</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="form-group">
+                <label htmlFor="paymentMethod">Payment Method</label>
+                <select
+                  id="paymentMethod"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  required
+                >
+                  <option value="online">Only Online Payment</option>
+                  <option value="cod">Only Cash on Delivery</option>
+                  <option value="both">Online & COD</option>
+                </select>
               </div>
-
+              
               {/* Image Upload */}
               <div className="space-y-2">
                 <Label htmlFor="image">Product Image</Label>
