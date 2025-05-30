@@ -10,18 +10,24 @@ import ProductGrid from "@/components/storefront/ProductGrid";
 
 const Storefront = () => {
   const { storeName } = useParams<{ storeName: string }>();
+  console.log('Storefront: storeName from params', storeName);
   
   // Fetch store data based on name (not username field anymore)
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store', storeName],
     queryFn: async () => {
+      console.log('Storefront: Fetching store with name', storeName);
       const { data, error } = await supabase
         .from('stores')
         .select('*')
         .eq('name', storeName)
         .single();
         
-      if (error) throw error;
+      if (error) {
+        console.error('Storefront: Error fetching store', error);
+        throw error;
+      }
+      console.log('Storefront: Store data received', data);
       return data;
     },
     enabled: !!storeName,

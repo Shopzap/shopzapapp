@@ -118,25 +118,26 @@ const CustomizeStore: React.FC = () => {
 
     const { data, error } = await supabase
       .from('stores')
-      .upsert<Database['public']['Tables']['stores']['Insert']>({
-        id: storeId,
-        user_id: user.id,
-        name: storeName,
-        logo_image: logoUrl,
-        theme: {
-          primary_color: primaryColor,
-          secondary_color: secondaryColor,
-          theme_layout: themeStyle,
-        },
-        business_email: user.email || '',
-        phone_number: '',
-        username: user.email || '',
-        address: null,
-        banner_image: null,
-        created_at: null,
-        description: null,
-        is_active: true
-      }, { onConflict: 'user_id' })
+      .upsert<Database['public']['Tables']['stores']['Insert']>(
+        {
+          id: storeId,
+          user_id: user.id,
+          name: storeName,
+          logo_image: logoUrl,
+          theme: {
+            primary_color: primaryColor,
+            secondary_color: secondaryColor,
+            theme_layout: themeStyle,
+          },
+          business_email: user.email || '',
+          phone_number: '',
+          username: user.email || '',
+          address: null,
+          banner_image: null,
+          created_at: null,
+          description: null,
+          is_active: true
+        }, { ignoreDuplicates: true })
       .single();
 
     if (error) {
