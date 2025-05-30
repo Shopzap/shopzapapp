@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
 import Storefront from "./pages/Storefront";
+import Checkout from "./pages/Checkout";
 
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
@@ -33,6 +34,7 @@ const AppContent = () => (
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
     <Route path="/store/:storeName" element={<Storefront />} />
+    <Route path="/checkout" element={<Checkout />} />
     
     {/* Protected routes */}
     <Route path="/onboarding" element={
