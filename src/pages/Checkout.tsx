@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Checkout = () => {
   const { toast } = useToast();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -19,8 +21,8 @@ const Checkout = () => {
     paymentMethod: 'cod'
   });
 
-  // Mock order data - in a real app, this would come from a cart context or API
-  const orderItems = [
+  // Get order items from location state or use mock data
+  const orderItems = location.state?.orderItems || [
     {
       id: 1,
       name: 'Wireless Earbuds',

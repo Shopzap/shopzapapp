@@ -5,19 +5,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
 import { Tables } from "@/integrations/supabase/types";
+import { useNavigate } from 'react-router-dom';
 
 interface StorefrontProductCardProps {
   product: Tables<"products">;
 }
 
 const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({ product }) => {
-  // Function to open WhatsApp with pre-filled message
-  const handleBuyClick = () => {
-    const message = `Hello! I'm interested in purchasing "${product.name}" for ${formatPrice(product.price)}.`;
-    const encodedMessage = encodeURIComponent(message);
-    // This would typically use the store owner's phone number from the database
-    // For now, we're using a placeholder that would be replaced with the actual number
-    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  const navigate = useNavigate();
+  
+  // Function to navigate to product details page
+  const handleViewDetails = () => {
+    navigate(`/product/${product.id}`);
   };
 
   return (
@@ -43,9 +42,9 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({ product }
       <CardFooter className="p-4 pt-0">
         <Button 
           className="w-full" 
-          onClick={handleBuyClick}
+          onClick={handleViewDetails}
         >
-          Buy on WhatsApp
+          View Details
         </Button>
       </CardFooter>
     </Card>
