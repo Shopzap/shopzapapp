@@ -118,7 +118,7 @@ const CustomizeStore: React.FC = () => {
 
     const { data, error } = await supabase
       .from('stores')
-      .upsert<Database['public']['Tables']['stores']['Row'][]>({
+      .upsert<Database['public']['Tables']['stores']['Insert']>({
         id: storeId,
         user_id: user.id,
         name: storeName,
@@ -127,18 +127,23 @@ const CustomizeStore: React.FC = () => {
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           theme_layout: themeStyle,
-        } as any, // Cast to any to bypass strict type checking for now
-        // Add other required fields with default/empty values to satisfy TypeScript
-        business_email: '',
+        },
+        business_email: user.email || '',
         phone_number: '',
         username: user.email || '',
-      }, { onConflict: 'user_id' });
+        address: null,
+        banner_image: null,
+        created_at: null,
+        description: null,
+        is_active: true
+      }, { onConflict: 'user_id' })
+      .single();
 
     if (error) {
       console.error('Error saving store data:', error.message);
       setIsSaving(false);
-    } else if (data && data.length > 0) {
-      setStoreId(data[0].id); // Update storeId if it was a new insert
+    } else if (data) {
+      setStoreId(data.id); // Update storeId if it was a new insert
       setIsSaving(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

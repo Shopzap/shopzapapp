@@ -1,183 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { Label } from '@/components/ui/label'; // Import Label
+import { supabase } from '../integrations/supabase/client';
+import { Database } from '../integrations/supabase/types';
+import { useAuth } from '../contexts/AuthContext';
 
-interface Order {
-  id: string;
-  customer_name: string; // Add customer_name
-  total: number; // Add total
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
-  created_at: string;
-}
+type Order = Database['public']['Tables']['orders']['Row'];
 
 const Orders: React.FC = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateRangeFilter, setDateRangeFilter] = useState<string>('all');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [statusFilter, setStatusFilter] = useState<string>('All');
 
   useEffect(() => {
-    fetchOrders();
-  }, [statusFilter, dateRangeFilter]);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    let query = supabase.from('orders').select('*');
-
-    if (statusFilter !== 'all') {
-      query = query.eq('status', statusFilter);
-    }
-
-    if (dateRangeFilter !== 'all') {
-      const now = new Date();
-      let startDate = new Date();
-
-      switch (dateRangeFilter) {
-        case 'today':
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case 'last_7_days':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case 'last_30_days':
-          startDate.setDate(now.getDate() - 30);
-          break;
-        case 'this_month':
-          startDate.setDate(1);
-          break;
-        default:
-          break;
+    const fetchOrders = async () => {
+      if (!user || !user.id) {
+        setLoading(false);
+        return;
       }
-      query = query.gte('created_at', startDate.toISOString());
-    }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+      setLoading(true);
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', user.id) // Assuming user.id is the store_id for the logged-in store
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching orders:', error);
-    } else {
-      // Map fetched data to the Order interface
-      const formattedOrders: Order[] = data.map((order: any) => ({
-        id: order.id,
-        customer_name: order.buyer_name, // Assuming buyer_name from Supabase maps to customer_name
-        total: order.total_price, // Assuming total_price from Supabase maps to total
-        status: order.status,
-        created_at: order.created_at,
-      }));
-      setOrders(formattedOrders);
-    }
-    setLoading(false);
-  };
+      if (statusFilter !== 'All') {
+        query = query.eq('status', statusFilter.toLowerCase());
+      }
 
-  const getStatusBadgeVariant = (status: Order['status']) => {
-    switch (status) {
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching orders:', error.message);
+      } else {
+        setOrders(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchOrders();
+  }, [user, statusFilter]);
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status.toLowerCase()) {
       case 'pending':
-        return 'default';
+        return 'bg-yellow-100 text-yellow-800';
       case 'shipped':
-        return 'secondary';
+        return 'bg-blue-100 text-blue-800';
       case 'delivered':
-        return 'success'; // Change 'outline' to 'success'
-      case 'cancelled':
-        return 'destructive';
+        return 'bg-green-100 text-green-800';
       default:
-        return 'default';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   return (
-    <DashboardLayout>
-      <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold mb-8">Orders</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Orders</h1>
 
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <Label htmlFor="status-filter">Filter by Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger id="status-filter" className="w-full">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <Label htmlFor="date-filter">Filter by Date Range</Label>
-              <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
-                <SelectTrigger id="date-filter" className="w-full">
-                  <SelectValue placeholder="All Time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="last_7_days">Last 7 Days</SelectItem>
-                  <SelectItem value="last_30_days">Last 30 Days</SelectItem>
-                  <SelectItem value="this_month">This Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4">
-                      Loading orders...
-                    </TableCell>
-                  </TableRow>
-                ) : orders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4">
-                      No orders found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id.substring(0, 8)}...</TableCell>
-                      <TableCell>{order.customer_name}</TableCell>
-                      <TableCell>${order.total.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(order.status)}>{order.status}</Badge>
-                      </TableCell>
-                      <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm">View</Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+      <div className="mb-4">
+        <label htmlFor="statusFilter" className="block text-sm font-medium text-gray-700">Filter by Status:</label>
+        <select
+          id="statusFilter"
+          name="statusFilter"
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          <option>All</option>
+          <option>Pending</option>
+          <option>Shipped</option>
+          <option>Delivered</option>
+        </select>
       </div>
-    </DashboardLayout>
+
+      {loading ? (
+        <p>Loading orders...</p>
+      ) : orders.length === 0 ? (
+        <p>No orders found.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {orders.map((order) => (
+            <div key={order.id} className="bg-white shadow-md rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Order ID: {order.id.substring(0, 8)}...</h2>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeColor(order.status)}`}>
+                  {order.status}
+                </span>
+              </div>
+              <p className="text-gray-700 mb-2"><strong>Customer:</strong> {order.buyer_name}</p>
+              <p className="text-gray-700 mb-2"><strong>Total Price:</strong> ${order.total_price.toFixed(2)}</p>
+              <p className="text-gray-700"><strong>Created:</strong> {new Date(order.created_at || '').toLocaleDateString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
