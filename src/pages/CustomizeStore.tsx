@@ -91,12 +91,15 @@ const CustomizeStore: React.FC = () => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}-${crypto.randomUUID()}.${fileExt}`;
       const filePath = `public/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('logos')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
 
       if (uploadError) {
         console.error('Error uploading logo:', uploadError.message);
