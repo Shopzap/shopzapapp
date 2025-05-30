@@ -39,6 +39,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [sku, setSku] = useState('');
   const [inventoryCount, setInventoryCount] = useState('');
   const [status, setStatus] = useState('active');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +53,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setSku('');
     setInventoryCount('');
     setStatus('active');
+    setPaymentMethod('');
     setImageFile(null);
     setImagePreview(null);
   };
@@ -183,6 +185,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         description: description.trim() || null,
         price: parseFloat(price),
         status,
+        payment_method: paymentMethod,
         image_url: imageUrl
       };
 
@@ -264,13 +267,59 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 <Label htmlFor="status">Status</Label>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Select onValueChange={setPaymentMethod} value={paymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="online_only">Online Only</SelectItem>
+                    <SelectItem value="cash_on_delivery_only">Cash on Delivery Only</SelectItem>
+                    <SelectItem value="online_and_cod">Online & COD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="image">Product Image</Label>
+                <div className="mt-1 flex items-center">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                  <Label 
+                    htmlFor="image" 
+                    className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md p-4 w-full"
+                  >
+                    {imagePreview ? (
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="max-h-32 object-contain"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <p className="text-sm text-muted-foreground">Click to upload an image</p>
+                      </div>
+                    )}
+                  </Label>
+                </div>
               </div>
             </div>
             
