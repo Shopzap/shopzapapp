@@ -117,6 +117,49 @@ const CustomizeStore: React.FC = () => {
     }
   };
 
+  const handleRemoveLogo = async () => {
+    if (!user || !logoUrl) return;
+
+    setIsSaving(true);
+
+    try {
+      // Extract the file path from the public URL
+      const urlParts = logoUrl.split('/');
+      const fileNameWithFolder = urlParts.slice(urlParts.indexOf('logos') + 1).join('/');
+      const filePath = `public/${fileNameWithFolder}`;
+
+      // Delete from Supabase Storage
+      const { error: deleteError } = await supabase.storage
+        .from('logos')
+        .remove([filePath]);
+
+      if (deleteError) {
+        console.error('Error deleting logo from storage:', deleteError.message);
+        // Even if storage deletion fails, try to update the database to clear the URL
+      }
+
+      // Update the database to set logo_image to null
+      const { error: dbUpdateError } = await supabase
+        .from('stores')
+        .update({ logo_image: null })
+        .eq('user_id', user.id);
+
+      if (dbUpdateError) {
+        console.error('Error updating store logo in database:', dbUpdateError.message);
+      } else {
+        setLogo(null);
+        setLogoUrl(null);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        fetchStoreData(); // Re-fetch data to update the UI
+      }
+    } catch (error) {
+      console.error('Error during logo removal:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (!user) return;
 
@@ -202,66 +245,9 @@ const CustomizeStore: React.FC = () => {
           {logoUrl && (
             <div className="mt-4 flex flex-col sm:flex-row items-center gap-4">
               <img src={logoUrl} alt="Store Logo" className="w-32 h-32 object-contain rounded-md border p-2" />
-              <Button variant="outline" onClick={() => setLogoUrl(null)}>Remove Logo</Button>
+              <Button variant="outline" onClick={handleRemoveLogo}>Remove Logo</Button>
             </div>
           )}
-        </div>
-      </Card>
-
-      {/* Section 2: Store Colors */}
-      <Card className="p-4 space-y-4">
-        <h2 className="text-xl font-semibold mb-2">Store Colors</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="primaryColor" className="mb-1 block">Primary Color</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="primaryColor"
-                type="text"
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="w-full"
-              />
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div
-                    className="w-8 h-8 rounded-md border cursor-pointer"
-                    style={{ backgroundColor: primaryColor }}
-                  />
-                </DialogTrigger>
-                <DialogContent className="p-0 border-none max-w-fit">
-                  <DialogTitle>Customize Your Store</DialogTitle>
-                  <DialogDescription>Update your store name, logo, theme and preview it live.</DialogDescription>
-                  <HexColorPicker color={primaryColor} onChange={setPrimaryColor} />
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="secondaryColor" className="mb-1 block">Secondary Color</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="secondaryColor"
-                type="text"
-                value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
-                className="w-full"
-              />
-              <Dialog>
-                <DialogTrigger asChild>
-                  <div
-                    className="w-8 h-8 rounded-md border cursor-pointer"
-                    style={{ backgroundColor: secondaryColor }}
-                  />
-                </DialogTrigger>
-<DialogContent className="p-0 border-none max-w-fit">
-                   <DialogTitle>Customize Your Store</DialogTitle>
-                   <DialogDescription>Update your store name, logo, theme and preview it live.</DialogDescription>
-                   <HexColorPicker color={secondaryColor} onChange={setSecondaryColor} />
-                 </DialogContent>
-              </Dialog>
-            </div>
-          </div>
         </div>
       </Card>
 
