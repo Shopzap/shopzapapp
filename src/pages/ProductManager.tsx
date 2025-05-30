@@ -220,24 +220,24 @@ const ProductManager: React.FC = () => {
         <TabsContent value="all">
           <ProductGrid 
             products={filteredProducts}
-            onProductDeleted={handleProductDeleted}
-            onProductUpdated={handleProductUpdated}
+            onDelete={fetchProducts}
+            onUpdate={fetchProducts}
             isLoading={isLoading}
           />
         </TabsContent>
         <TabsContent value="active">
           <ProductGrid 
             products={filteredProducts.filter(p => p.status === 'active')}
-            onProductDeleted={handleProductDeleted}
-            onProductUpdated={handleProductUpdated}
+            onDelete={fetchProducts}
+            onUpdate={fetchProducts}
             isLoading={isLoading}
           />
         </TabsContent>
         <TabsContent value="draft">
           <ProductGrid 
             products={filteredProducts.filter(p => p.status === 'draft')}
-            onProductDeleted={handleProductDeleted}
-            onProductUpdated={handleProductUpdated}
+            onDelete={fetchProducts}
+            onUpdate={fetchProducts}
             isLoading={isLoading}
           />
         </TabsContent>
@@ -252,7 +252,13 @@ const ProductManager: React.FC = () => {
       <CsvUploadModal
         open={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        onCsvUploaded={handleCsvUploaded}
+        onProductsUploaded={(count) => {
+          toast({
+            title: 'CSV Uploaded',
+            description: `${count} products added successfully.`,
+          });
+          fetchProducts();
+        }}
       />
     </DashboardLayout>
   );

@@ -13,6 +13,8 @@ import StoreBuilder from "./pages/StoreBuilder";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Dashboard from "./pages/Dashboard";
 import ProductManager from "./pages/ProductManager";
+import Orders from "./pages/Orders";
+import CustomizeStore from "./pages/CustomizeStore";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
@@ -62,6 +64,16 @@ const AppContent = () => (
     <Route path="/dashboard/products" element={
       <ProtectedRoute>
         <ProductManager />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/orders" element={
+      <ProtectedRoute>
+        <Orders />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/customize-store" element={
+      <ProtectedRoute>
+        <CustomizeStore />
       </ProtectedRoute>
     } />
     <Route path="*" element={<NotFound />} />
