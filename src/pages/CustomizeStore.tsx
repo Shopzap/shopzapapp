@@ -122,28 +122,27 @@ const CustomizeStore: React.FC = () => {
 
     const { data, error } = await supabase
       .from('stores')
-      .update<Database['public']['Tables']['stores']['Update']>( 
-        {
-
-          user_id: user.id,
-          name: storeName,
-          logo_image: logoUrl,
-          theme: {
-            primary_color: primaryColor,
-            secondary_color: secondaryColor,
-            theme_layout: themeStyle,
-          },
-          business_email: user.email || '',
-          phone_number: '',
-          username: user.email || '',
-          address: null,
-          banner_image: null,
-          created_at: null,
-          description: null,
-          is_active: true
-        })
-        .eq('user_id', user.id)
-        .single();
+      .upsert({
+        user_id: user.id,
+        name: storeName,
+        logo_image: logoUrl,
+        theme: {
+          primary_color: primaryColor,
+          secondary_color: secondaryColor,
+          theme_layout: themeStyle,
+        },
+        business_email: user.email || '',
+        phone_number: '',
+        username: user.email || '',
+        address: null,
+        banner_image: null,
+        created_at: null,
+        description: null,
+        is_active: true
+      })
+      .eq('user_id', user.id)
+      .select()
+      .single();
 
       if (error) {
       console.error('Error saving store data:', error.message);
