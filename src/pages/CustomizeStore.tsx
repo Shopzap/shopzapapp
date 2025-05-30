@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { HexColorPicker } from 'react-colorful';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Database } from '@/integrations/supabase/types';
 
 interface ProductCardProps {
@@ -137,14 +137,14 @@ const CustomizeStore: React.FC = () => {
           created_at: null,
           description: null,
           is_active: true
-        }, { ignoreDuplicates: true })
-      .single();
+        }, { onConflict: 'user_id' })
+        .single();
 
-    if (error) {
+      if (error) {
       console.error('Error saving store data:', error.message);
       setIsSaving(false);
     } else if (data) {
-      setStoreId(data.id); // Update storeId if it was a new insert
+      setStoreId((data as Database['public']['Tables']['stores']['Row']).id); // Update storeId if it was a new insert
       setIsSaving(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -158,9 +158,9 @@ const CustomizeStore: React.FC = () => {
   };
 
   const fakeProducts = [
-    { name: 'Wireless Earbuds', price: '$59.99', imageUrl: 'https://via.placeholder.com/150/6c5ce7/ffffff?text=Product1', description: 'High-quality sound with noise cancellation.' },
-    { name: 'Smartwatch', price: '$199.99', imageUrl: 'https://via.placeholder.com/150/f1c40f/ffffff?text=Product2', description: 'Track your fitness and notifications.' },
-    { name: 'Portable Speaker', price: '$79.99', imageUrl: 'https://via.placeholder.com/150/6c5ce7/ffffff?text=Product3', description: 'Compact and powerful sound.' },
+    { name: 'Wireless Earbuds', price: '$59.99', imageUrl: 'https://placehold.co/150x150/6c5ce7/ffffff?text=Product1', description: 'High-quality sound with noise cancellation.' },
+    { name: 'Smartwatch', price: '$199.99', imageUrl: 'https://placehold.co/150x150/f1c40f/ffffff?text=Product2', description: 'Track your fitness and notifications.' },
+    { name: 'Portable Speaker', price: '$79.99', imageUrl: 'https://placehold.co/150x150/ff6b6b/ffffff?text=Product3', description: 'Compact and powerful sound.' },
   ];
 
   return (
@@ -224,6 +224,8 @@ const CustomizeStore: React.FC = () => {
                   />
                 </DialogTrigger>
                 <DialogContent className="p-0 border-none max-w-fit">
+                  <DialogTitle>Customize Your Store</DialogTitle>
+                  <DialogDescription>Update your store name, logo, theme and preview it live.</DialogDescription>
                   <HexColorPicker color={primaryColor} onChange={setPrimaryColor} />
                 </DialogContent>
               </Dialog>
@@ -246,9 +248,11 @@ const CustomizeStore: React.FC = () => {
                     style={{ backgroundColor: secondaryColor }}
                   />
                 </DialogTrigger>
-                <DialogContent className="p-0 border-none max-w-fit">
-                  <HexColorPicker color={secondaryColor} onChange={setSecondaryColor} />
-                </DialogContent>
+<DialogContent className="p-0 border-none max-w-fit">
+                   <DialogTitle>Customize Your Store</DialogTitle>
+                   <DialogDescription>Update your store name, logo, theme and preview it live.</DialogDescription>
+                   <HexColorPicker color={secondaryColor} onChange={setSecondaryColor} />
+                 </DialogContent>
               </Dialog>
             </div>
           </div>
