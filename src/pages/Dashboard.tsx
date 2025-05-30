@@ -9,6 +9,7 @@ import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalL
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import StoreStats from '@/components/dashboard/StoreStats';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { siteConfig } from '@/config/site';
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -93,7 +94,7 @@ const Dashboard = () => {
   // Copy store link to clipboard
   const handleCopyStoreLink = () => {
     if (storeData) {
-      const storeLink = `https://shopzapapp.lovable.app/store/${storeData.name}`;
+      const storeLink = siteConfig.store.generateUrl(storeData.name);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
     }
@@ -102,7 +103,7 @@ const Dashboard = () => {
   // Open store in new tab
   const handleOpenStore = () => {
     if (storeData) {
-      const storeLink = `https://shopzapapp.lovable.app/store/${storeData.name}`;
+      const storeLink = siteConfig.store.generateUrl(storeData.name);
       window.open(storeLink, '_blank');
     }
   };
@@ -161,7 +162,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex items-center gap-2">
               <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate">
-                https://shopzapapp.lovable.app/store/{storeData.name}
+                {siteConfig.store.generateUrl(storeData.name)}
               </div>
               <Button variant="outline" size="sm" onClick={handleCopyStoreLink}>
                 Copy
