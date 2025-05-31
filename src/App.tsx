@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Pages
 import Index from "./pages/Index";
+import Pricing from "./pages/Pricing";
+import Features from "./pages/Features";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import StoreBuilder from "./pages/StoreBuilder";
@@ -37,6 +39,11 @@ const AppContent = () => (
   <Routes>
     {/* Public routes */}
     <Route path="/" element={<Index />} />
+    <Route path="/pricing" element={<Pricing />} />
+    <Route path="/features" element={<Features />} />
+    <Route path="*" element={<NotFound />} />
+
+    {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
     <Route path="/auth" element={<Auth />} />
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
@@ -74,7 +81,6 @@ const AppContent = () => (
         </MainLayout>
       </ProtectedRoute>
     } />
-    <Route path="*" element={<NotFound />} />
   </Routes>
 );
 

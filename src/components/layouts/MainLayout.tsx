@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Package, ShoppingCart, Settings, BarChart2, Users } from 'lucide-react';
+import { Home, Package, ShoppingCart, Settings, BarChart2, Users, Menu, X } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -8,6 +8,7 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navItems = [
     { name: 'Dashboard', icon: Home, path: '/dashboard' },
@@ -19,10 +20,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-gray-100 md:flex-row">
+      {/* Mobile Header */}
+      <header className="md:hidden flex items-center justify-between p-4 border-b bg-white shadow-md">
+        <h1 className="text-2xl font-bold text-purple-700">ShopZap.io</h1>
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      </header>
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md flex flex-col">
-        <div className="p-4 border-b">
+      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-md flex flex-col transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out`}>
+        <div className="p-4 border-b hidden md:block">
           <h1 className="text-2xl font-bold text-purple-700">ShopZap.io</h1>
         </div>
         <div className="p-4 flex items-center space-x-3 border-b">
@@ -43,6 +52,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 key={item.name}
                 to={item.path}
                 className={`flex items-center space-x-3 p-2 rounded-md ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => setIsSidebarOpen(false)} // Close sidebar on navigation
               >
                 <Icon className="w-5 h-5" />
                 <span>{item.name}</span>
@@ -58,8 +68,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </div>
       </aside>
 
+      {/* Overlay for mobile */}
+      {isSidebarOpen && <div className="fixed inset-0 bg-black opacity-50 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+
       {/* Content Area */}
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
         {children}
       </main>
     </div>
