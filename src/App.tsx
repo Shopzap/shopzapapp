@@ -28,6 +28,7 @@ import Checkout from "./pages/Checkout";
 import { AuthProvider } from "./contexts/AuthContext"; 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
+import MainLayout from "./components/layouts/MainLayout";
 
 const queryClient = new QueryClient();
 
@@ -59,34 +60,18 @@ const AppContent = () => (
         <EmbedGenerator />
       </ProtectedRoute>
     } />
-    <Route path="/dashboard" element={
+    <Route path="/dashboard/*" element={
       <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/products" element={
-      <ProtectedRoute>
-        <ProductManager />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/analytics" element={
-      <ProtectedRoute>
-        <Analytics />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/orders" element={
-      <ProtectedRoute>
-        <Orders />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/customize-store" element={
-      <ProtectedRoute>
-        <CustomizeStore />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/settings" element={
-      <ProtectedRoute>
-        <Settings />
+        <MainLayout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/products" element={<ProductManager />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/customize-store" element={<CustomizeStore />} />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
+        </MainLayout>
       </ProtectedRoute>
     } />
     <Route path="*" element={<NotFound />} />
