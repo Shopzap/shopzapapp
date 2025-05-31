@@ -7,6 +7,7 @@ import { Loader } from "lucide-react";
 import NotFound from "./NotFound";
 import StorefrontHeader from "@/components/storefront/StorefrontHeader";
 import ProductGrid from "@/components/storefront/ProductGrid";
+import StorefrontContent from "@/components/storefront/StorefrontContent";
 
 const Storefront = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -71,28 +72,7 @@ const Storefront = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <StorefrontHeader store={store} />
-      <main className="container mx-auto px-4 py-8">
-        {productsLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : products && products.length > 0 ? (
-          <>
-            <h2 className="text-2xl font-bold mb-6">Our Products</h2>
-            <ProductGrid products={products} />
-          </>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-xl text-muted-foreground">No products available yet.</p>
-          </div>
-        )}
-      </main>
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p>© {new Date().getFullYear()} {store.name}. Powered by ShopZap.</p>
-      </footer>
-    </div>
+    <StorefrontContent store={store} products={products || []} />
   );
 };
 
