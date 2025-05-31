@@ -159,6 +159,19 @@ const ProductManager: React.FC = () => {
   const freeProductLimit = 5;
   const isAtProductLimit = isFreePlan && products.length >= freeProductLimit;
 
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading products...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-6 sm:p-4">
@@ -213,34 +226,39 @@ const ProductManager: React.FC = () => {
                 <TabsTrigger value="active">Active</TabsTrigger>
                 <TabsTrigger value="draft">Draft</TabsTrigger>
               </TabsList>
+              <TabsContent value="all">
+                {filteredProducts.length === 0 && !isLoading ? (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">No products found. Add your first product!</p>
+                  </div>
+                ) : (
+                  <ProductGrid 
+                    products={filteredProducts}
+                    isLoading={isLoading}
+                    onDelete={handleProductDeleted}
+                    onUpdate={handleProductUpdated}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="active">
+                <ProductGrid 
+                  products={filteredProducts.filter(p => p.status === 'active')}
+                  isLoading={isLoading}
+                  onDelete={handleProductDeleted}
+                  onUpdate={handleProductUpdated}
+                />
+              </TabsContent>
+              <TabsContent value="draft">
+                <ProductGrid 
+                  products={filteredProducts.filter(p => p.status === 'draft')}
+                  isLoading={isLoading}
+                  onDelete={handleProductDeleted}
+                  onUpdate={handleProductUpdated}
+                />
+              </TabsContent>
             </Tabs>
           </div>
         </div>
-        
-        <TabsContent value="all">
-          <ProductGrid 
-            products={filteredProducts}
-            onDelete={fetchProducts}
-            onUpdate={fetchProducts}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-        <TabsContent value="active">
-          <ProductGrid 
-            products={filteredProducts.filter(p => p.status === 'active')}
-            onDelete={fetchProducts}
-            onUpdate={fetchProducts}
-            isLoading={isLoading}
-          />
-        </TabsContent>
-        <TabsContent value="draft">
-          <ProductGrid 
-            products={filteredProducts.filter(p => p.status === 'draft')}
-            onDelete={fetchProducts}
-            onUpdate={fetchProducts}
-            isLoading={isLoading}
-          />
-        </TabsContent>
       </div>
 
       <AddProductModal
