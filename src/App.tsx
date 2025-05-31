@@ -16,6 +16,7 @@ import ProductManager from './pages/ProductManager';
 import Analytics from './pages/Analytics';
 import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
@@ -81,6 +82,11 @@ const AppContent = () => (
     <Route path="/dashboard/customize-store" element={
       <ProtectedRoute>
         <CustomizeStore />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/settings" element={
+      <ProtectedRoute>
+        <Settings />
       </ProtectedRoute>
     } />
     <Route path="*" element={<NotFound />} />
