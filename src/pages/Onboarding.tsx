@@ -107,7 +107,7 @@ const Onboarding = () => {
             name: storeName,
             logo_image: storeLogoUrl,
             username: uniqueUsername,
-            user_id: user.id,
+            user_id: user.id, // user.id is correctly used here
             business_email: user.email || '',
             phone_number: '', // This is a required field in the stores table
             theme: { mode: storeTheme },
@@ -129,11 +129,11 @@ const Onboarding = () => {
       
       // Redirect to products dashboard
       navigate("/dashboard/products");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Onboarding error:", error);
       toast({
         title: "Something went wrong",
-        description: "Please try again",
+        description: error.message || "Please try again",
         variant: "destructive"
       });
     } finally {
