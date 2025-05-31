@@ -55,32 +55,28 @@ const CustomizeStore: React.FC = () => {
 
   const fetchStoreData = async () => {
     if (user) {
-      if (user) {
-        const { data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-        if (error) {
-          console.error('Error fetching store data:', error.message);
-        } else if (data) {
-          setStoreId(data.id);
-          setStoreName(data.name);
-          setLogoUrl(data.logo_image);
-          setLogo(data.logo_image); // For displaying the logo if already set
-          if (data.theme) {
-            const theme = data.theme as { primary_color?: string; secondary_color?: string; theme_layout?: 'card' | 'list' };
-            setPrimaryColor(theme.primary_color || '#6c5ce7');
-            setSecondaryColor(theme.secondary_color || '#f1c40f');
-            setThemeStyle(theme.theme_layout || 'card');
-          }
+      if (error) {
+        console.error('Error fetching store data:', error.message);
+      } else if (data) {
+        setStoreId(data.id);
+        setStoreName(data.name);
+        setLogoUrl(data.logo_image);
+        setLogo(data.logo_image); // For displaying the logo if already set
+        if (data.theme) {
+          const theme = data.theme as { primary_color?: string; secondary_color?: string; theme_layout?: 'card' | 'list' };
+          setPrimaryColor(theme.primary_color || '#6c5ce7');
+          setSecondaryColor(theme.secondary_color || '#f1c40f');
+          setThemeStyle(theme.theme_layout || 'card');
         }
       }
-    };
-
-    fetchStoreData();
-  };
+    }
+  };;
 
   useEffect(() => {
     fetchStoreData();
@@ -116,6 +112,7 @@ const CustomizeStore: React.FC = () => {
       }
     }
   };
+
 
   const handleRemoveLogo = async () => {
     if (!user || !logoUrl) return;
@@ -158,7 +155,8 @@ const CustomizeStore: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  };
+  }
+
 
   const handleSaveChanges = async () => {
     if (!user) return;
