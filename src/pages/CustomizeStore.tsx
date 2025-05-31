@@ -76,7 +76,7 @@ const CustomizeStore: React.FC = () => {
         }
       }
     }
-  };;
+  };
 
   useEffect(() => {
     fetchStoreData();
@@ -111,7 +111,7 @@ const CustomizeStore: React.FC = () => {
         setLogoUrl(publicUrlData.publicUrl);
       }
     }
-  };
+  }
 
 
   const handleRemoveLogo = async () => {

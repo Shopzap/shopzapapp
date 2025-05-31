@@ -55,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       setSession(session);
       setUser(session?.user ?? null);
+      console.log('onAuthStateChange - session:', session);
+      console.log('onAuthStateChange - user:', session?.user);
       
       if (session?.user) {
         // Defer fetching user profile to avoid potential deadlocks
@@ -72,6 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      console.log('getSession - session:', session);
+      console.log('getSession - user:', session?.user);
       
       if (session?.user) {
         fetchUserProfile(session.user.id);
@@ -175,7 +179,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during sign in');
-    } finally {
+    }
+    finally {
       setIsLoading(false);
     }
   };
@@ -200,25 +205,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = '/';
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during sign out');
-    } finally {
+    }
+    finally {
       setIsLoading(false);
     }
   };
-  
-  return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      profile,
-      isLoading,
-      signUp,
-      signIn,
-      signOut,
-      isAuthenticated: !!user,
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+
+  const isAuthenticated = !!user;
+
+  const value = {
+    user,
+    session,
+    profile,
+    isLoading,
+    signUp,
+    signIn,
+    signOut,
+    isAuthenticated,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {
