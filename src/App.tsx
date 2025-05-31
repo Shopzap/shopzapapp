@@ -25,6 +25,7 @@ import Checkout from "./pages/Checkout";
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -86,7 +87,9 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <AppContent />
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
           <Toaster />
           <Sonner />
         </AuthProvider>
