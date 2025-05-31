@@ -4,15 +4,7 @@ const Settings = () => {
   return (
     <div className="flex h-full">
       {/* Sidebar for navigation (if needed, otherwise full width) */}
-      <aside className="w-64 bg-gray-50 p-4 border-r border-gray-200 hidden md:block">
-        <nav className="space-y-2">
-          <a href="#store-info" className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Store Information</a>
-          <a href="#account-settings" className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Account Settings</a>
-          <a href="#branding-domain" className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Branding & Domain</a>
-          <a href="#contact-social" className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Contact & Social Media</a>
-          <a href="#security-danger" className="block px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100">Security & Danger Zone</a>
-        </nav>
-      </aside>
+
 
       {/* Main content area */}
       <main className="flex-1 p-8 overflow-y-auto">

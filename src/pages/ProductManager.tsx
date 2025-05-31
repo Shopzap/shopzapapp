@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Upload, Search } from 'lucide-react';
@@ -161,19 +161,17 @@ const ProductManager: React.FC = () => {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading products...</p>
           </div>
         </div>
-      </DashboardLayout>
-    );
+     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="p-6 sm:p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold">Products</h1>
@@ -278,7 +276,7 @@ const ProductManager: React.FC = () => {
           fetchProducts();
         }}
       />
-    </DashboardLayout>
+    </>
   );
 };
 

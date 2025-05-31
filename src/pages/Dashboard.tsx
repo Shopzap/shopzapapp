@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalLink } from 'lucide-react';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
+
 import StoreStats from '@/components/dashboard/StoreStats';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { siteConfig } from '@/config/site';
@@ -135,7 +135,6 @@ const Dashboard = () => {
   }
   
   return (
-    <DashboardLayout>
       <div className="container p-4 mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
@@ -242,7 +241,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 };
 

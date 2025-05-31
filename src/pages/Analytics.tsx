@@ -1,11 +1,10 @@
 import React from 'react';
-import DashboardLayout from '@/components/layouts/DashboardLayout';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, Users, TrendingUp } from 'lucide-react';
 
 const Analytics: React.FC = () => {
   return (
-    <DashboardLayout>
       <div className="p-6 sm:p-4">
         <h1 className="text-2xl font-bold mb-6">Analytics Overview</h1>
 
@@ -87,7 +86,6 @@ const Analytics: React.FC = () => {
           </CardContent>
         </Card> */}
       </div>
-    </DashboardLayout>
   );
 };
 
