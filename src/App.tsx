@@ -12,7 +12,8 @@ import Onboarding from "./pages/Onboarding";
 import StoreBuilder from "./pages/StoreBuilder";
 import EmbedGenerator from "./pages/EmbedGenerator";
 import Dashboard from "./pages/Dashboard.tsx";
-import ProductManager from "./pages/ProductManager";
+import ProductManager from './pages/ProductManager';
+import Analytics from './pages/Analytics';
 import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
 import NotFound from "./pages/NotFound";
@@ -65,6 +66,11 @@ const AppContent = () => (
     <Route path="/dashboard/products" element={
       <ProtectedRoute>
         <ProductManager />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/analytics" element={
+      <ProtectedRoute>
+        <Analytics />
       </ProtectedRoute>
     } />
     <Route path="/dashboard/orders" element={
