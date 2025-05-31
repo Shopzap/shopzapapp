@@ -19,23 +19,5 @@ import Storefront from './pages/Storefront.tsx';
 import Verify from './pages/Verify.tsx';
 
 createRoot(document.getElementById('root')!).render(
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
-      <Route path="/checkout" element={<Checkout />} />
-      <Route path="/customize-store" element={<CustomizeStore />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/embed-generator" element={<EmbedGenerator />} />
-      <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/orders" element={<Orders />} />
-      <Route path="/product-details" element={<ProductDetails />} />
-      <Route path="/product-manager" element={<ProductManager />} />
-      <Route path="/store-builder" element={<StoreBuilder />} />
-      <Route path="/storefront" element={<Storefront />} />
-      <Route path="/verify" element={<Verify />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  </BrowserRouter>
+  <App />
 );
