@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { Suspense, lazy } from 'react';
 
 // Pages
 import Index from "./pages/Index";
@@ -22,8 +23,8 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
-import Storefront from "./pages/Storefront";
-import ProductDetails from "./pages/ProductDetails";
+const Storefront = lazy(() => import("./pages/Storefront"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
 
 // Auth components
@@ -47,8 +48,16 @@ const AppContent = () => (
     <Route path="/auth" element={<Auth />} />
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
-    <Route path="/store/:storeName" element={<Storefront />} />
-    <Route path="/product/:productId" element={<ProductDetails />} />
+    <Route path="/store/:storeName" element={
+      <Suspense fallback={<div>Loading Store...</div>}>
+        <Storefront />
+      </Suspense>
+    } />
+    <Route path="/product/:productId" element={
+      <Suspense fallback={<div>Loading Product...</div>}>
+        <ProductDetails />
+      </Suspense>
+    } />
     <Route path="/checkout" element={<Checkout />} />
     
     {/* Protected routes */}
