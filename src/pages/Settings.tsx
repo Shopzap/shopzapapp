@@ -34,7 +34,6 @@ const Settings = () => {
   
   // Branding & Domain State
   const [subdomain, setSubdomain] = useState('');
-  const [customDomain, setCustomDomain] = useState('');
   const [brandColor, setBrandColor] = useState('#6366F1');
   
   // Contact & Social Media State
@@ -229,7 +228,6 @@ const Settings = () => {
       // Update branding
       await storeSettingsApi.updateBranding(storeId, {
         subdomain,
-        domain: customDomain,
         brandColor
       });
       
@@ -449,16 +447,6 @@ const Settings = () => {
                   .shopzap.io
                 </span>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="custom-domain">Custom Domain</Label>
-              <Input 
-                id="custom-domain" 
-                value={customDomain} 
-                onChange={(e) => setCustomDomain(e.target.value)} 
-                className="mt-1" 
-                placeholder="www.mycustomstore.com" 
-              />
             </div>
             <div>
               <Label htmlFor="brand-color">Brand Color</Label>

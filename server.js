@@ -14,6 +14,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve static files from the public directory
+
+
 // Supabase configuration
 const SUPABASE_URL = "https://fyftegalhvigtrieldan.supabase.co";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZnRlZ2FsaHZpZ3RyaWVsZGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MDY2NjcsImV4cCI6MjAzMjk4MjY2N30.Nh0Qs9OQkPQYwZKJRQQpXJIKwXLQITwQJQQKMI_xY-I"; // Use service key for admin privileges or fallback to anon key for development
@@ -120,6 +123,11 @@ app.get('/api/store/:storeId/settings', authenticateUser, verifyStoreOwnership, 
     
     if (!data) {
       return res.status(404).json({ error: 'Store not found' });
+    }
+    
+    // If theme contains domain, remove it from the response
+    if (data.theme && data.theme.domain) {
+      delete data.theme.domain;
     }
     
     return res.status(200).json(data);
@@ -229,7 +237,7 @@ app.post('/api/store/:storeId/changePassword', authenticateUser, verifyStoreOwne
 // 5. POST /api/store/:storeId/updateBranding - Update branding
 app.post('/api/store/:storeId/updateBranding', authenticateUser, verifyStoreOwnership, async (req, res) => {
   const { storeId } = req.params;
-  const { subdomain, domain, brandColor } = req.body;
+  const { subdomain, brandColor } = req.body;
   
   try {
     // Get current store data to update theme
@@ -249,8 +257,8 @@ app.post('/api/store/:storeId/updateBranding', authenticateUser, verifyStoreOwne
     const updatedTheme = {
       ...currentTheme,
       primary_color: brandColor,
-      subdomain: subdomain,
-      domain: domain
+      subdomain: subdomain
+      // domain field removed
     };
     
     // Update store branding
@@ -430,4 +438,9 @@ app.post('/api/upload/banner', authenticateUser, upload.single('banner'), async 
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Add a catch-all route to serve index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });

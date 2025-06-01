@@ -85,7 +85,6 @@ export const storeSettingsApi = {
   // Update branding
   updateBranding: async (storeId: string, data: {
     subdomain: string;
-    domain: string;
     brandColor: string;
   }) => {
     return apiRequest(`/store/${storeId}/updateBranding`, {
