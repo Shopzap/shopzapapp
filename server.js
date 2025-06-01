@@ -165,6 +165,39 @@ app.post('/api/store/:storeId/updateStoreInfo', authenticateUser, verifyStoreOwn
 });
 
 // 3. POST /api/store/:storeId/updateAccount - Update account info
+
+// 4. GET /api/store/:storeId/analytics - Fetch store analytics
+app.get('/api/store/:storeId/analytics', authenticateUser, verifyStoreOwnership, async (req, res) => {
+  const { storeId } = req.params;
+
+  try {
+    // In a real application, you would fetch actual analytics data from your database
+    // For now, we'll return mock data as per the requirements.
+    const analyticsData = {
+      totalOrders: 1245,
+      uniqueCustomers: 789,
+      totalRevenue: 45231.89,
+      conversionRate: 4.8,
+      salesOverTime: [
+        { date: '2025-05-01', revenue: 1234 },
+        { date: '2025-05-02', revenue: 2345 },
+        { date: '2025-05-03', revenue: 3456 },
+        { date: '2025-05-04', revenue: 4567 },
+        { date: '2025-05-05', revenue: 5678 },
+      ],
+      bestSellingProducts: [
+        { name: 'Product A', unitsSold: 320, revenue: 8600 },
+        { name: 'Product B', unitsSold: 280, revenue: 7500 },
+        { name: 'Product C', unitsSold: 150, revenue: 4200 },
+      ],
+    };
+
+    return res.status(200).json(analyticsData);
+  } catch (error) {
+    console.error('Error fetching analytics data:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 app.post('/api/store/:storeId/updateAccount', authenticateUser, verifyStoreOwnership, async (req, res) => {
   const { storeId } = req.params;
   const { username, email } = req.body;
