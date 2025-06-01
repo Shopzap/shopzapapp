@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import React, { Suspense, lazy } from 'react';
 
 // Pages
@@ -33,6 +33,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainLayout from "./components/layouts/MainLayout";
+import DashboardLayout from "./components/layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
 
@@ -86,7 +87,7 @@ const AppContent = () => (
       <ProtectedRoute>
         <MainLayout>
           <Routes>
-            <Route path="/" element={<DashboardLayout />}>
+            <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<ProductManager />} />
               <Route path="orders" element={<Orders />} />
