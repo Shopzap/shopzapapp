@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,7 @@ import AuthCallback from "./pages/AuthCallback";
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
+import OrderSuccess from "./pages/OrderSuccess";
 import OrderRedirect from "./pages/OrderRedirect";
 
 // Auth components
@@ -64,6 +66,7 @@ const AppContent = () => (
       </ErrorBoundary>
     } />
     <Route path="/checkout" element={<Checkout />} />
+    <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
     
     {/* Protected routes */}
