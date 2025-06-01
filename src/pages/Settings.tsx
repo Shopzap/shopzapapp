@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
@@ -679,8 +678,8 @@ const Settings = () => {
               ) : 'Delete Store'}
             </Button>
           </DialogFooter>
-        </Dialog>
-      </main>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
