@@ -12,7 +12,7 @@ const getAuthToken = async (): Promise<string | null> => {
 };
 
 // Helper function for API requests
-const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+export const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const token = await getAuthToken();
   
   if (!token) {
