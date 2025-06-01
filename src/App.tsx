@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,7 +32,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { StoreProvider } from './contexts/StoreContext';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import MainLayout from "./components/layouts/MainLayout";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
@@ -86,18 +84,16 @@ const AppContent = () => (
     } />
     <Route path="/dashboard/*" element={
       <ProtectedRoute>
-        <MainLayout>
-          <Routes>
-            <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
-              <Route index element={<Dashboard />} />
-              <Route path="products" element={<ProductManager />} />
-              <Route path="orders" element={<Orders />} />
-              <Route path="customize-store" element={<CustomizeStore />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </MainLayout>
+        <Routes>
+          <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<ProductManager />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="customize-store" element={<CustomizeStore />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
       </ProtectedRoute>
     } />
   </Routes>
