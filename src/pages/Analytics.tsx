@@ -55,7 +55,7 @@ const Analytics: React.FC = () => {
         setLoading(true);
         // Replace with actual storeId from context or props
         const storeId = 'your-store-id'; // TODO: Replace with dynamic store ID
-        const response = await apiRequest(`/store/${storeId}/analytics`, 'GET');
+        const response = await apiRequest(`/api/store/${storeId}/analytics`, { method: 'GET' });
         setAnalyticsData(response);
       } catch (err) {
         console.error('Error fetching analytics data:', err);
