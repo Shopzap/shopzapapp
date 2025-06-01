@@ -28,7 +28,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: 'Products', path: '/dashboard/products', icon: <Package className="h-4 w-4 mr-2" /> },
     { label: 'Orders', path: '/dashboard/orders', icon: <ShoppingBag className="h-4 w-4 mr-2" /> },
     { label: 'Customize Store', path: '/dashboard/customize-store', icon: <Palette className="h-4 w-4 mr-2" /> },
-    { label: 'Analytics', path: `/dashboard/${storeId}/analytics`, icon: <BarChart3 className="h-4 w-4 mr-2" /> },
+    { label: 'Analytics', path: '/dashboard/analytics', icon: <BarChart3 className="h-4 w-4 mr-2" /> },
     { label: 'Settings', path: '/dashboard/settings', icon: <Settings className="h-4 w-4 mr-2" /> },
   ];
   
