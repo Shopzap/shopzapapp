@@ -10,6 +10,9 @@ interface StorefrontContentProps {
     logo_image: string | null;
     banner_image: string | null;
     description: string | null;
+    primary_color?: string;
+    secondary_color?: string;
+    theme_style?: 'card' | 'list';
   };
   products: Array<{
     id: string;
@@ -34,73 +37,144 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
     navigate(`/product/${productId}`);
   };
   
+  // Default colors if not set in store
+  const primaryColor = store.primary_color || '#6c5ce7';
+  const secondaryColor = store.secondary_color || '#a29bfe';
+  const themeStyle = store.theme_style || 'card';
+  
   return (
     <div className="w-full bg-gray-50 min-h-screen">
-      {/* Store Header - Banner, Logo, Name, Description */}
-      <div
-        className="w-full h-64 bg-cover bg-center relative"
-        style={{ backgroundImage: `url(${store.banner_image || ''})` }}
-      >
-        <div className="absolute inset-0 bg-black/40 flex items-end p-6 text-white">
-          <div className="container mx-auto flex items-end">
-            <img
-              src={store.logo_image || ''}
-              alt={`${store.name} logo`}
-              className="w-20 h-20 rounded-full border-2 border-white mr-4 object-cover"
-            />
-            <div className="mb-2">
-              <h1 className="text-3xl font-bold">{store.name}</h1>
-              <p className="text-sm md:text-base mt-1 max-w-2xl">{store.description}</p>
-            </div>
+      {/* Store Header - Banner, Logo, Name */}
+      <div className="relative">
+        <div 
+          className="w-full h-40 bg-cover bg-center"
+          style={{ 
+            backgroundImage: store.banner_image 
+              ? `url(${store.banner_image})` 
+              : `linear-gradient(to right, ${primaryColor}, ${secondaryColor})` 
+          }}
+        ></div>
+        
+        <div className="absolute top-1/2 left-0 right-0 transform -translate-y-1/2 flex flex-col items-center justify-center">
+          <div className="bg-white rounded-full p-2 mb-2 shadow-md">
+            {store.logo_image ? (
+              <img
+                src={store.logo_image}
+                alt={`${store.name} logo`}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 text-xl font-bold">
+                {store.name.charAt(0).toUpperCase()}
+              </div>
+            )}
           </div>
+          <h1 className="text-xl font-bold text-white drop-shadow-md">{store.name}</h1>
         </div>
       </div>
 
-      {/* Products Grid */}
+      {/* Store Description (if available) */}
+      {store.description && (
+        <div className="container mx-auto py-4 px-4 text-center">
+          <p className="text-gray-600">{store.description}</p>
+        </div>
+      )}
+
+      {/* Products Section */}
       <section className="container mx-auto py-8 px-4">
-        <h2 className="text-2xl font-bold mb-6">Our Products</h2>
+        <h2 className="text-lg font-semibold mb-4 border-b pb-2" style={{ color: primaryColor }}>Featured Products</h2>
         
         {products.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No products available at this time.</p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        ) : themeStyle === 'card' ? (
+          // Card Grid Layout
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {products.map((product) => (
               <div
                 key={product.id}
-                className="bg-white rounded-xl shadow hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col"
+                className="bg-white rounded-md border overflow-hidden flex flex-col h-full"
               >
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={product.image_url || ''}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                  />
+                <div className="h-32 overflow-hidden">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">No image</span>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="p-4 flex-grow flex flex-col">
-                  <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-gray-500 text-sm mt-1 mb-2 line-clamp-2">{product.description}</p>
-                  )}
-                  <p className="text-primary font-bold mt-auto mb-3">{formatPrice(product.price)}</p>
-                  
-                  <div className="flex flex-col gap-2 mt-auto">
+                <div className="p-2">
+                  <h3 className="font-medium text-sm truncate">{product.name}</h3>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-gray-500">{formatPrice(product.price)}</span>
                     <Button 
-                      className="w-full" 
+                      size="sm" 
+                      className="h-6 text-xs px-2" 
+                      style={{ backgroundColor: primaryColor }}
                       onClick={() => handleOrderNow(product.id)}
                     >
-                      Order Now
+                      Buy
                     </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      className="w-full" 
-                      onClick={() => handleViewDetails(product.id)}
-                    >
-                      View Details
-                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // List Layout
+          <div className="space-y-4">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-md border overflow-hidden flex flex-row"
+              >
+                <div className="w-24 h-24 sm:w-32 sm:h-32 overflow-hidden">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">No image</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-3 flex flex-col flex-grow justify-between">
+                  <div>
+                    <h3 className="font-medium">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-gray-500 text-sm mt-1 line-clamp-2">{product.description}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="font-bold" style={{ color: primaryColor }}>{formatPrice(product.price)}</span>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm"
+                        style={{ backgroundColor: primaryColor }}
+                        onClick={() => handleOrderNow(product.id)}
+                      >
+                        Order Now
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewDetails(product.id)}
+                      >
+                        Details
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -145,8 +145,16 @@ const Storefront = () => {
     console.error('Storefront: Products error', productsError);
   }
 
+  // Extract theme data from store.theme if it exists
+  const storeWithTheme = {
+    ...store,
+    primary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).primary_color || '#6c5ce7' : '#6c5ce7',
+    secondary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).secondary_color || '#a29bfe' : '#a29bfe',
+    theme_style: store.theme && typeof store.theme === 'object' ? (store.theme as any).theme_layout || 'card' : 'card'
+  };
+
   return (
-    <StorefrontContent store={store} products={products || []} />
+    <StorefrontContent store={storeWithTheme} products={products || []} />
   );
 };
 
