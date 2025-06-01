@@ -30,6 +30,7 @@ import OrderRedirect from "./pages/OrderRedirect";
 
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
+import { StoreProvider } from './contexts/StoreContext';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainLayout from "./components/layouts/MainLayout";
@@ -108,11 +109,13 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <ErrorBoundary>
-            <AppContent />
-          </ErrorBoundary>
-          <Toaster />
-          <Sonner />
+          <StoreProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+            <Toaster />
+            <Sonner />
+          </StoreProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
