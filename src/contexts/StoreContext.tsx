@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
@@ -5,7 +6,20 @@ import { useAuth } from './AuthContext';
 interface StoreData {
   id: string;
   name: string;
-  // Add other store properties as needed
+  description: string | null;
+  logo_image: string | null;
+  banner_image: string | null;
+  username: string;
+  business_email: string;
+  phone_number: string;
+  address: string | null;
+  tagline: string | null;
+  theme: any | null;
+  is_active: boolean | null;
+  plan: string;
+  user_id: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface StoreContextType {
@@ -37,7 +51,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setIsLoadingStore(true);
         const { data, error } = await supabase
           .from('stores')
-          .select('id, name')
+          .select('*')
           .eq('user_id', user.id)
           .single();
 
