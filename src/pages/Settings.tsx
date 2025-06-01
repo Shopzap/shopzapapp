@@ -670,8 +670,8 @@ const Settings = () => {
               ) : 'Delete Store'}
             </Button>
           </DialogFooter>
-        </Dialog>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
