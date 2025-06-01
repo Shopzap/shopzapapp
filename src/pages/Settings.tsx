@@ -1,5 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/contexts/StoreContext';
 import { storeSettingsApi, fileUploadApi } from '@/services/api';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -8,11 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tables } from '@/integrations/supabase/types';
 
 const Settings = () => {
   const { user } = useAuth();
-  const [storeId, setStoreId] = useState<string | null>(null);
+  const { storeId, storeData, isLoadingStore } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -49,57 +50,44 @@ const Settings = () => {
   
   // Fetch store data on component mount
   useEffect(() => {
-    if (user) {
-      fetchStoreData();
+    if (!isLoadingStore) {
+      if (storeId && storeData) {
+        populateFormWithStoreData();
+        setIsLoading(false);
+      } else if (!storeId) {
+        toast.error('No store found. Please create a store first.');
+        setIsLoading(false);
+      }
     }
-  }, [user]);
+  }, [storeId, storeData, isLoadingStore]);
   
-  const fetchStoreData = async () => {
-    try {
-      setIsLoading(true);
+  const populateFormWithStoreData = () => {
+    if (!storeData) return;
+    
+    console.log('Populating form with store data:', storeData);
+    
+    // Populate form fields with store data
+    setStoreName(storeData.name || '');
+    setStoreDescription(storeData.description || '');
+    setLogoPreview(storeData.logo_image || null);
+    setBannerPreview(storeData.banner_image || null);
+    setUsername(storeData.username || '');
+    setEmail(storeData.business_email || '');
+    setBusinessEmail(storeData.business_email || '');
+    setPhoneNumber(storeData.phone_number || '');
+    
+    // Extract theme data
+    if (storeData.theme && typeof storeData.theme === 'object') {
+      const theme = storeData.theme as any;
+      setBrandColor(theme.primary_color || '#6366F1');
+      setSubdomain(theme.subdomain || '');
       
-      // In a real implementation, you would get the storeId from the user's profile or context
-      // For now, we'll use the user's ID as the storeId
-      const currentStoreId = user?.id;
-      
-      if (!currentStoreId) {
-        toast.error('Unable to fetch store data. User ID not found.');
-        return;
+      // Extract social links if available
+      if (theme.social_links) {
+        setWhatsappLink(theme.social_links.whatsapp || '');
+        setInstagramLink(theme.social_links.instagram || '');
+        setFacebookLink(theme.social_links.facebook || '');
       }
-      
-      setStoreId(currentStoreId);
-      
-      // Fetch store settings from API
-      const storeData = await storeSettingsApi.getStoreSettings(currentStoreId);
-      
-      // Populate form fields with store data
-      setStoreName(storeData.name || '');
-      setStoreDescription(storeData.description || '');
-      setLogoPreview(storeData.logo_image || null);
-      setBannerPreview(storeData.banner_image || null);
-      setUsername(storeData.username || '');
-      setEmail(storeData.business_email || '');
-      setBusinessEmail(storeData.business_email || '');
-      setPhoneNumber(storeData.phone_number || '');
-      
-      // Extract theme data
-      if (storeData.theme && typeof storeData.theme === 'object') {
-        const theme = storeData.theme as any;
-        setBrandColor(theme.primary_color || '#6366F1');
-        
-        // Extract social links if available
-        if (theme.social_links) {
-          setWhatsappLink(theme.social_links.whatsapp || '');
-          setInstagramLink(theme.social_links.instagram || '');
-          setFacebookLink(theme.social_links.facebook || '');
-        }
-      }
-      
-    } catch (error) {
-      console.error('Error fetching store data:', error);
-      toast.error('Failed to load store settings');
-    } finally {
-      setIsLoading(false);
     }
   };
   
@@ -125,7 +113,10 @@ const Settings = () => {
   // Form submission handlers
   const handleStoreInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
     try {
       setIsSaving(true);
@@ -164,12 +155,14 @@ const Settings = () => {
   
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
     try {
       setIsSaving(true);
       
-      // Update account info
       await storeSettingsApi.updateAccount(storeId, {
         username,
         email
@@ -186,9 +179,11 @@ const Settings = () => {
   
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
-    // Validate passwords
     if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match');
       return;
@@ -197,13 +192,11 @@ const Settings = () => {
     try {
       setIsSaving(true);
       
-      // Change password
       await storeSettingsApi.changePassword(storeId, {
         oldPassword,
         newPassword
       });
       
-      // Reset form and close dialog
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -220,12 +213,14 @@ const Settings = () => {
   
   const handleBrandingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
     try {
       setIsSaving(true);
       
-      // Update branding
       await storeSettingsApi.updateBranding(storeId, {
         subdomain,
         brandColor
@@ -242,12 +237,14 @@ const Settings = () => {
   
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
     try {
       setIsSaving(true);
       
-      // Update contact info
       await storeSettingsApi.updateContact(storeId, {
         businessEmail,
         phoneNumber,
@@ -268,9 +265,11 @@ const Settings = () => {
   };
   
   const handleDeleteStore = async () => {
-    if (!storeId) return;
+    if (!storeId) {
+      toast.error('Store ID not found');
+      return;
+    }
     
-    // Validate confirmation text
     if (deleteConfirmText !== 'DELETE') {
       toast.error('Please type DELETE to confirm');
       return;
@@ -279,13 +278,11 @@ const Settings = () => {
     try {
       setIsSaving(true);
       
-      // Delete store
       await storeSettingsApi.deleteStore(storeId);
       
       setShowDeleteDialog(false);
       toast.success('Store deleted successfully');
       
-      // Redirect to home or login page
       window.location.href = '/';
     } catch (error) {
       console.error('Error deleting store:', error);
@@ -295,11 +292,25 @@ const Settings = () => {
     }
   };
   
-  if (isLoading) {
+  if (isLoadingStore || isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <span className="ml-2">Loading store settings...</span>
+      </div>
+    );
+  }
+
+  if (!storeId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">No Store Found</h2>
+          <p className="text-muted-foreground mb-4">You need to create a store before accessing settings.</p>
+          <Button onClick={() => window.location.href = '/store-builder'}>
+            Create Store
+          </Button>
+        </div>
       </div>
     );
   }
@@ -345,7 +356,6 @@ const Settings = () => {
                 className="mt-1" 
                 accept="image/*" 
               />
-              {/* Logo preview */}
               {logoPreview && (
                 <div className="mt-2 w-32 h-32 border border-gray-300 rounded-md overflow-hidden">
                   <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-cover" />
@@ -366,7 +376,6 @@ const Settings = () => {
                 className="mt-1" 
                 accept="image/*" 
               />
-              {/* Banner preview */}
               {bannerPreview && (
                 <div className="mt-2 w-full h-32 border border-gray-300 rounded-md overflow-hidden">
                   <img src={bannerPreview} alt="Banner Preview" className="w-full h-full object-cover" />
@@ -540,7 +549,6 @@ const Settings = () => {
               <Label htmlFor="password-protection" className="text-sm font-medium text-gray-700">
                 Store password protection
               </Label>
-              {/* Toggle switch */}
               <div className="relative inline-block w-14 align-middle select-none transition duration-200 ease-in">
                 <input 
                   type="checkbox" 
@@ -662,8 +670,8 @@ const Settings = () => {
               ) : 'Delete Store'}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   );
 };
