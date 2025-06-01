@@ -31,11 +31,28 @@ const Storefront = () => {
         throw new Error('No store name provided');
       }
       
+      // Try to find the store with case-insensitive matching
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('name', storeName)
+        .ilike('name', storeName)
         .single();
+        
+      // If no store found, try with URL decoded name (in case of spaces or special characters)
+      if (error && error.code === 'PGRST116') {
+        const decodedStoreName = decodeURIComponent(storeName);
+        console.log('Storefront: Trying with decoded store name', decodedStoreName);
+        
+        const secondAttempt = await supabase
+          .from('stores')
+          .select('*')
+          .ilike('name', decodedStoreName)
+          .single();
+          
+        if (!secondAttempt.error) {
+          return secondAttempt.data;
+        }
+      }
         
       if (error) {
         console.error('Storefront: Error fetching store', error);

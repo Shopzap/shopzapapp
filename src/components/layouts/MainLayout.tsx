@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Package, ShoppingCart, Settings, BarChart2, Users, Menu, X } from 'lucide-react';
+import { Home, Package, ShoppingCart, Settings, BarChart2, Users, Menu, X, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -61,10 +62,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           })}
         </nav>
         <div className="p-4 border-t">
-          <Link to="/logout" className="flex items-center space-x-3 p-2 text-red-500 hover:bg-red-50 rounded-md">
-            <Home className="w-5 h-5" /> {/* Using Home icon as a placeholder for Logout */}
+          <button 
+            onClick={async () => {
+              try {
+                await supabase.auth.signOut({ scope: 'global' });
+                window.location.href = '/';
+              } catch (error) {
+                console.error('Error signing out:', error);
+              }
+            }} 
+            className="flex items-center space-x-3 p-2 text-red-500 hover:bg-red-50 rounded-md w-full text-left"
+          >
+            <LogOut className="w-5 h-5" />
             <span>Log Out</span>
-          </Link>
+          </button>
         </div>
       </aside>
 

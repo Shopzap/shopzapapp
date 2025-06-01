@@ -93,7 +93,7 @@ const CustomizeStore: React.FC = () => {
       try {
         // Upload to Supabase Storage
         const { error: uploadError } = await supabase.storage
-          .from('logos')
+          .from('store_logos') // Changed from 'logos' to 'store_logos'
           .upload(filePath, file, {
             cacheControl: '3600',
             upsert: true,
@@ -106,7 +106,7 @@ const CustomizeStore: React.FC = () => {
 
         // Get the public URL
         const { data: publicUrlData } = supabase.storage
-          .from('logos')
+          .from('store_logos') // Changed from 'logos' to 'store_logos'
           .getPublicUrl(filePath);
 
         if (publicUrlData) {
@@ -140,7 +140,7 @@ const CustomizeStore: React.FC = () => {
         
         // Delete from Supabase Storage
         const { error: deleteError } = await supabase.storage
-          .from('logos')
+          .from('store_logos') // Changed from 'logos' to 'store_logos'
           .remove([filePath]);
 
         if (deleteError) {
