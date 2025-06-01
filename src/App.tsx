@@ -86,12 +86,14 @@ const AppContent = () => (
       <ProtectedRoute>
         <MainLayout>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/products" element={<ProductManager />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/customize-store" element={<CustomizeStore />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="products" element={<ProductManager />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="customize-store" element={<CustomizeStore />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
           </Routes>
         </MainLayout>
       </ProtectedRoute>

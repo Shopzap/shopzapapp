@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/contexts/StoreContext';
 
 type DashboardLayoutProps = {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { toast } = useToast();
   const location = useLocation();
   const { signOut, profile } = useAuth();
+  const { storeId, isLoadingStore } = useStore();
   
   const handleLogout = async () => {
     await signOut();
@@ -26,7 +28,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: 'Products', path: '/dashboard/products', icon: <Package className="h-4 w-4 mr-2" /> },
     { label: 'Orders', path: '/dashboard/orders', icon: <ShoppingBag className="h-4 w-4 mr-2" /> },
     { label: 'Customize Store', path: '/dashboard/customize-store', icon: <Palette className="h-4 w-4 mr-2" /> },
-    { label: 'Analytics', path: '/dashboard/analytics', icon: <BarChart3 className="h-4 w-4 mr-2" /> },
+    { label: 'Analytics', path: `/dashboard/${storeId}/analytics`, icon: <BarChart3 className="h-4 w-4 mr-2" /> },
     { label: 'Settings', path: '/dashboard/settings', icon: <Settings className="h-4 w-4 mr-2" /> },
   ];
   

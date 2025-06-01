@@ -56,6 +56,7 @@ const authenticateUser = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('Authentication failed: Missing or invalid token header');
     return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
   }
   
@@ -65,10 +66,12 @@ const authenticateUser = async (req, res, next) => {
     const { data, error } = await supabase.auth.getUser(token);
     
     if (error || !data.user) {
+      console.log('Authentication failed: Invalid token or no user data', error);
       return res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
     
     req.user = data.user;
+    console.log('User authenticated:', req.user.id);
     next();
   } catch (error) {
     console.error('Authentication error:', error);
@@ -80,6 +83,7 @@ const authenticateUser = async (req, res, next) => {
 const verifyStoreOwnership = async (req, res, next) => {
   const { storeId } = req.params;
   const userId = req.user.id;
+  console.log(`Verifying ownership for storeId: ${storeId} by userId: ${userId}`);
   
   try {
     const { data, error } = await supabase
@@ -90,9 +94,11 @@ const verifyStoreOwnership = async (req, res, next) => {
       .single();
     
     if (error || !data) {
+      console.log(`Ownership verification failed for storeId: ${storeId}, error:`, error);
       return res.status(403).json({ error: 'Forbidden: You do not have access to this store' });
     }
     
+    console.log(`Ownership verified for storeId: ${storeId}`);
     next();
   } catch (error) {
     console.error('Store ownership verification error:', error);
@@ -171,31 +177,84 @@ app.get('/api/store/:storeId/analytics', authenticateUser, verifyStoreOwnership,
   const { storeId } = req.params;
 
   try {
-    // In a real application, you would fetch actual analytics data from your database
-    // For now, we'll return mock data as per the requirements.
-    const analyticsData = {
-      totalOrders: 1245,
-      uniqueCustomers: 789,
-      totalRevenue: 45231.89,
-      conversionRate: 4.8,
-      salesOverTime: [
-        { date: '2025-05-01', revenue: 1234 },
-        { date: '2025-05-02', revenue: 2345 },
-        { date: '2025-05-03', revenue: 3456 },
-        { date: '2025-05-04', revenue: 4567 },
-        { date: '2025-05-05', revenue: 5678 },
-      ],
-      bestSellingProducts: [
-        { name: 'Product A', unitsSold: 320, revenue: 8600 },
-        { name: 'Product B', unitsSold: 280, revenue: 7500 },
-        { name: 'Product C', unitsSold: 150, revenue: 4200 },
-      ],
-    };
+    // Fetch orders for the given storeId
+    console.log(`Fetching analytics for storeId: ${storeId}`);
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id, user_id, total_amount, created_at, order_items(product_id, quantity, products(name))')
+      .eq('store_id', storeId);
 
-    return res.status(200).json(analyticsData);
+    if (ordersError) {
+      console.error('Supabase error fetching orders:', ordersError);
+      return res.status(500).json({ error: 'Failed to fetch orders from database' });
+    }
+    console.log('Orders fetched successfully:', orders.length, 'orders');
+
+    if (!orders || orders.length === 0) {
+      console.log('No orders found for this store.');
+      return res.json({
+        totalOrders: 0,
+        uniqueCustomers: 0,
+        totalRevenue: 0,
+        conversionRate: 0,
+        salesOverTime: [],
+        bestSellingProducts: [],
+      });
+    }
+
+    // Calculate total orders
+    const totalOrders = orders.length;
+
+    // Calculate unique customers
+    const uniqueCustomers = new Set(orders.map(order => order.user_id)).size;
+
+    // Calculate total revenue
+    const totalRevenue = orders.reduce((sum, order) => sum + order.total_amount, 0);
+
+    // For conversion rate, we need total visits. This data is not available in Supabase directly
+    // For now, we'll use a placeholder or assume a fixed number of visits.
+    // In a real application, this would come from analytics tracking (e.g., Google Analytics).
+    const totalVisits = 10000; // Placeholder for total visits
+    const conversionRate = totalVisits > 0 ? (totalOrders / totalVisits) * 100 : 0;
+
+    // Calculate sales over time
+    const salesOverTimeMap = orders.reduce((acc, order) => {
+      const date = new Date(order.created_at).toISOString().split('T')[0];
+      acc[date] = (acc[date] || 0) + order.total;
+      return acc;
+    }, {});
+    const salesOverTime = Object.keys(salesOverTimeMap).map(date => ({
+      date,
+      sales: salesOverTimeMap[date]
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Calculate best-selling products
+    const productSalesMap = {};
+    orders.forEach(order => {
+      if (order.order_items) {
+        order.order_items.forEach(item => {
+          const productName = item.products ? item.products.name : 'Unknown Product';
+          productSalesMap[productName] = (productSalesMap[productName] || 0) + item.quantity;
+        });
+      }
+    });
+
+    const bestSellingProducts = Object.keys(productSalesMap).map(productName => ({
+      name: productName,
+      unitsSold: productSalesMap[productName]
+    })).sort((a, b) => b.unitsSold - a.unitsSold);
+
+    res.json({
+      totalOrders,
+      uniqueCustomers,
+      totalRevenue,
+      conversionRate,
+      salesOverTime,
+      bestSellingProducts,
+    });
   } catch (error) {
-    console.error('Error fetching analytics data:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Unhandled error in analytics endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 app.post('/api/store/:storeId/updateAccount', authenticateUser, verifyStoreOwnership, async (req, res) => {

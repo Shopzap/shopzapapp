@@ -17,7 +17,16 @@ import ProductManager from './pages/ProductManager.tsx';
 import StoreBuilder from './pages/StoreBuilder.tsx';
 import Storefront from './pages/Storefront.tsx';
 import Verify from './pages/Verify.tsx';
+import { StoreProvider } from './contexts/StoreContext.tsx';
 
-createRoot(document.getElementById('root')!).render(
-  <App />
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <AuthContextProvider>
+        <StoreProvider>
+          <App />
+        </StoreProvider>
+      </AuthContextProvider>
+    </BrowserRouter>
+  </React.StrictMode>,
 );
