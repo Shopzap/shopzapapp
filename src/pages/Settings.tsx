@@ -242,8 +242,16 @@ const Settings = () => {
       return;
     }
     
+    // Validate required fields
+    if (!businessEmail || !phoneNumber) {
+      toast.error('Business email and phone number are required');
+      return;
+    }
+    
     try {
       setIsSaving(true);
+      console.log('Updating contact info for store:', storeId);
+      console.log('Contact data:', { businessEmail, phoneNumber, socialLinks: { whatsapp: whatsappLink, instagram: instagramLink, facebook: facebookLink } });
       
       await storeSettingsApi.updateContact(storeId, {
         businessEmail,
@@ -258,7 +266,8 @@ const Settings = () => {
       toast.success('Contact information updated successfully');
     } catch (error) {
       console.error('Error updating contact info:', error);
-      toast.error('Failed to update contact information');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update contact information';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -670,8 +679,8 @@ const Settings = () => {
               ) : 'Delete Store'}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </Dialog>
+      </main>
     </div>
   );
 };
