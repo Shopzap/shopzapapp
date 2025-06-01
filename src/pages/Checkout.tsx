@@ -17,12 +17,41 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
+interface FormData {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  paymentMethod: string;
+}
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
+interface OrderItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
 const Checkout = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
     phone: '',
@@ -33,11 +62,11 @@ const Checkout = () => {
     paymentMethod: 'cod'
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get order items from location state or use mock data
-  const [orderItems, setOrderItems] = useState(location.state?.orderItems || [
+  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
     {
       id: 1,
       name: 'Wireless Earbuds',
@@ -58,8 +87,8 @@ const Checkout = () => {
   const shipping = 0; // Free shipping
   const total = subtotal + shipping;
 
-  const validateForm = () => {
-    const newErrors = {};
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
     
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Full name is required';
@@ -99,7 +128,7 @@ const Checkout = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
@@ -107,7 +136,7 @@ const Checkout = () => {
     });
     
     // Clear error when user starts typing
-    if (errors[name]) {
+    if (errors[name as keyof FormErrors]) {
       setErrors({
         ...errors,
         [name]: ''
@@ -115,14 +144,14 @@ const Checkout = () => {
     }
   };
 
-  const handlePaymentMethodChange = (value) => {
+  const handlePaymentMethodChange = (value: string) => {
     setFormData({
       ...formData,
       paymentMethod: value
     });
   };
 
-  const updateQuantity = (itemId, newQuantity) => {
+  const updateQuantity = (itemId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       // Remove item if quantity is 0
       setOrderItems(orderItems.filter(item => item.id !== itemId));
@@ -138,7 +167,7 @@ const Checkout = () => {
     ));
   };
 
-  const removeItem = (itemId) => {
+  const removeItem = (itemId: number) => {
     setOrderItems(orderItems.filter(item => item.id !== itemId));
     toast({
       title: "Item Removed",
@@ -146,7 +175,7 @@ const Checkout = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -388,7 +417,16 @@ const Checkout = () => {
 };
 
 // Enhanced Order Summary Component with quantity controls
-const OrderSummary = ({ orderItems, subtotal, shipping, total, updateQuantity, removeItem }) => {
+interface OrderSummaryProps {
+  orderItems: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  updateQuantity: (itemId: number, newQuantity: number) => void;
+  removeItem: (itemId: number) => void;
+}
+
+const OrderSummary: React.FC<OrderSummaryProps> = ({ orderItems, subtotal, shipping, total, updateQuantity, removeItem }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
       <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
