@@ -87,28 +87,35 @@ const CustomizeStore: React.FC = () => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `public/${fileName}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`; // Use user.id as the folder name
 
-      const { error: uploadError } = await supabase.storage
-        .from('logos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
+      try {
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('logos')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error('Error uploading logo:', uploadError.message);
-        return;
-      }
+        if (uploadError) {
+          console.error('Error uploading logo:', uploadError);
+          return;
+        }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('logos')
-        .getPublicUrl(filePath);
+        // Get the public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('logos')
+          .getPublicUrl(filePath);
 
-      if (publicUrlData) {
-        setLogo(publicUrlData.publicUrl);
-        setLogoUrl(publicUrlData.publicUrl);
+        if (publicUrlData) {
+          setLogo(publicUrlData.publicUrl);
+          setLogoUrl(publicUrlData.publicUrl);
+          console.log('Logo uploaded successfully:', publicUrlData.publicUrl);
+        }
+      } catch (error) {
+        console.error('Error in logo upload process:', error);
       }
     }
   }
@@ -122,17 +129,28 @@ const CustomizeStore: React.FC = () => {
     try {
       // Extract the file path from the public URL
       const urlParts = logoUrl.split('/');
-      const fileNameWithFolder = urlParts.slice(urlParts.indexOf('logos') + 1).join('/');
-      const filePath = `public/${fileNameWithFolder}`;
+      // Find the index of the user ID in the URL parts
+      const userIdIndex = urlParts.findIndex(part => part === user.id);
+      
+      if (userIdIndex !== -1) {
+        // Get the file path including user ID folder and filename
+        const filePath = urlParts.slice(userIdIndex).join('/');
+        
+        console.log('Attempting to remove file:', filePath);
+        
+        // Delete from Supabase Storage
+        const { error: deleteError } = await supabase.storage
+          .from('logos')
+          .remove([filePath]);
 
-      // Delete from Supabase Storage
-      const { error: deleteError } = await supabase.storage
-        .from('logos')
-        .remove([filePath]);
-
-      if (deleteError) {
-        console.error('Error deleting logo from storage:', deleteError.message);
-        // Even if storage deletion fails, try to update the database to clear the URL
+        if (deleteError) {
+          console.error('Error deleting logo from storage:', deleteError.message);
+          // Even if storage deletion fails, try to update the database to clear the URL
+        } else {
+          console.log('File successfully removed from storage');
+        }
+      } else {
+        console.warn('Could not determine file path from URL:', logoUrl);
       }
 
       // Update the database to set logo_image to null
@@ -144,6 +162,7 @@ const CustomizeStore: React.FC = () => {
       if (dbUpdateError) {
         console.error('Error updating store logo in database:', dbUpdateError.message);
       } else {
+        console.log('Database updated successfully');
         setLogo(null);
         setLogoUrl(null);
         setSaveSuccess(true);
@@ -164,9 +183,9 @@ const CustomizeStore: React.FC = () => {
     setIsSaving(true);
     setSaveSuccess(false);
 
-    const { data, error } = await supabase
-      .from('stores')
-      .upsert({
+    try {
+      // Prepare the store data
+      const storeData = {
         user_id: user.id,
         name: storeName,
         logo_image: logoUrl,
@@ -177,30 +196,68 @@ const CustomizeStore: React.FC = () => {
         },
         business_email: user.email || '',
         phone_number: '',
-        username: user.email || '',
-        address: null,
-        banner_image: null,
-        created_at: null,
-        description: null,
-        is_active: true
-      })
-      .eq('user_id', user.id)
-      .select()
-      .single();
+      };
+
+      let result;
+
+      // If we have a store ID, update the existing store
+      if (storeId) {
+        console.log('Updating existing store:', storeId);
+        result = await supabase
+          .from('stores')
+          .update(storeData)
+          .eq('id', storeId)
+          .eq('user_id', user.id) // Ensure the user owns this store
+          .select()
+          .single();
+      } else {
+        // Otherwise, insert a new store
+        console.log('Creating new store for user:', user.id);
+        // For new stores, we need to set additional fields
+        const newStoreData = {
+          ...storeData,
+          username: `${user.email?.split('@')[0]}-${crypto.randomUUID().substring(0, 6)}` || '',
+          address: null,
+          banner_image: null,
+          description: null,
+          is_active: true,
+          plan: 'free'
+        };
+
+        result = await supabase
+          .from('stores')
+          .insert([newStoreData])
+          .select()
+          .single();
+      }
+
+      const { data, error } = result;
 
       if (error) {
-      console.error('Error saving store data:', error.message);
+        // Handle duplicate store name error
+        if (error.code === '23505') {
+          console.error('Duplicate store name error:', error.message);
+          alert('This store name is already taken. Please choose a different one.');
+        } else {
+          console.error('Error saving store data:', error);
+          alert(`Error saving store data: ${error.message}`);
+        }
+      } else if (data) {
+        console.log('Store saved successfully:', data);
+        setStoreId(data.id); // Update the store ID if it was a new store
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        fetchStoreData(); // Re-fetch data to update the UI
+      } else {
+        console.warn('Update successful but no data returned.');
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error in save process:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
       setIsSaving(false);
-    } else if (data) {
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-      fetchStoreData(); // Re-fetch data to update the UI
-    } else {
-      console.warn('Update successful but no data returned.');
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
     }
   };
 

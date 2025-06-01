@@ -26,6 +26,7 @@ import AuthCallback from "./pages/AuthCallback";
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
+import OrderRedirect from "./pages/OrderRedirect";
 
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
@@ -49,16 +50,21 @@ const AppContent = () => (
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
     <Route path="/store/:storeName" element={
-      <Suspense fallback={<div>Loading Store...</div>}>
-        <Storefront />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+          <Storefront />
+        </Suspense>
+      </ErrorBoundary>
     } />
     <Route path="/product/:productId" element={
-      <Suspense fallback={<div>Loading Product...</div>}>
-        <ProductDetails />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+          <ProductDetails />
+        </Suspense>
+      </ErrorBoundary>
     } />
     <Route path="/checkout" element={<Checkout />} />
+    <Route path="/order" element={<OrderRedirect />} />
     
     {/* Protected routes */}
     <Route path="/onboarding" element={
