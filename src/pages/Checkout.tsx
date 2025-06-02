@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -175,7 +174,7 @@ const Checkout = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -198,21 +197,57 @@ const Checkout = () => {
     
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      const orderId = `ORD-${Date.now()}`;
+    try {
+      // Create order in database
+      const orderData = {
+        storeId: 'demo-store-id', // This should come from context/props
+        buyerName: formData.fullName,
+        buyerEmail: formData.email,
+        buyerPhone: formData.phone,
+        buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+        totalPrice: total,
+        items: orderItems.map(item => ({
+          productId: `product-${item.id}`, // This should be the actual product ID
+          quantity: item.quantity,
+          priceAtPurchase: item.price
+        }))
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const result = await response.json();
       
-      // Navigate to order success page with order details
+      // Navigate to order success page with real order details
       navigate('/order-success', {
         state: {
-          orderId,
+          orderId: result.orderId,
           orderItems,
           total,
           customerInfo: formData,
           estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
         }
       });
-    }, 2000);
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      toast({
+        title: "Order Failed",
+        description: "There was an error creating your order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

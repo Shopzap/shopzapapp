@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
+import OrderTracking from "./pages/OrderTracking";
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
@@ -68,6 +69,7 @@ const AppContent = () => (
     <Route path="/checkout" element={<Checkout />} />
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
+    <Route path="/track-order" element={<OrderTracking />} />
     
     {/* Protected routes */}
     <Route path="/onboarding" element={

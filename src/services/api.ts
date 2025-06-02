@@ -173,3 +173,47 @@ export const fileUploadApi = {
     return response.json();
   },
 };
+
+// Orders API
+export const ordersApi = {
+  // Create a new order
+  createOrder: async (orderData: {
+    storeId: string;
+    buyerName: string;
+    buyerEmail?: string;
+    buyerPhone?: string;
+    buyerAddress?: string;
+    totalPrice: number;
+    items: {
+      productId: string;
+      quantity: number;
+      priceAtPurchase: number;
+    }[];
+  }) => {
+    return apiRequest('/orders', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  },
+
+  // Update order status
+  updateOrderStatus: async (orderId: string, data: {
+    status: string;
+    notes?: string;
+    trackingNumber?: string;
+    shippingCarrier?: string;
+    estimatedDeliveryDate?: string;
+  }) => {
+    return apiRequest(`/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get analytics data
+  getAnalytics: async (storeId: string) => {
+    return apiRequest(`/store/${storeId}/analytics`, {
+      method: 'GET',
+    });
+  },
+};

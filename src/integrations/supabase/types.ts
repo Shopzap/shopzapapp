@@ -48,6 +48,38 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           buyer_address: string | null
@@ -55,10 +87,15 @@ export type Database = {
           buyer_name: string
           buyer_phone: string | null
           created_at: string | null
+          delivered_at: string | null
+          estimated_delivery_date: string | null
           id: string
+          shipped_at: string | null
+          shipping_carrier: string | null
           status: string
           store_id: string
           total_price: number
+          tracking_number: string | null
           updated_at: string | null
         }
         Insert: {
@@ -67,10 +104,15 @@ export type Database = {
           buyer_name: string
           buyer_phone?: string | null
           created_at?: string | null
+          delivered_at?: string | null
+          estimated_delivery_date?: string | null
           id?: string
+          shipped_at?: string | null
+          shipping_carrier?: string | null
           status?: string
           store_id: string
           total_price?: number
+          tracking_number?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -79,10 +121,15 @@ export type Database = {
           buyer_name?: string
           buyer_phone?: string | null
           created_at?: string | null
+          delivered_at?: string | null
+          estimated_delivery_date?: string | null
           id?: string
+          shipped_at?: string | null
+          shipping_carrier?: string | null
           status?: string
           store_id?: string
           total_price?: number
+          tracking_number?: string | null
           updated_at?: string | null
         }
         Relationships: [

@@ -444,6 +444,155 @@ app.delete('/api/store/:storeId', authenticateUser, verifyStoreOwnership, async 
   }
 });
 
+// Order Management Endpoints
+
+// 1. POST /api/orders - Create a new order
+app.post('/api/orders', authenticateUser, async (req, res) => {
+  const { storeId, buyerName, buyerEmail, buyerPhone, buyerAddress, totalPrice, items } = req.body;
+  
+  if (!storeId || !buyerName || !totalPrice || !items || items.length === 0) {
+    return res.status(400).json({ error: 'Missing required order information' });
+  }
+  
+  try {
+    // Create the order
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        store_id: storeId,
+        buyer_name: buyerName,
+        buyer_email: buyerEmail,
+        buyer_phone: buyerPhone,
+        buyer_address: buyerAddress,
+        total_price: totalPrice,
+        status: 'pending'
+      })
+      .select()
+      .single();
+    
+    if (orderError) {
+      console.error('Error creating order:', orderError);
+      return res.status(500).json({ error: 'Failed to create order' });
+    }
+    
+    // Create order items
+    const orderItems = items.map(item => ({
+      order_id: orderData.id,
+      product_id: item.productId,
+      quantity: item.quantity,
+      price_at_purchase: item.priceAtPurchase
+    }));
+    
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+    
+    if (itemsError) {
+      console.error('Error creating order items:', itemsError);
+      // Rollback order creation
+      await supabase.from('orders').delete().eq('id', orderData.id);
+      return res.status(500).json({ error: 'Failed to create order items' });
+    }
+    
+    // Create initial status history entry
+    await supabase
+      .from('order_status_history')
+      .insert({
+        order_id: orderData.id,
+        status: 'pending',
+        notes: 'Order placed successfully'
+      });
+    
+    return res.status(201).json({ 
+      message: 'Order created successfully', 
+      orderId: orderData.id,
+      order: orderData 
+    });
+  } catch (error) {
+    console.error('Error in order creation:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 2. PUT /api/orders/:orderId/status - Update order status
+app.put('/api/orders/:orderId/status', authenticateUser, async (req, res) => {
+  const { orderId } = req.params;
+  const { status, notes, trackingNumber, shippingCarrier, estimatedDeliveryDate } = req.body;
+  
+  if (!status) {
+    return res.status(400).json({ error: 'Status is required' });
+  }
+  
+  try {
+    // Verify order ownership
+    const { data: orderCheck, error: checkError } = await supabase
+      .from('orders')
+      .select('store_id')
+      .eq('id', orderId)
+      .single();
+    
+    if (checkError || !orderCheck) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+    
+    // Verify store ownership
+    const { data: storeCheck, error: storeError } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('id', orderCheck.store_id)
+      .eq('user_id', req.user.id)
+      .single();
+    
+    if (storeError || !storeCheck) {
+      return res.status(403).json({ error: 'Unauthorized: You do not own this order' });
+    }
+    
+    // Update order
+    const updateData = { status, updated_at: new Date().toISOString() };
+    
+    if (trackingNumber) updateData.tracking_number = trackingNumber;
+    if (shippingCarrier) updateData.shipping_carrier = shippingCarrier;
+    if (estimatedDeliveryDate) updateData.estimated_delivery_date = estimatedDeliveryDate;
+    
+    // Set timestamps based on status
+    if (status === 'shipped' && !orderCheck.shipped_at) {
+      updateData.shipped_at = new Date().toISOString();
+    }
+    if (status === 'delivered' && !orderCheck.delivered_at) {
+      updateData.delivered_at = new Date().toISOString();
+    }
+    
+    const { data: updatedOrder, error: updateError } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating order:', updateError);
+      return res.status(500).json({ error: 'Failed to update order' });
+    }
+    
+    // Add status history entry
+    await supabase
+      .from('order_status_history')
+      .insert({
+        order_id: orderId,
+        status: status,
+        notes: notes || null
+      });
+    
+    return res.status(200).json({ 
+      message: 'Order status updated successfully', 
+      order: updatedOrder 
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // File Upload Endpoints
 
 // 1. POST /api/upload/logo - Upload logo
