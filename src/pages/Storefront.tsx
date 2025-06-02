@@ -8,6 +8,7 @@ import NotFound from "./NotFound";
 import StorefrontHeader from "@/components/storefront/StorefrontHeader";
 import ProductGrid from "@/components/storefront/ProductGrid";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
+import { Tables } from "@/integrations/supabase/types";
 
 const Storefront = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -161,7 +162,7 @@ const Storefront = () => {
   };
 
   return (
-    <StorefrontContent store={storeWithTheme} products={products || []} />
+    <StorefrontContent store={storeWithTheme} products={products as Tables<'products'>[] || []} />
   );
 };
 

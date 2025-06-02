@@ -24,10 +24,15 @@ interface StorefrontContentProps {
     status: string;
     category?: string | null;
     created_at?: string;
+    payment_method: string;
+    store_id: string;
+    updated_at: string;
+    user_id: string;
   }>;
 }
 
 const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }) => {
+  console.log('StorefrontContent: Products prop received', products); // Add this line
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
@@ -37,7 +42,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
   // Get available categories and max price
   const { availableCategories, maxPrice } = useMemo(() => {
     const categories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[];
-    const max = Math.max(...products.map(p => p.price), 1000);
+    const max = products.length > 0 ? Math.max(...products.map(p => p.price)) : 1000;
     return { availableCategories: categories, maxPrice: max };
   }, [products]);
 
@@ -64,8 +69,25 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
       return true;
     });
 
+    // Map to the structure expected by ProductGrid (Type B from error analysis)
+    const mappedProducts = filtered.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      description: p.description || "", // Ensure string, not null
+      image_url: p.image_url || '/placeholder.svg', // Ensure string, not null; provide placeholder
+      status: p.status,
+      // category is not in the target type based on error, but passing it is fine if allowed
+      category: p.category || undefined,
+      created_at: p.created_at || new Date(0).toISOString(), // Ensure string, not undefined
+      payment_method: p.payment_method,
+      store_id: p.store_id,
+      updated_at: p.updated_at,
+      user_id: p.user_id,
+    }));
+
     // Sort products
-    filtered.sort((a, b) => {
+    mappedProducts.sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':
           return a.name.localeCompare(b.name);
@@ -76,14 +98,16 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
         case 'price-desc':
           return b.price - a.price;
         case 'oldest':
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          // created_at is now guaranteed to be a string
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         case 'newest':
         default:
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+          // created_at is now guaranteed to be a string
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
 
-    return filtered;
+    return mappedProducts;
   }, [products, priceRange, selectedCategories, sortBy]);
 
   const handleClearFilters = () => {

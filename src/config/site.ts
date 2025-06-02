@@ -9,10 +9,10 @@ export const siteConfig = {
     github: 'https://github.com/shopzap'
   },
   api: {
-    baseUrl: 'https://shopzap.io/api',
+    baseUrl: import.meta.env.DEV ? 'http://localhost:3000/api' : 'https://shopzap.io/api',
   },
   store: {
-    baseUrl: 'https://shopzap.io/store',
-    generateUrl: (storeName: string) => `https://shopzap.io/store/${storeName}`
+    baseUrl: import.meta.env.DEV ? 'http://localhost:8080/store' : 'https://shopzap.io/store',
+    generateUrl: (storeName: string) => import.meta.env.DEV ? `http://localhost:8080/store/${storeName}` : `https://shopzap.io/store/${storeName}`
   }
 }
