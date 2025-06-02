@@ -1,0 +1,3 @@
+[submodule "shopzapapp"]
+	path = shopzapapp
+	url = https://github.com/Shopzap/shopzapapp.git
