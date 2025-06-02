@@ -86,6 +86,7 @@ const Storefront = () => {
         }
         
         console.log('Storefront: Products data received', data?.length || 0, 'products');
+        console.log('Storefront: Products data details', data); // Add this line
         return data;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
@@ -106,7 +107,13 @@ const Storefront = () => {
     if (!storeName) {
       console.error('Storefront: No store name in URL parameters');
     }
-  }, [storeError, storeName]);
+    if (productsError) { // Add this block
+      console.error('Storefront: Products error detected', productsError);
+    }
+    if (!productsLoading && products && products.length === 0) { // Add this block
+      console.log('Storefront: No products found after fetch, checking filters/status');
+    }
+  }, [storeError, storeName, productsError, productsLoading, products]); // Update dependencies
   
   // Show error page if store not found
   if (storeError) {
