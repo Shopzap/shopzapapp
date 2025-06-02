@@ -30,7 +30,7 @@ const AuthCallback = () => {
           if (data?.session) {
             console.log('Auth callback successful, session retrieved');
             toast.success('Successfully authenticated');
-            navigate('/dashboard');
+            navigate('/');
           } else {
             // No session was found, redirect to auth page
             navigate('/auth');
