@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import StorefrontHeader from "./StorefrontHeader";
 import ProductGrid from "./ProductGrid";
 import StorefrontFilters from "./StorefrontFilters";
+import { Tables } from "@/integrations/supabase/types";
 
 interface StorefrontContentProps {
   store: {
@@ -15,24 +16,11 @@ interface StorefrontContentProps {
     secondary_color?: string;
     theme_style?: 'card' | 'list';
   };
-  products: Array<{
-    id: string;
-    name: string;
-    price: number;
-    description: string | null;
-    image_url: string | null;
-    status: string;
-    category?: string | null;
-    created_at?: string;
-    payment_method: string;
-    store_id: string;
-    updated_at: string;
-    user_id: string;
-  }>;
+  products: Tables<'products'>[];
 }
 
 const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }) => {
-  console.log('StorefrontContent: Products prop received', products); // Add this line
+  console.log('StorefrontContent: Products prop received', products);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
@@ -41,7 +29,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
 
   // Get available categories and max price
   const { availableCategories, maxPrice } = useMemo(() => {
-    const categories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[];
+    const categories = [...new Set(products.map(p => p.description?.includes('Category:') ? p.description.split('Category:')[1]?.trim() : null).filter(Boolean))] as string[];
     const max = products.length > 0 ? Math.max(...products.map(p => p.price)) : 1000;
     return { availableCategories: categories, maxPrice: max };
   }, [products]);
@@ -59,9 +47,10 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
         return false;
       }
       
-      // Category filter
-      if (selectedCategories.length > 0 && product.category) {
-        if (!selectedCategories.includes(product.category)) {
+      // Category filter (using description field for categories)
+      if (selectedCategories.length > 0) {
+        const productCategory = product.description?.includes('Category:') ? product.description.split('Category:')[1]?.trim() : null;
+        if (!productCategory || !selectedCategories.includes(productCategory)) {
           return false;
         }
       }
@@ -69,25 +58,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
       return true;
     });
 
-    // Map to the structure expected by ProductGrid (Type B from error analysis)
-    const mappedProducts = filtered.map(p => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      description: p.description || "", // Ensure string, not null
-      image_url: p.image_url || '/placeholder.svg', // Ensure string, not null; provide placeholder
-      status: p.status,
-      // category is not in the target type based on error, but passing it is fine if allowed
-      category: p.category || undefined,
-      created_at: p.created_at || new Date(0).toISOString(), // Ensure string, not undefined
-      payment_method: p.payment_method,
-      store_id: p.store_id,
-      updated_at: p.updated_at,
-      user_id: p.user_id,
-    }));
-
     // Sort products
-    mappedProducts.sort((a, b) => {
+    filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name-asc':
           return a.name.localeCompare(b.name);
@@ -98,16 +70,14 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
         case 'price-desc':
           return b.price - a.price;
         case 'oldest':
-          // created_at is now guaranteed to be a string
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
         case 'newest':
         default:
-          // created_at is now guaranteed to be a string
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
       }
     });
 
-    return mappedProducts;
+    return filtered;
   }, [products, priceRange, selectedCategories, sortBy]);
 
   const handleClearFilters = () => {

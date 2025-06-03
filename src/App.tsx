@@ -25,6 +25,7 @@ import Verify from "./pages/Verify";
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
 const Storefront = lazy(() => import("./pages/Storefront"));
+const StorefrontAboutPage = lazy(() => import("./pages/StorefrontAbout"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -56,6 +57,13 @@ const AppContent = () => (
       <ErrorBoundary>
         <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
           <Storefront />
+        </Suspense>
+      </ErrorBoundary>
+    } />
+    <Route path="/store/:storeName/about" element={
+      <ErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
+          <StorefrontAboutPage />
         </Suspense>
       </ErrorBoundary>
     } />

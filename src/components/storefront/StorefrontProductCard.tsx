@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
 import { Tables } from "@/integrations/supabase/types";
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Eye, Heart } from 'lucide-react';
+import { ShoppingCart, Eye, Heart, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface StorefrontProductCardProps {
   product: Tables<"products">;
@@ -26,12 +27,52 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/order?productId=${product.id}`);
+    // For mobile compatibility, navigate to checkout with product
+    navigate('/checkout', {
+      state: {
+        orderItems: [{
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+          image: product.image_url || '/placeholder.svg'
+        }]
+      }
+    });
+    toast.success(`${product.name} added to cart!`);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsLiked(!isLiked);
+    toast.success(isLiked ? 'Removed from wishlist' : 'Added to wishlist');
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const productUrl = `${window.location.origin}/product/${product.id}`;
+    
+    if (navigator.share) {
+      // Use native share API on mobile
+      try {
+        await navigator.share({
+          title: product.name,
+          text: `Check out this product: ${product.name}`,
+          url: productUrl,
+        });
+        toast.success('Product shared successfully!');
+      } catch (error) {
+        // User cancelled sharing
+      }
+    } else {
+      // Fallback to clipboard
+      try {
+        await navigator.clipboard.writeText(productUrl);
+        toast.success('Product link copied to clipboard!');
+      } catch (error) {
+        toast.error('Failed to copy link');
+      }
+    }
   };
 
   if (viewMode === 'list') {
@@ -63,9 +104,14 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold text-gray-900">{formatPrice(product.price)}</span>
-              <Button size="sm" onClick={handleQuickAdd} className="bg-gray-900 hover:bg-gray-800">
-                Add to Cart
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={handleShare} variant="outline">
+                  <Share2 className="h-4 w-4" />
+                </Button>
+                <Button size="sm" onClick={handleQuickAdd} className="bg-gray-900 hover:bg-gray-800">
+                  Add to Cart
+                </Button>
+              </div>
             </div>
           </CardContent>
         </div>
@@ -95,11 +141,19 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
           )}
         </div>
         
-        {/* Hover overlay with actions */}
-        <div className={`absolute inset-0 bg-black bg-opacity-20 transition-opacity duration-300 ${
+        {/* Hover overlay with actions - Desktop only */}
+        <div className={`absolute inset-0 bg-black bg-opacity-20 transition-opacity duration-300 hidden md:block ${
           isHovered ? 'opacity-100' : 'opacity-0'
         }`}>
           <div className="absolute top-3 right-3 flex flex-col gap-2">
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-8 w-8 bg-white hover:bg-gray-100 shadow-md"
+              onClick={handleShare}
+            >
+              <Share2 className="h-4 w-4 text-gray-600" />
+            </Button>
             <Button
               size="icon"
               variant="secondary"
@@ -130,9 +184,29 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
               onClick={handleQuickAdd}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Quick Add
+              Add to Cart
             </Button>
           </div>
+        </div>
+
+        {/* Mobile action buttons - Always visible */}
+        <div className="absolute top-2 right-2 flex gap-1 md:hidden">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 bg-white/90 hover:bg-white shadow-sm"
+            onClick={handleShare}
+          >
+            <Share2 className="h-3 w-3 text-gray-600" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-7 w-7 bg-white/90 hover:bg-white shadow-sm"
+            onClick={handleWishlist}
+          >
+            <Heart className={`h-3 w-3 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+          </Button>
         </div>
       </div>
       
@@ -142,8 +216,18 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
         </h3>
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold text-gray-900">{formatPrice(product.price)}</span>
-          {/* Optional: Star rating placeholder */}
-          <div className="flex items-center gap-1">
+          
+          {/* Mobile Add to Cart Button */}
+          <Button
+            size="sm"
+            onClick={handleQuickAdd}
+            className="md:hidden bg-gray-900 hover:bg-gray-800 text-xs px-2 py-1"
+          >
+            Add
+          </Button>
+          
+          {/* Desktop rating placeholder */}
+          <div className="hidden md:flex items-center gap-1">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="w-3 h-3 bg-gray-200 rounded-full"></div>
             ))}
