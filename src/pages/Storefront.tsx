@@ -170,7 +170,11 @@ const Storefront = () => {
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
 
   return (
-    <StorefrontContent store={storeWithTheme} products={safeProducts} />
+    <StorefrontContent 
+      store={storeWithTheme} 
+      products={safeProducts} 
+      isLoading={productsLoading}
+    />
   );
 };
 

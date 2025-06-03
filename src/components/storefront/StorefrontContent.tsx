@@ -17,11 +17,13 @@ interface StorefrontContentProps {
     theme_style?: 'card' | 'list';
   };
   products: Tables<'products'>[];
+  isLoading?: boolean;
 }
 
-const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }) => {
+const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, isLoading = false }) => {
   console.log('StorefrontContent: Products received', products);
   console.log('StorefrontContent: Products count', products?.length || 0);
+  console.log('StorefrontContent: Is loading', isLoading);
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('newest');
@@ -142,7 +144,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products }
 
           {/* Products Grid */}
           <div className="flex-1">
-            {!safeProducts || safeProducts.length === 0 ? (
+            {isLoading ? (
               <div className="text-center py-16">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Loading products...</h3>
                 <p className="text-gray-600">Please wait while we load the products.</p>
