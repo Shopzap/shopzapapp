@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
 import NotFound from "./NotFound";
-import StorefrontHeader from "@/components/storefront/StorefrontHeader";
-import ProductGrid from "@/components/storefront/ProductGrid";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -16,12 +14,10 @@ const Storefront = () => {
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: Full URL', window.location.href);
-    console.log('Storefront: User Agent', navigator.userAgent);
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
   
-  // Fetch store data based on name (not username field anymore)
+  // Fetch store data based on name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store', storeName],
     queryFn: async () => {
@@ -71,7 +67,12 @@ const Storefront = () => {
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
-      console.log('Storefront: Fetching products for store ID', store.id);
+      console.log('Storefront: Fetching products for store ID', store?.id);
+      
+      if (!store?.id) {
+        console.error('Storefront: No store ID available');
+        return [];
+      }
       
       try {
         const { data, error } = await supabase
@@ -83,19 +84,30 @@ const Storefront = () => {
           
         if (error) {
           console.error('Storefront: Error fetching products', error);
-          throw error;
+          // Don't throw error, return empty array instead
+          return [];
         }
         
         console.log('Storefront: Products data received', data?.length || 0, 'products');
-        console.log('Storefront: Products data details', data); // Add this line
-        return data;
+        console.log('Storefront: Raw products data', data);
+        
+        // Ensure data is properly formatted
+        const validProducts = (data || []).filter(product => 
+          product && 
+          product.id && 
+          product.name && 
+          typeof product.price !== 'undefined'
+        );
+        
+        console.log('Storefront: Valid products after filtering', validProducts.length);
+        return validProducts;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
-        throw err;
+        return [];
       }
     },
     enabled: !!store?.id,
-    retry: 3,
+    retry: 2,
     retryDelay: 1000,
   });
   
@@ -105,16 +117,14 @@ const Storefront = () => {
       console.error('Storefront: Store error detected', storeError);
     }
     
-    if (!storeName) {
-      console.error('Storefront: No store name in URL parameters');
-    }
-    if (productsError) { // Add this block
+    if (productsError) {
       console.error('Storefront: Products error detected', productsError);
     }
-    if (!productsLoading && products && products.length === 0) { // Add this block
-      console.log('Storefront: No products found after fetch, checking filters/status');
+    
+    if (!productsLoading && (!products || products.length === 0)) {
+      console.log('Storefront: No products found or still loading');
     }
-  }, [storeError, storeName, productsError, productsLoading, products]); // Update dependencies
+  }, [storeError, productsError, productsLoading, products]);
   
   // Show error page if store not found
   if (storeError) {
@@ -147,11 +157,6 @@ const Storefront = () => {
   if (!store) {
     return <NotFound />;
   }
-  
-  // Products error
-  if (productsError) {
-    console.error('Storefront: Products error', productsError);
-  }
 
   // Extract theme data from store.theme if it exists
   const storeWithTheme = {
@@ -161,8 +166,11 @@ const Storefront = () => {
     theme_style: store.theme && typeof store.theme === 'object' ? (store.theme as any).theme_layout || 'card' : 'card'
   };
 
+  // Ensure products is always an array
+  const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
+
   return (
-    <StorefrontContent store={storeWithTheme} products={products as Tables<'products'>[] || []} />
+    <StorefrontContent store={storeWithTheme} products={safeProducts} />
   );
 };
 
