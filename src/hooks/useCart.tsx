@@ -192,11 +192,16 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const getTotalPrice = () => {
-    return items.reduce((total, item) => total + (Number(item.product.price) * item.quantity), 0);
+    return items.reduce((total, item) => {
+      // Safely handle undefined or null prices
+      const price = item.product?.price ? Number(item.product.price) : 0;
+      const quantity = item.quantity || 0;
+      return total + (price * quantity);
+    }, 0);
   };
 
   const getItemCount = () => {
-    return items.reduce((count, item) => count + item.quantity, 0);
+    return items.reduce((count, item) => count + (item.quantity || 0), 0);
   };
 
   const value: CartContextType = {

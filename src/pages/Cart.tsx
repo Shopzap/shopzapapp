@@ -75,59 +75,65 @@ const Cart = () => {
         {/* Cart Items */}
         <div className="flex-1">
           <div className="space-y-4">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border">
-                <img
-                  src={item.product.image_url || '/placeholder.svg'}
-                  alt={item.product.name}
-                  className="w-20 h-20 object-cover rounded-md"
-                />
-                
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{item.product.name}</h3>
-                  <p className="text-gray-600 text-sm">{item.product.description}</p>
-                  <p className="text-lg font-bold text-gray-900 mt-1">
-                    ₹{Number(item.product.price).toLocaleString()}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuantityUpdate(item.product.id, item.quantity - 1)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </Button>
+            {items.map((item) => {
+              // Safely handle price formatting
+              const price = item.product?.price ? Number(item.product.price) : 0;
+              const itemTotal = price * item.quantity;
+              
+              return (
+                <div key={item.id} className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border">
+                  <img
+                    src={item.product?.image_url || '/placeholder.svg'}
+                    alt={item.product?.name || 'Product'}
+                    className="w-20 h-20 object-cover rounded-md"
+                  />
                   
-                  <span className="font-medium w-8 text-center">{item.quantity}</span>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">{item.product?.name || 'Unknown Product'}</h3>
+                    <p className="text-gray-600 text-sm">{item.product?.description || ''}</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                      ₹{price.toLocaleString()}
+                    </p>
+                  </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuantityUpdate(item.product.id, item.quantity + 1)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuantityUpdate(item.product.id, item.quantity - 1)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    
+                    <span className="font-medium w-8 text-center">{item.quantity}</span>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuantityUpdate(item.product.id, item.quantity + 1)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="font-bold text-lg">
+                      ₹{itemTotal.toLocaleString()}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveItem(item.product.id)}
+                      className="text-red-500 hover:text-red-700 mt-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                
-                <div className="text-right">
-                  <p className="font-bold text-lg">
-                    ₹{(Number(item.product.price) * item.quantity).toLocaleString()}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveItem(item.product.id)}
-                    className="text-red-500 hover:text-red-700 mt-1"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         

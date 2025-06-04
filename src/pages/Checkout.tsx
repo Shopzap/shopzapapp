@@ -160,8 +160,8 @@ const Checkout = () => {
       return;
     }
 
-    // Validate that all products have valid IDs
-    const invalidProducts = cartItems.filter(item => !item.product?.id);
+    // Validate that all products have valid IDs and prices
+    const invalidProducts = cartItems.filter(item => !item.product?.id || !item.product?.price);
     if (invalidProducts.length > 0) {
       toast({
         title: "Invalid products in cart",
@@ -175,7 +175,7 @@ const Checkout = () => {
     console.log('Starting order creation with cart items:', cartItems);
     
     try {
-      // Create order data
+      // Create order data with safe price handling
       const orderData = {
         storeId: cartItems[0]?.product?.store_id || 'demo-store-id',
         buyerName: formData.fullName,
@@ -186,7 +186,7 @@ const Checkout = () => {
         items: cartItems.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          priceAtPurchase: Number(item.product.price)
+          priceAtPurchase: Number(item.product.price || 0)
         }))
       };
 
@@ -236,7 +236,7 @@ const Checkout = () => {
           orderItems: cartItems.map(item => ({
             id: item.product.id,
             name: item.product.name,
-            price: Number(item.product.price),
+            price: Number(item.product.price || 0),
             quantity: item.quantity,
             image: item.product.image_url || '/placeholder.svg'
           })),
@@ -481,21 +481,27 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
       <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
       
       <div className="space-y-4 mb-4">
-        {cartItems.map((item) => (
-          <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
-            <img 
-              src={item.product.image_url || '/placeholder.svg'} 
-              alt={item.product.name} 
-              className="w-16 h-16 object-cover rounded-md flex-shrink-0" 
-            />
-            <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm">{item.product.name}</h3>
-              <p className="text-sm text-gray-600">₹{Number(item.product.price).toLocaleString()}</p>
-              <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+        {cartItems.map((item) => {
+          // Safely handle price formatting
+          const price = item.product?.price ? Number(item.product.price) : 0;
+          const itemTotal = price * item.quantity;
+          
+          return (
+            <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+              <img 
+                src={item.product?.image_url || '/placeholder.svg'} 
+                alt={item.product?.name || 'Product'} 
+                className="w-16 h-16 object-cover rounded-md flex-shrink-0" 
+              />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-sm">{item.product?.name || 'Unknown Product'}</h3>
+                <p className="text-sm text-gray-600">₹{price.toLocaleString()}</p>
+                <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+              </div>
+              <p className="font-medium text-sm">₹{itemTotal.toLocaleString()}</p>
             </div>
-            <p className="font-medium text-sm">₹{(Number(item.product.price) * item.quantity).toLocaleString()}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       <div className="border-t pt-4 space-y-2">
