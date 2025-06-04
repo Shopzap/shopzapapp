@@ -8,8 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { ordersApi } from '@/services/api';
+import { useCart } from '@/hooks/useCart';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -40,18 +39,11 @@ interface FormErrors {
   zipCode?: string;
 }
 
-interface OrderItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-}
-
 const Checkout = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { items: cartItems, getTotalPrice, clearCart } = useCart();
   
   const [formData, setFormData] = useState<FormData>({
     fullName: '',
@@ -67,27 +59,19 @@ const Checkout = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get order items from location state or use mock data
-  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
-    {
-      id: 1,
-      name: 'Wireless Earbuds',
-      price: 1999,
-      quantity: 1,
-      image: 'https://placehold.co/80x80'
-    },
-    {
-      id: 2,
-      name: 'Phone Case',
-      price: 499,
-      quantity: 2,
-      image: 'https://placehold.co/80x80'
+  // Use cart items or redirect to cart if empty
+  React.useEffect(() => {
+    if (cartItems.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before checking out.",
+        variant: "destructive"
+      });
+      navigate('/cart');
     }
-  ]);
+  }, [cartItems, navigate, toast]);
 
-  const subtotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const shipping = 0; // Free shipping
-  const total = subtotal + shipping;
+  const total = getTotalPrice();
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -153,43 +137,21 @@ const Checkout = () => {
     });
   };
 
-  const updateQuantity = (itemId: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      // Remove item if quantity is 0
-      setOrderItems(orderItems.filter(item => item.id !== itemId));
-      toast({
-        title: "Item Removed",
-        description: "Item has been removed from your cart.",
-      });
-      return;
-    }
-    
-    setOrderItems(orderItems.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    ));
-  };
-
-  const removeItem = (itemId: number) => {
-    setOrderItems(orderItems.filter(item => item.id !== itemId));
-    toast({
-      title: "Item Removed",
-      description: "Item has been removed from your cart.",
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
     if (!validateForm()) {
       toast({
-        title: "Please fix the errors",
+        title: "Please fill all required fields",
         description: "Check all required fields and correct any errors.",
         variant: "destructive"
       });
       return;
     }
 
-    if (orderItems.length === 0) {
+    // Check if cart has items
+    if (cartItems.length === 0) {
       toast({
         title: "Cart is empty",
         description: "Please add items to your cart before checking out.",
@@ -197,45 +159,87 @@ const Checkout = () => {
       });
       return;
     }
+
+    // Validate that all products have valid IDs
+    const invalidProducts = cartItems.filter(item => !item.product?.id);
+    if (invalidProducts.length > 0) {
+      toast({
+        title: "Invalid products in cart",
+        description: "Some products in your cart are invalid. Please refresh and try again.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSubmitting(true);
+    console.log('Starting order creation with cart items:', cartItems);
     
     try {
-      // Create order in database
+      // Create order data
       const orderData = {
-        storeId: 'demo-store-id', // This should come from context/props
+        storeId: cartItems[0]?.product?.store_id || 'demo-store-id',
         buyerName: formData.fullName,
         buyerEmail: formData.email,
         buyerPhone: formData.phone,
         buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
         totalPrice: total,
-        items: orderItems.map(item => ({
-          productId: `product-${item.id}`, // This should be the actual product ID
+        items: cartItems.map(item => ({
+          productId: item.product.id,
           quantity: item.quantity,
-          priceAtPurchase: item.price
+          priceAtPurchase: Number(item.product.price)
         }))
       };
 
+      console.log('Order data prepared:', orderData);
+
+      // Create order via API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify(orderData)
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create order');
-      }
-
       const result = await response.json();
+      console.log('Order creation response:', result);
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || 'Failed to create order');
+      }
       
-      // Navigate to order success page with real order details
+      // Clear the cart after successful order
+      await clearCart();
+      
+      // Reset form
+      setFormData({
+        fullName: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        paymentMethod: 'cod'
+      });
+
+      // Show success message
+      toast({
+        title: "✅ Order Placed!",
+        description: "You will receive confirmation via email shortly.",
+      });
+      
+      // Navigate to order success page
       navigate('/order-success', {
         state: {
-          orderId: result.orderId,
-          orderItems,
+          orderId: result.orderId || result.order?.id,
+          orderItems: cartItems.map(item => ({
+            id: item.product.id,
+            name: item.product.name,
+            price: Number(item.product.price),
+            quantity: item.quantity,
+            image: item.product.image_url || '/placeholder.svg'
+          })),
           total,
           customerInfo: formData,
           estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
@@ -243,15 +247,40 @@ const Checkout = () => {
       });
     } catch (error) {
       console.error('Order creation failed:', error);
-      toast({
-        title: "Order Failed",
-        description: "There was an error creating your order. Please try again.",
-        variant: "destructive"
-      });
+      
+      // Handle API error response
+      if (error instanceof Error) {
+        toast({
+          title: "Order Failed",
+          description: error.message.includes('Something went wrong') 
+            ? error.message 
+            : "Something went wrong. Please try again or contact the seller.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Order Failed",
+          description: "Something went wrong. Please try again or contact the seller.",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (cartItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
+          <Button asChild>
+            <Link to="/store/demo">Continue Shopping</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -417,20 +446,13 @@ const Checkout = () => {
               </div>
               
               <div className="lg:hidden mb-8">
-                <OrderSummary 
-                  orderItems={orderItems} 
-                  subtotal={subtotal} 
-                  shipping={shipping} 
-                  total={total}
-                  updateQuantity={updateQuantity}
-                  removeItem={removeItem}
-                />
+                <OrderSummary cartItems={cartItems} total={total} />
               </div>
               
               <Button 
                 type="submit" 
                 className="w-full" 
-                disabled={isSubmitting || orderItems.length === 0}
+                disabled={isSubmitting || cartItems.length === 0}
               >
                 {isSubmitting ? 'Processing Order...' : `Place Order - ₹${total.toLocaleString()}`}
               </Button>
@@ -440,106 +462,56 @@ const Checkout = () => {
         
         {/* Order Summary - Hidden on mobile, shown in form */}
         <div className="hidden lg:block lg:w-1/3">
-          <OrderSummary 
-            orderItems={orderItems} 
-            subtotal={subtotal} 
-            shipping={shipping} 
-            total={total}
-            updateQuantity={updateQuantity}
-            removeItem={removeItem}
-          />
+          <OrderSummary cartItems={cartItems} total={total} />
         </div>
       </div>
     </div>
   );
 };
 
-// Enhanced Order Summary Component with quantity controls
+// Order Summary Component
 interface OrderSummaryProps {
-  orderItems: OrderItem[];
-  subtotal: number;
-  shipping: number;
+  cartItems: any[];
   total: number;
-  updateQuantity: (itemId: number, newQuantity: number) => void;
-  removeItem: (itemId: number) => void;
 }
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({ orderItems, subtotal, shipping, total, updateQuantity, removeItem }) => {
+const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
       <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
       
       <div className="space-y-4 mb-4">
-        {orderItems.map((item) => (
+        {cartItems.map((item) => (
           <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
             <img 
-              src={item.image} 
-              alt={item.name} 
+              src={item.product.image_url || '/placeholder.svg'} 
+              alt={item.product.name} 
               className="w-16 h-16 object-cover rounded-md flex-shrink-0" 
             />
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm">{item.name}</h3>
-              <p className="text-sm text-gray-600">₹{item.price.toLocaleString()}</p>
-              
-              {/* Quantity Controls */}
-              <div className="flex items-center gap-2 mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Minus className="h-3 w-3" />
-                </Button>
-                <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                  className="h-8 w-8 p-0"
-                >
-                  <Plus className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeItem(item.id)}
-                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
+              <h3 className="font-medium text-sm">{item.product.name}</h3>
+              <p className="text-sm text-gray-600">₹{Number(item.product.price).toLocaleString()}</p>
+              <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
             </div>
-            <p className="font-medium text-sm">₹{(item.price * item.quantity).toLocaleString()}</p>
+            <p className="font-medium text-sm">₹{(Number(item.product.price) * item.quantity).toLocaleString()}</p>
           </div>
         ))}
       </div>
       
-      {orderItems.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          <p>Your cart is empty</p>
-          <Button asChild className="mt-4">
-            <Link to="/store/demo">Continue Shopping</Link>
-          </Button>
+      <div className="border-t pt-4 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Subtotal</span>
+          <span>₹{total.toLocaleString()}</span>
         </div>
-      )}
-      
-      {orderItems.length > 0 && (
-        <div className="border-t pt-4 space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
-            <span>₹{subtotal.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Shipping</span>
-            <span className="text-green-600">FREE</span>
-          </div>
-          <div className="flex justify-between font-bold text-lg border-t pt-2">
-            <span>Total</span>
-            <span>₹{total.toLocaleString()}</span>
-          </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Shipping</span>
+          <span className="text-green-600">FREE</span>
         </div>
-      )}
+        <div className="flex justify-between font-bold text-lg border-t pt-2">
+          <span>Total</span>
+          <span>₹{total.toLocaleString()}</span>
+        </div>
+      </div>
     </div>
   );
 };

@@ -447,14 +447,74 @@ app.delete('/api/store/:storeId', authenticateUser, verifyStoreOwnership, async 
 // Order Management Endpoints
 
 // 1. POST /api/orders - Create a new order
-app.post('/api/orders', authenticateUser, async (req, res) => {
+app.post('/api/orders', async (req, res) => {
+  console.log('Order creation request received:', req.body);
+  
   const { storeId, buyerName, buyerEmail, buyerPhone, buyerAddress, totalPrice, items } = req.body;
   
-  if (!storeId || !buyerName || !totalPrice || !items || items.length === 0) {
-    return res.status(400).json({ error: 'Missing required order information' });
+  // Validate required fields
+  if (!storeId) {
+    console.log('Missing storeId');
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Store ID is required' 
+    });
+  }
+  
+  if (!buyerName || !buyerName.trim()) {
+    console.log('Missing buyerName');
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Buyer name is required' 
+    });
+  }
+  
+  if (!buyerPhone || !buyerPhone.trim()) {
+    console.log('Missing buyerPhone');
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Phone number is required' 
+    });
+  }
+  
+  if (!buyerAddress || !buyerAddress.trim()) {
+    console.log('Missing buyerAddress');
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Address is required' 
+    });
+  }
+  
+  if (!totalPrice || totalPrice <= 0) {
+    console.log('Invalid totalPrice:', totalPrice);
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Valid total price is required' 
+    });
+  }
+  
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    console.log('Missing or invalid items:', items);
+    return res.status(400).json({ 
+      error: true, 
+      message: 'Order items are required' 
+    });
+  }
+  
+  // Validate each item has required productId
+  for (const item of items) {
+    if (!item.productId) {
+      console.log('Missing productId in item:', item);
+      return res.status(400).json({ 
+        error: true, 
+        message: 'All items must have a valid product ID' 
+      });
+    }
   }
   
   try {
+    console.log('Creating order in database...');
+    
     // Create the order
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
@@ -472,8 +532,13 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
     
     if (orderError) {
       console.error('Error creating order:', orderError);
-      return res.status(500).json({ error: 'Failed to create order' });
+      return res.status(500).json({ 
+        error: true, 
+        message: 'Something went wrong. Please try again or contact the seller.' 
+      });
     }
+    
+    console.log('Order created successfully:', orderData.id);
     
     // Create order items
     const orderItems = items.map(item => ({
@@ -483,6 +548,8 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
       price_at_purchase: item.priceAtPurchase
     }));
     
+    console.log('Creating order items:', orderItems);
+    
     const { error: itemsError } = await supabase
       .from('order_items')
       .insert(orderItems);
@@ -491,8 +558,13 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
       console.error('Error creating order items:', itemsError);
       // Rollback order creation
       await supabase.from('orders').delete().eq('id', orderData.id);
-      return res.status(500).json({ error: 'Failed to create order items' });
+      return res.status(500).json({ 
+        error: true, 
+        message: 'Something went wrong. Please try again or contact the seller.' 
+      });
     }
+    
+    console.log('Order items created successfully');
     
     // Create initial status history entry
     await supabase
@@ -503,14 +575,20 @@ app.post('/api/orders', authenticateUser, async (req, res) => {
         notes: 'Order placed successfully'
       });
     
+    console.log('Order process completed successfully');
+    
     return res.status(201).json({ 
+      success: true,
       message: 'Order created successfully', 
       orderId: orderData.id,
       order: orderData 
     });
   } catch (error) {
-    console.error('Error in order creation:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Unexpected error in order creation:', error);
+    return res.status(500).json({ 
+      error: true, 
+      message: 'Something went wrong. Please try again or contact the seller.' 
+    });
   }
 });
 
