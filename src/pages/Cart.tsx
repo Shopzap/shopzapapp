@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { formatPrice, safeParsePrice } from '@/utils/priceUtils';
 
 const Cart = () => {
   const { items, updateQuantity, removeFromCart, getTotalPrice, getItemCount } = useCart();
@@ -48,7 +49,6 @@ const Cart = () => {
       return;
     }
     
-    // Navigate to checkout - the checkout page will get items from cart context
     navigate('/checkout');
   };
 
@@ -72,12 +72,10 @@ const Cart = () => {
       <h1 className="text-2xl md:text-3xl font-bold mb-6">Shopping Cart</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Cart Items */}
         <div className="flex-1">
           <div className="space-y-4">
             {items.map((item) => {
-              // Safely handle price formatting
-              const price = item.product?.price ? Number(item.product.price) : 0;
+              const price = safeParsePrice(item.product?.price);
               const itemTotal = price * item.quantity;
               
               return (
@@ -92,7 +90,7 @@ const Cart = () => {
                     <h3 className="font-semibold text-gray-900">{item.product?.name || 'Unknown Product'}</h3>
                     <p className="text-gray-600 text-sm">{item.product?.description || ''}</p>
                     <p className="text-lg font-bold text-gray-900 mt-1">
-                      ₹{price.toLocaleString()}
+                      ₹{formatPrice(price)}
                     </p>
                   </div>
                   
@@ -120,7 +118,7 @@ const Cart = () => {
                   
                   <div className="text-right">
                     <p className="font-bold text-lg">
-                      ₹{itemTotal.toLocaleString()}
+                      ₹{formatPrice(itemTotal)}
                     </p>
                     <Button
                       variant="ghost"
@@ -137,7 +135,6 @@ const Cart = () => {
           </div>
         </div>
         
-        {/* Order Summary */}
         <div className="lg:w-1/3">
           <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
@@ -145,7 +142,7 @@ const Cart = () => {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between">
                 <span className="text-gray-600">Items ({itemCount})</span>
-                <span>₹{total.toLocaleString()}</span>
+                <span>₹{formatPrice(total)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Shipping</span>
@@ -154,7 +151,7 @@ const Cart = () => {
               <div className="border-t pt-3">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>₹{total.toLocaleString()}</span>
+                  <span>₹{formatPrice(total)}</span>
                 </div>
               </div>
             </div>

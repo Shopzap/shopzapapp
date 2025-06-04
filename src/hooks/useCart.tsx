@@ -1,8 +1,8 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
+import { safeParsePrice } from '@/utils/priceUtils';
 
 interface CartItem {
   id: string;
@@ -193,8 +193,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const getTotalPrice = () => {
     return items.reduce((total, item) => {
-      // Safely handle undefined or null prices
-      const price = item.product?.price ? Number(item.product.price) : 0;
+      const price = safeParsePrice(item.product?.price);
       const quantity = item.quantity || 0;
       return total + (price * quantity);
     }, 0);

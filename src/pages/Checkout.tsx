@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
+import { formatPrice, safeParsePrice } from '@/utils/priceUtils';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -59,7 +59,6 @@ const Checkout = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Use cart items or redirect to cart if empty
   React.useEffect(() => {
     if (cartItems.length === 0) {
       toast({
@@ -121,7 +120,6 @@ const Checkout = () => {
       [name]: value
     });
     
-    // Clear error when user starts typing
     if (errors[name as keyof FormErrors]) {
       setErrors({
         ...errors,
@@ -140,7 +138,6 @@ const Checkout = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!validateForm()) {
       toast({
         title: "Please fill all required fields",
@@ -150,7 +147,6 @@ const Checkout = () => {
       return;
     }
 
-    // Check if cart has items
     if (cartItems.length === 0) {
       toast({
         title: "Cart is empty",
@@ -160,8 +156,7 @@ const Checkout = () => {
       return;
     }
 
-    // Validate that all products have valid IDs and prices
-    const invalidProducts = cartItems.filter(item => !item.product?.id || !item.product?.price);
+    const invalidProducts = cartItems.filter(item => !item.product?.id || safeParsePrice(item.product?.price) === 0);
     if (invalidProducts.length > 0) {
       toast({
         title: "Invalid products in cart",
@@ -175,7 +170,6 @@ const Checkout = () => {
     console.log('Starting order creation with cart items:', cartItems);
     
     try {
-      // Create order data with safe price handling
       const orderData = {
         storeId: cartItems[0]?.product?.store_id || 'demo-store-id',
         buyerName: formData.fullName,
@@ -186,13 +180,12 @@ const Checkout = () => {
         items: cartItems.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          priceAtPurchase: Number(item.product.price || 0)
+          priceAtPurchase: safeParsePrice(item.product.price)
         }))
       };
 
       console.log('Order data prepared:', orderData);
 
-      // Create order via API
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -208,10 +201,8 @@ const Checkout = () => {
         throw new Error(result.message || result.error || 'Failed to create order');
       }
       
-      // Clear the cart after successful order
       await clearCart();
       
-      // Reset form
       setFormData({
         fullName: '',
         email: '',
@@ -223,20 +214,18 @@ const Checkout = () => {
         paymentMethod: 'cod'
       });
 
-      // Show success message
       toast({
         title: "✅ Order Placed!",
         description: "You will receive confirmation via email shortly.",
       });
       
-      // Navigate to order success page
       navigate('/order-success', {
         state: {
           orderId: result.orderId || result.order?.id,
           orderItems: cartItems.map(item => ({
             id: item.product.id,
             name: item.product.name,
-            price: Number(item.product.price || 0),
+            price: safeParsePrice(item.product.price),
             quantity: item.quantity,
             image: item.product.image_url || '/placeholder.svg'
           })),
@@ -248,7 +237,6 @@ const Checkout = () => {
     } catch (error) {
       console.error('Order creation failed:', error);
       
-      // Handle API error response
       if (error instanceof Error) {
         toast({
           title: "Order Failed",
@@ -454,7 +442,7 @@ const Checkout = () => {
                 className="w-full" 
                 disabled={isSubmitting || cartItems.length === 0}
               >
-                {isSubmitting ? 'Processing Order...' : `Place Order - ₹${total.toLocaleString()}`}
+                {isSubmitting ? 'Processing Order...' : `Place Order - ₹${formatPrice(total)}`}
               </Button>
             </form>
           </div>
@@ -482,8 +470,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
       
       <div className="space-y-4 mb-4">
         {cartItems.map((item) => {
-          // Safely handle price formatting
-          const price = item.product?.price ? Number(item.product.price) : 0;
+          const price = safeParsePrice(item.product?.price);
           const itemTotal = price * item.quantity;
           
           return (
@@ -495,10 +482,10 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
               />
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-sm">{item.product?.name || 'Unknown Product'}</h3>
-                <p className="text-sm text-gray-600">₹{price.toLocaleString()}</p>
+                <p className="text-sm text-gray-600">₹{formatPrice(price)}</p>
                 <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
               </div>
-              <p className="font-medium text-sm">₹{itemTotal.toLocaleString()}</p>
+              <p className="font-medium text-sm">₹{formatPrice(itemTotal)}</p>
             </div>
           );
         })}
@@ -507,7 +494,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
       <div className="border-t pt-4 space-y-2">
         <div className="flex justify-between">
           <span className="text-gray-600">Subtotal</span>
-          <span>₹{total.toLocaleString()}</span>
+          <span>₹{formatPrice(total)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">Shipping</span>
@@ -515,7 +502,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
         </div>
         <div className="flex justify-between font-bold text-lg border-t pt-2">
           <span>Total</span>
-          <span>₹{total.toLocaleString()}</span>
+          <span>₹{formatPrice(total)}</span>
         </div>
       </div>
     </div>
