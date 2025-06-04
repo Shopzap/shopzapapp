@@ -9,6 +9,89 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      about_pages: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          profile_image_url: string | null
+          store_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          profile_image_url?: string | null
+          store_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          profile_image_url?: string | null
+          store_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "about_pages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          session_id: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity?: number
+          session_id: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          session_id?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string
@@ -223,6 +306,7 @@ export type Database = {
           business_email: string
           created_at: string | null
           description: string | null
+          font_style: string | null
           id: string
           is_active: boolean | null
           logo_image: string | null
@@ -241,6 +325,7 @@ export type Database = {
           business_email: string
           created_at?: string | null
           description?: string | null
+          font_style?: string | null
           id?: string
           is_active?: boolean | null
           logo_image?: string | null
@@ -259,6 +344,7 @@ export type Database = {
           business_email?: string
           created_at?: string | null
           description?: string | null
+          font_style?: string | null
           id?: string
           is_active?: boolean | null
           logo_image?: string | null

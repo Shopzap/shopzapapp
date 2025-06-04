@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import StorefrontHeader from "./StorefrontHeader";
 import ProductGrid from "./ProductGrid";
 import StorefrontFilters from "./StorefrontFilters";
+import StorefrontNavbar from "./StorefrontNavbar";
 import { Tables } from "@/integrations/supabase/types";
 
 interface StorefrontContentProps {
@@ -15,6 +16,7 @@ interface StorefrontContentProps {
     primary_color?: string;
     secondary_color?: string;
     theme_style?: 'card' | 'list';
+    font_style?: string;
   };
   products: Tables<'products'>[];
   isLoading?: boolean;
@@ -30,6 +32,9 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Apply font style to the entire storefront
+  const fontClass = store.font_style ? `font-${store.font_style.toLowerCase()}` : 'font-poppins';
 
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products : [];
@@ -112,7 +117,9 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen bg-gray-50 ${fontClass}`}>
+      <StorefrontNavbar storeName={store.name} />
+      
       <StorefrontHeader
         store={store}
         productCount={filteredAndSortedProducts.length}
@@ -143,7 +150,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
           )}
 
           {/* Products Grid */}
-          <div className="flex-1">
+          <div className="flex-1" id="products-section">
             {isLoading ? (
               <div className="text-center py-16">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Loading products...</h3>

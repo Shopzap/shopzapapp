@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
 import NotFound from "./NotFound";
 import StorefrontAbout from "@/components/storefront/StorefrontAbout";
-import StorefrontHeader from "@/components/storefront/StorefrontHeader";
+import StorefrontNavbar from "@/components/storefront/StorefrontNavbar";
 
 const StorefrontAboutPage = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -63,27 +63,9 @@ const StorefrontAboutPage = () => {
     return <NotFound />;
   }
 
-  // Extract theme data from store.theme if it exists
-  const storeWithTheme = {
-    ...store,
-    primary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).primary_color || '#6c5ce7' : '#6c5ce7',
-    secondary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).secondary_color || '#a29bfe' : '#a29bfe',
-    theme_style: store.theme && typeof store.theme === 'object' ? (store.theme as any).theme_layout || 'card' : 'card'
-  };
-
   return (
     <div>
-      <StorefrontHeader
-        store={storeWithTheme}
-        productCount={0}
-        viewMode="grid"
-        onViewModeChange={() => {}}
-        sortBy="newest"
-        onSortChange={() => {}}
-        showFilters={false}
-        onToggleFilters={() => {}}
-        cartItemCount={0}
-      />
+      <StorefrontNavbar storeName={store.name} />
       <StorefrontAbout store={store} />
     </div>
   );

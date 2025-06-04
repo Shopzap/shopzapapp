@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
+import Cart from "./pages/Cart";
 const Storefront = lazy(() => import("./pages/Storefront"));
 const StorefrontAboutPage = lazy(() => import("./pages/StorefrontAbout"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
@@ -34,6 +34,7 @@ import OrderRedirect from "./pages/OrderRedirect";
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
+import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
@@ -48,6 +49,9 @@ const AppContent = () => (
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/features" element={<Features />} />
     <Route path="*" element={<NotFound />} />
+
+    {/* Cart route */}
+    <Route path="/cart" element={<Cart />} />
 
     {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
     <Route path="/auth" element={<Auth />} />
@@ -119,11 +123,13 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <StoreProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-            <Toaster />
-            <Sonner />
+            <CartProvider>
+              <ErrorBoundary>
+                <AppContent />
+              </ErrorBoundary>
+              <Toaster />
+              <Sonner />
+            </CartProvider>
           </StoreProvider>
         </AuthProvider>
       </BrowserRouter>

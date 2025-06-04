@@ -3,6 +3,8 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Mail, Phone, Clock, Star } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StorefrontAboutProps {
   store: {
@@ -16,24 +18,45 @@ interface StorefrontAboutProps {
     address: string | null;
     tagline: string | null;
     created_at: string | null;
+    font_style?: string;
   };
 }
 
 const StorefrontAbout: React.FC<StorefrontAboutProps> = ({ store }) => {
+  // Fetch about page content
+  const { data: aboutPage } = useQuery({
+    queryKey: ['aboutPage', store.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('about_pages')
+        .select('*')
+        .eq('store_id', store.id)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      return data;
+    },
+  });
+
+  const fontClass = store.font_style ? `font-${store.font_style.toLowerCase().replace(' ', '')}` : 'font-poppins';
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).getFullYear();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className={`min-h-screen bg-gray-50 py-8 ${fontClass}`}>
       <div className="container mx-auto px-4 md:px-8 max-w-4xl">
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            {store.logo_image ? (
+            {(aboutPage?.profile_image_url || store.logo_image) ? (
               <img
-                src={store.logo_image}
+                src={aboutPage?.profile_image_url || store.logo_image}
                 alt={store.name}
                 className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
               />
@@ -45,7 +68,9 @@ const StorefrontAbout: React.FC<StorefrontAboutProps> = ({ store }) => {
               </div>
             )}
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">About {store.name}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            {aboutPage?.title || `About ${store.name}`}
+          </h1>
           {store.tagline && (
             <p className="text-xl text-gray-600 mb-6">{store.tagline}</p>
           )}
@@ -73,8 +98,10 @@ const StorefrontAbout: React.FC<StorefrontAboutProps> = ({ store }) => {
             <CardContent className="p-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Our Story</h2>
               <div className="prose prose-gray max-w-none">
-                {store.description ? (
-                  <p className="text-gray-600 leading-relaxed">{store.description}</p>
+                {aboutPage?.bio || store.description ? (
+                  <p className="text-gray-600 leading-relaxed">
+                    {aboutPage?.bio || store.description}
+                  </p>
                 ) : (
                   <p className="text-gray-600 leading-relaxed">
                     Welcome to {store.name}! We're passionate about bringing you the best products 
