@@ -63,7 +63,7 @@ const Storefront = () => {
     retryDelay: 1000,
   });
   
-  // Fetch products for the store
+  // Fetch products for the store with improved error handling
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -84,25 +84,32 @@ const Storefront = () => {
           
         if (error) {
           console.error('Storefront: Error fetching products', error);
-          // Don't throw error, return empty array instead
+          // Return empty array instead of throwing error to prevent crashes
           return [];
         }
         
         console.log('Storefront: Products data received', data?.length || 0, 'products');
         console.log('Storefront: Raw products data', data);
         
-        // Ensure data is properly formatted
+        // Ensure data is properly formatted and filter out invalid products
         const validProducts = (data || []).filter(product => 
           product && 
           product.id && 
           product.name && 
-          typeof product.price !== 'undefined'
+          typeof product.price !== 'undefined' &&
+          product.price !== null
         );
         
         console.log('Storefront: Valid products after filtering', validProducts.length);
+        
+        if (validProducts.length === 0) {
+          console.log('Storefront: No valid products found for this store');
+        }
+        
         return validProducts;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
+        // Return empty array to prevent crashes
         return [];
       }
     },
@@ -167,7 +174,7 @@ const Storefront = () => {
     font_style: store.font_style || 'Poppins'
   };
 
-  // Ensure products is always an array
+  // Ensure products is always an array and show appropriate message if empty
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
 
   return (

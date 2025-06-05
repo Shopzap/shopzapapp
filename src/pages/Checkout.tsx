@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { formatPrice, safeParsePrice, isValidProduct } from '@/utils/priceUtils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -184,36 +185,48 @@ const Checkout = () => {
     console.log('Starting order creation with cart items:', cartItems);
     
     try {
-      const orderData = {
-        storeId: cartItems[0]?.product?.store_id || 'demo-store-id',
-        buyerName: formData.fullName,
-        buyerEmail: formData.email,
-        buyerPhone: formData.phone,
-        buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
-        totalPrice: total,
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          priceAtPurchase: safeParsePrice(item.product.price)
-        }))
-      };
+      // Create order directly in Supabase
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          store_id: cartItems[0]?.product?.store_id || 'demo-store-id',
+          buyer_name: formData.fullName,
+          buyer_email: formData.email,
+          buyer_phone: formData.phone,
+          buyer_address: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+          total_price: total,
+          status: 'pending'
+        })
+        .select()
+        .single();
 
-      console.log('Order data prepared:', orderData);
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData)
-      });
-
-      const result = await response.json();
-      console.log('Order creation response:', result);
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || 'Failed to create order');
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+        throw new Error('Failed to create order');
       }
+
+      console.log('Order created successfully:', orderData.id);
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: orderData.id,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price_at_purchase: safeParsePrice(item.product.price)
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        // Rollback order creation
+        await supabase.from('orders').delete().eq('id', orderData.id);
+        throw new Error('Failed to create order items');
+      }
+
+      console.log('Order items created successfully');
       
       await clearCart();
       
@@ -229,13 +242,13 @@ const Checkout = () => {
       });
 
       toast({
-        title: "✅ Order Placed!",
-        description: "You will receive confirmation via email shortly.",
+        title: "✅ Order placed successfully!",
+        description: "You will receive a confirmation email soon.",
       });
       
       navigate('/order-success', {
         state: {
-          orderId: result.orderId || result.order?.id,
+          orderId: orderData.id,
           orderItems: cartItems.map(item => ({
             id: item.product.id,
             name: item.product.name,
@@ -251,21 +264,11 @@ const Checkout = () => {
     } catch (error) {
       console.error('Order creation failed:', error);
       
-      if (error instanceof Error) {
-        toast({
-          title: "Order Failed",
-          description: error.message.includes('Something went wrong') 
-            ? error.message 
-            : "Something went wrong. Please try again or contact the seller.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Order Failed",
-          description: "Something went wrong. Please try again or contact the seller.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "⚠️ Sorry, order could not be placed.",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
