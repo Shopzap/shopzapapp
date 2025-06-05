@@ -501,13 +501,29 @@ app.post('/api/orders', async (req, res) => {
     });
   }
   
-  // Validate each item has required productId
+  // Validate each item has required productId and valid pricing
   for (const item of items) {
     if (!item.productId) {
       console.log('Missing productId in item:', item);
       return res.status(400).json({ 
         error: true, 
         message: 'All items must have a valid product ID' 
+      });
+    }
+    
+    if (!item.priceAtPurchase || item.priceAtPurchase <= 0) {
+      console.log('Invalid price in item:', item);
+      return res.status(400).json({ 
+        error: true, 
+        message: 'All items must have valid pricing' 
+      });
+    }
+    
+    if (!item.quantity || item.quantity <= 0) {
+      console.log('Invalid quantity in item:', item);
+      return res.status(400).json({ 
+        error: true, 
+        message: 'All items must have valid quantity' 
       });
     }
   }

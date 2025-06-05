@@ -1,8 +1,9 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { safeParsePrice } from '@/utils/priceUtils';
+import { safeParsePrice, isValidProduct } from '@/utils/priceUtils';
 
 interface CartItem {
   id: string;
@@ -63,15 +64,22 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) throw error;
 
-      const cartItems: CartItem[] = (data || []).map(item => ({
-        id: item.id,
-        product: item.products as Tables<'products'>,
-        quantity: item.quantity
-      }));
+      const cartItems: CartItem[] = (data || [])
+        .filter(item => item.products && isValidProduct(item.products))
+        .map(item => ({
+          id: item.id,
+          product: item.products as Tables<'products'>,
+          quantity: item.quantity
+        }));
 
       setItems(cartItems);
     } catch (error) {
       console.error('Error loading cart items:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load cart items.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -83,6 +91,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = async (product: Tables<'products'>, quantity = 1) => {
     try {
+      if (!isValidProduct(product)) {
+        toast({
+          title: "Product unavailable",
+          description: "This product is not available right now.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const sessionId = getSessionId();
       
       // Check if item already exists in cart
@@ -193,6 +210,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const getTotalPrice = () => {
     return items.reduce((total, item) => {
+      if (!isValidProduct(item.product)) {
+        return total;
+      }
       const price = safeParsePrice(item.product?.price);
       const quantity = item.quantity || 0;
       return total + (price * quantity);

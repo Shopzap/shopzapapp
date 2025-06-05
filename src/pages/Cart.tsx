@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { formatPrice, safeParsePrice } from '@/utils/priceUtils';
+import { formatPrice, safeParsePrice, isValidProduct } from '@/utils/priceUtils';
 
 const Cart = () => {
   const { items, updateQuantity, removeFromCart, getTotalPrice, getItemCount } = useCart();
@@ -48,6 +48,17 @@ const Cart = () => {
       });
       return;
     }
+
+    // Check for invalid products before checkout
+    const invalidProducts = items.filter(item => !isValidProduct(item.product));
+    if (invalidProducts.length > 0) {
+      toast({
+        title: "Some products are unavailable",
+        description: "Please remove unavailable products before checkout.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     navigate('/checkout');
   };
@@ -75,11 +86,12 @@ const Cart = () => {
         <div className="flex-1">
           <div className="space-y-4">
             {items.map((item) => {
+              const isProductValid = isValidProduct(item.product);
               const price = safeParsePrice(item.product?.price);
               const itemTotal = price * item.quantity;
               
               return (
-                <div key={item.id} className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border">
+                <div key={item.id} className={`flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border ${!isProductValid ? 'border-red-200 bg-red-50' : ''}`}>
                   <img
                     src={item.product?.image_url || '/placeholder.svg'}
                     alt={item.product?.name || 'Product'}
@@ -87,9 +99,15 @@ const Cart = () => {
                   />
                   
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.product?.name || 'Unknown Product'}</h3>
-                    <p className="text-gray-600 text-sm">{item.product?.description || ''}</p>
-                    <p className="text-lg font-bold text-gray-900 mt-1">
+                    <h3 className={`font-semibold ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
+                      {item.product?.name || 'Unknown Product'}
+                    </h3>
+                    {!isProductValid ? (
+                      <p className="text-red-500 text-sm">This product is not available anymore</p>
+                    ) : (
+                      <p className="text-gray-600 text-sm">{item.product?.description || ''}</p>
+                    )}
+                    <p className={`text-lg font-bold mt-1 ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
                       ₹{formatPrice(price)}
                     </p>
                   </div>
@@ -100,6 +118,7 @@ const Cart = () => {
                       size="sm"
                       onClick={() => handleQuantityUpdate(item.product.id, item.quantity - 1)}
                       className="h-8 w-8 p-0"
+                      disabled={!isProductValid}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -111,14 +130,15 @@ const Cart = () => {
                       size="sm"
                       onClick={() => handleQuantityUpdate(item.product.id, item.quantity + 1)}
                       className="h-8 w-8 p-0"
+                      disabled={!isProductValid}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
                   
                   <div className="text-right">
-                    <p className="font-bold text-lg">
-                      ₹{formatPrice(itemTotal)}
+                    <p className={`font-bold text-lg ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
+                      {isProductValid ? `₹${formatPrice(itemTotal)}` : 'N/A'}
                     </p>
                     <Button
                       variant="ghost"
@@ -159,7 +179,7 @@ const Cart = () => {
             <Button 
               className="w-full" 
               onClick={handleCheckout}
-              disabled={items.length === 0}
+              disabled={items.length === 0 || items.some(item => !isValidProduct(item.product))}
             >
               Proceed to Checkout
             </Button>

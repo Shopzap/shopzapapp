@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import { formatPrice, safeParsePrice } from '@/utils/priceUtils';
+import { formatPrice, safeParsePrice, isValidProduct } from '@/utils/priceUtils';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -67,6 +67,20 @@ const Checkout = () => {
         variant: "destructive"
       });
       navigate('/cart');
+      return;
+    }
+
+    // Check for invalid products
+    const invalidProducts = cartItems.filter(item => !isValidProduct(item.product));
+    if (invalidProducts.length > 0) {
+      toast({
+        title: "Some products are unavailable",
+        description: "This product is not available anymore. Please contact the seller.",
+        variant: "destructive"
+      });
+      setTimeout(() => {
+        navigate('/store/demo');
+      }, 3000);
     }
   }, [cartItems, navigate, toast]);
 
@@ -156,7 +170,7 @@ const Checkout = () => {
       return;
     }
 
-    const invalidProducts = cartItems.filter(item => !item.product?.id || safeParsePrice(item.product?.price) === 0);
+    const invalidProducts = cartItems.filter(item => !isValidProduct(item.product));
     if (invalidProducts.length > 0) {
       toast({
         title: "Invalid products in cart",
@@ -470,22 +484,31 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cartItems, total }) => {
       
       <div className="space-y-4 mb-4">
         {cartItems.map((item) => {
+          const isProductValid = isValidProduct(item.product);
           const price = safeParsePrice(item.product?.price);
           const itemTotal = price * item.quantity;
           
           return (
-            <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+            <div key={item.id} className={`flex items-start gap-3 p-3 border rounded-lg ${!isProductValid ? 'border-red-200 bg-red-50' : ''}`}>
               <img 
                 src={item.product?.image_url || '/placeholder.svg'} 
                 alt={item.product?.name || 'Product'} 
                 className="w-16 h-16 object-cover rounded-md flex-shrink-0" 
               />
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-sm">{item.product?.name || 'Unknown Product'}</h3>
-                <p className="text-sm text-gray-600">₹{formatPrice(price)}</p>
+                <h3 className={`font-medium text-sm ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
+                  {item.product?.name || 'Unknown Product'}
+                </h3>
+                {!isProductValid ? (
+                  <p className="text-sm text-red-500">Not available</p>
+                ) : (
+                  <p className="text-sm text-gray-600">₹{formatPrice(price)}</p>
+                )}
                 <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
               </div>
-              <p className="font-medium text-sm">₹{formatPrice(itemTotal)}</p>
+              <p className={`font-medium text-sm ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
+                {isProductValid ? `₹${formatPrice(itemTotal)}` : 'N/A'}
+              </p>
             </div>
           );
         })}

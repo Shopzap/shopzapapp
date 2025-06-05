@@ -40,3 +40,16 @@ export const safeParsePrice = (price: number | string | null | undefined): numbe
   
   return numericPrice;
 };
+
+export const isValidProduct = (product: any): boolean => {
+  return product && 
+         product.id && 
+         typeof product.price !== 'undefined' && 
+         product.price !== null &&
+         !isNaN(safeParsePrice(product.price));
+};
+
+export const formatPriceSafe = (price: any): string => {
+  const numericPrice = safeParsePrice(price);
+  return typeof numericPrice === 'number' ? formatPrice(numericPrice) : 'N/A';
+};
