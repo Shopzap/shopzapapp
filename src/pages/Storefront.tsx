@@ -63,7 +63,7 @@ const Storefront = () => {
     retryDelay: 1000,
   });
   
-  // Fetch products for the store with improved error handling
+  // Fetch products for the store - improved for public access
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -75,11 +75,13 @@ const Storefront = () => {
       }
       
       try {
+        // Fetch products without authentication requirements
+        // Filter by store_id and only show active/published products
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
-          .eq('status', 'active')
+          .eq('status', 'active') // Only show active products
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -88,23 +90,27 @@ const Storefront = () => {
           return [];
         }
         
-        console.log('Storefront: Products data received', data?.length || 0, 'products');
-        console.log('Storefront: Raw products data', data);
+        console.log('Storefront: Raw products fetched:', data?.length || 0);
+        console.log('Storefront: Product data preview:', data?.slice(0, 2));
         
         // Ensure data is properly formatted and filter out invalid products
-        const validProducts = (data || []).filter(product => 
-          product && 
-          product.id && 
-          product.name && 
-          typeof product.price !== 'undefined' &&
-          product.price !== null
-        );
+        const validProducts = (data || []).filter(product => {
+          const isValid = product && 
+            product.id && 
+            product.name && 
+            typeof product.price !== 'undefined' &&
+            product.price !== null &&
+            product.store_id === store.id; // Double-check store ownership
+          
+          if (!isValid) {
+            console.log('Storefront: Invalid product filtered out:', product);
+          }
+          
+          return isValid;
+        });
         
-        console.log('Storefront: Valid products after filtering', validProducts.length);
-        
-        if (validProducts.length === 0) {
-          console.log('Storefront: No valid products found for this store');
-        }
+        console.log('Storefront: Valid products after filtering:', validProducts.length);
+        console.log('Storefront: Products will be displayed for store:', store.name);
         
         return validProducts;
       } catch (err) {
@@ -128,8 +134,13 @@ const Storefront = () => {
       console.error('Storefront: Products error detected', productsError);
     }
     
-    if (!productsLoading && (!products || products.length === 0)) {
-      console.log('Storefront: No products found or still loading');
+    if (!productsLoading) {
+      const productCount = products?.length || 0;
+      console.log(`Storefront: Final product count for display: ${productCount}`);
+      
+      if (productCount === 0) {
+        console.log('Storefront: No products to display - will show empty state');
+      }
     }
   }, [storeError, productsError, productsLoading, products]);
   
@@ -176,6 +187,8 @@ const Storefront = () => {
 
   // Ensure products is always an array and show appropriate message if empty
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
+  
+  console.log('Storefront: Rendering with products count:', safeProducts.length);
 
   return (
     <StorefrontContent 
