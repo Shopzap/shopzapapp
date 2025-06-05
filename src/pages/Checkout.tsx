@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -185,11 +186,18 @@ const Checkout = () => {
     console.log('Starting order creation with cart items:', cartItems);
     
     try {
-      // Create order directly in Supabase
+      // Get the store_id from the first cart item's product
+      const storeId = cartItems[0]?.product?.store_id;
+      
+      if (!storeId) {
+        throw new Error('Store ID not found in cart items');
+      }
+
+      // Create order directly in Supabase with correct store_id
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
-          store_id: cartItems[0]?.product?.store_id || 'demo-store-id',
+          store_id: storeId,
           buyer_name: formData.fullName,
           buyer_email: formData.email,
           buyer_phone: formData.phone,

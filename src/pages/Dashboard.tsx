@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalLink } from 'lucide-react';
 
 import StoreStats from '@/components/dashboard/StoreStats';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import RecentOrdersList from '@/components/dashboard/RecentOrdersList';
 import { siteConfig } from '@/config/site';
 
 const Dashboard = () => {
@@ -61,7 +62,7 @@ const Dashboard = () => {
           setProductCount(productsCount);
         }
         
-        // Fetch all orders from 'orders' table where store_id = current_user.store_id
+        // Fetch orders from 'orders' table where store_id = store.id
         const { data: ordersData, error: ordersError, count: totalOrdersCount } = await supabase
           .from('orders')
           .select('*', { count: 'exact' })
@@ -192,32 +193,7 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {recentOrders.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {recentOrders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.customer_email}</TableCell>
-                        <TableCell>${order.total_amount.toFixed(2)}</TableCell>
-                        <TableCell>{order.status}</TableCell>
-                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No recent orders.</p>
-            )}
+            <RecentOrdersList orders={recentOrders} onCopyStoreLink={handleCopyStoreLink} />
           </CardContent>
         </Card>
         
