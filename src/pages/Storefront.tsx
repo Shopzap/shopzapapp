@@ -63,7 +63,7 @@ const Storefront = () => {
     retryDelay: 1000,
   });
   
-  // Fetch products for the store - PUBLIC ACCESS with published filter
+  // Fetch products for the store - PUBLIC ACCESS with simplified filtering
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -75,51 +75,69 @@ const Storefront = () => {
       }
       
       try {
-        // Fetch products with explicit filters - NO AUTHENTICATION REQUIRED
-        // This is a public storefront, so we don't check user sessions
+        // Fetch ALL products for this store first, then filter in JavaScript
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
-          .eq('status', 'active')
-          // Use COALESCE to handle null is_published values, defaulting to true
-          .or('is_published.is.true,is_published.is.null')
           .order('created_at', { ascending: false });
           
         if (error) {
           console.error('Storefront: Error fetching products', error);
-          // Return empty array instead of throwing error to prevent crashes
           return [];
         }
         
-        console.log('Storefront: Raw products fetched:', data?.length || 0);
-        console.log('Storefront: Products data details:', data);
+        console.log('Storefront: ALL products fetched from DB:', data?.length || 0);
+        console.log('Storefront: Raw product data:', data);
         
-        // Filter out any invalid products and ensure all have required fields
-        const validProducts = (data || []).filter(product => {
-          const isValid = product && 
-            product.id && 
-            product.name && 
-            typeof product.price !== 'undefined' &&
-            product.price !== null &&
-            product.store_id === store.id &&
-            product.status === 'active' &&
-            // Handle both explicit true and null (default to published)
-            (product.is_published === true || product.is_published === null);
+        if (!data || data.length === 0) {
+          console.log('Storefront: No products found in database for this store');
+          return [];
+        }
+        
+        // Filter products for public display with detailed logging
+        const publicProducts = data.filter(product => {
+          console.log(`Storefront: Checking product "${product.name}":`, {
+            id: product.id,
+            status: product.status,
+            is_published: product.is_published,
+            store_id: product.store_id
+          });
           
-          if (!isValid) {
-            console.log('Storefront: Invalid or unpublished product filtered out:', product);
+          // Basic validation
+          if (!product || !product.id || !product.name) {
+            console.log('Storefront: Product missing basic data:', product);
+            return false;
           }
           
-          return isValid;
+          // Check if product belongs to this store
+          if (product.store_id !== store.id) {
+            console.log('Storefront: Product belongs to different store:', product.store_id, 'vs', store.id);
+            return false;
+          }
+          
+          // Only show active products (allow null status to default to active)
+          if (product.status && product.status !== 'active') {
+            console.log('Storefront: Product not active, status:', product.status);
+            return false;
+          }
+          
+          // Show published products (treat null as published by default)
+          if (product.is_published === false) {
+            console.log('Storefront: Product explicitly unpublished');
+            return false;
+          }
+          
+          console.log('Storefront: Product passed all filters:', product.name);
+          return true;
         });
         
-        console.log('Storefront: Valid published products for public display:', validProducts.length);
+        console.log('Storefront: Products after filtering for public display:', publicProducts.length);
+        console.log('Storefront: Final public products:', publicProducts);
         
-        return validProducts;
+        return publicProducts;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
-        // Return empty array to prevent crashes
         return [];
       }
     },
@@ -143,7 +161,7 @@ const Storefront = () => {
       console.log(`Storefront: Final PUBLIC product count for display: ${productCount}`);
       
       if (productCount === 0) {
-        console.log('Storefront: No published products to display - will show empty state');
+        console.log('Storefront: No products to display - will show empty state');
       }
     }
   }, [storeError, productsError, productsLoading, products]);
@@ -192,7 +210,7 @@ const Storefront = () => {
   // Ensure products is always an array and show appropriate message if empty
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  console.log('Storefront: Rendering PUBLIC storefront with published products count:', safeProducts.length);
+  console.log('Storefront: Rendering PUBLIC storefront with product count:', safeProducts.length);
 
   return (
     <StorefrontContent 

@@ -10,11 +10,16 @@ interface ProductGridProps {
 
 const ProductGrid: React.FC<ProductGridProps> = ({ products, viewMode = 'grid' }) => {
   console.log('ProductGrid: Rendering with products:', products?.length || 0);
-  console.log('ProductGrid: Products data:', products);
+  console.log('ProductGrid: Product details:', products?.map(p => ({ 
+    id: p.id, 
+    name: p.name, 
+    status: p.status, 
+    is_published: p.is_published 
+  })));
   
   // Handle empty products case - improved messaging for public storefront
   if (!products || products.length === 0) {
-    console.log('ProductGrid: No published products to display, showing empty state');
+    console.log('ProductGrid: No products to display, showing empty state');
     return (
       <div className="text-center py-16 px-4">
         <div className="text-gray-400 mb-4">
@@ -31,7 +36,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products, viewMode = 'grid' }
     );
   }
 
-  console.log('ProductGrid: Displaying published products in', viewMode, 'mode');
+  console.log('ProductGrid: Displaying products in', viewMode, 'mode');
 
   if (viewMode === 'list') {
     return (
