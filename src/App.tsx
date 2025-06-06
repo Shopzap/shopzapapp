@@ -1,9 +1,11 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import React, { Suspense, lazy } from 'react';
+import { getSubdomain } from "@/utils/subdomainUtils";
 
 // Pages
 import Index from "./pages/Index";
@@ -41,80 +43,146 @@ import DashboardLayout from "./components/layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
 
+// Subdomain-based store component
+const SubdomainStorefront = () => {
+  const subdomain = getSubdomain();
+  
+  if (!subdomain) {
+    return <NotFound />;
+  }
+
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+        <Storefront storeName={subdomain} />
+      </Suspense>
+    </ErrorBoundary>
+  );
+};
+
+const SubdomainStorefrontAbout = () => {
+  const subdomain = getSubdomain();
+  
+  if (!subdomain) {
+    return <NotFound />;
+  }
+
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
+        <StorefrontAboutPage storeName={subdomain} />
+      </Suspense>
+    </ErrorBoundary>
+  );
+};
+
 // Create a separate App component wrapper to ensure proper provider nesting
-const AppContent = () => (
-  <Routes>
-    {/* Public routes */}
-    <Route path="/" element={<Index />} />
-    <Route path="/pricing" element={<Pricing />} />
-    <Route path="/features" element={<Features />} />
-    <Route path="*" element={<NotFound />} />
+const AppContent = () => {
+  const subdomain = getSubdomain();
+  
+  // If we're on a subdomain, show the subdomain-specific routes
+  if (subdomain) {
+    return (
+      <Routes>
+        <Route path="/" element={<SubdomainStorefront />} />
+        <Route path="/about" element={<SubdomainStorefrontAbout />} />
+        <Route path="/product/:productId" element={
+          <ErrorBoundary>
+            <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+              <ProductDetails />
+            </Suspense>
+          </ErrorBoundary>
+        } />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/order-success" element={<OrderSuccess />} />
+        <Route path="/track-order" element={<OrderTracking />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
 
-    {/* Cart route */}
-    <Route path="/cart" element={<Cart />} />
+  // Main app routes for non-subdomain URLs
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<Index />} />
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/features" element={<Features />} />
+      <Route path="*" element={<NotFound />} />
 
-    {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/verify" element={<Verify />} /> 
-    <Route path="/auth-callback" element={<AuthCallback />} />
-    <Route path="/store/:storeName" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-          <Storefront />
-        </Suspense>
-      </ErrorBoundary>
-    } />
-    <Route path="/store/:storeName/about" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
-          <StorefrontAboutPage />
-        </Suspense>
-      </ErrorBoundary>
-    } />
-    <Route path="/product/:productId" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-          <ProductDetails />
-        </Suspense>
-      </ErrorBoundary>
-    } />
-    <Route path="/checkout" element={<Checkout />} />
-    <Route path="/order-success" element={<OrderSuccess />} />
-    <Route path="/order" element={<OrderRedirect />} />
-    <Route path="/track-order" element={<OrderTracking />} />
-    
-    {/* Protected routes */}
-    <Route path="/onboarding" element={
-      <ProtectedRoute>
-        <Onboarding />
-      </ProtectedRoute>
-    } />
-    <Route path="/store-builder" element={
-      <ProtectedRoute>
-        <StoreBuilder />
-      </ProtectedRoute>
-    } />
-    <Route path="/embed-generator" element={
-      <ProtectedRoute>
-        <EmbedGenerator />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/*" element={
-      <ProtectedRoute>
-        <Routes>
-          <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductManager />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="customize-store" element={<CustomizeStore />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </ProtectedRoute>
-    } />
-  </Routes>
-);
+      {/* Cart route */}
+      <Route path="/cart" element={<Cart />} />
+
+      {/* Legacy store routes - /store/{slug} pattern */}
+      <Route path="/store/:storeName" element={
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+            <Storefront />
+          </Suspense>
+        </ErrorBoundary>
+      } />
+      <Route path="/store/:storeName/about" element={
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
+            <StorefrontAboutPage />
+          </Suspense>
+        </ErrorBoundary>
+      } />
+
+      {/* Product details route */}
+      <Route path="/product/:productId" element={
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+            <ProductDetails />
+          </Suspense>
+        </ErrorBoundary>
+      } />
+
+      {/* Auth routes */}
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/verify" element={<Verify />} /> 
+      <Route path="/auth-callback" element={<AuthCallback />} />
+
+      {/* Order related routes */}
+      <Route path="/checkout" element={<Checkout />} />
+      <Route path="/order-success" element={<OrderSuccess />} />
+      <Route path="/order" element={<OrderRedirect />} />
+      <Route path="/track-order" element={<OrderTracking />} />
+      
+      {/* Protected routes */}
+      <Route path="/onboarding" element={
+        <ProtectedRoute>
+          <Onboarding />
+        </ProtectedRoute>
+      } />
+      <Route path="/store-builder" element={
+        <ProtectedRoute>
+          <StoreBuilder />
+        </ProtectedRoute>
+      } />
+      <Route path="/embed-generator" element={
+        <ProtectedRoute>
+          <EmbedGenerator />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/*" element={
+        <ProtectedRoute>
+          <Routes>
+            <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+              <Route index element={<Dashboard />} />
+              <Route path="products" element={<ProductManager />} />
+              <Route path="orders" element={<Orders />} />
+              <Route path="customize-store" element={<CustomizeStore />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+};
 
 // Main App component with properly nested providers
 const App = () => (

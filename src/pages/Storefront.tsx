@@ -8,38 +8,40 @@ import NotFound from "./NotFound";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
 
-const Storefront = () => {
-  const { storeName } = useParams<{ storeName: string }>();
+interface StorefrontProps {
+  storeName?: string; // For subdomain usage
+}
+
+const Storefront: React.FC<StorefrontProps> = ({ storeName: propStoreName }) => {
+  const { storeName: paramStoreName } = useParams<{ storeName: string }>();
   const location = useLocation();
+  
+  // Use storeName from props (subdomain) or from route params (legacy URLs)
+  const storeName = propStoreName || paramStoreName;
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: storeName from params', storeName);
-  }, [location, storeName]);
+    console.log('Storefront: storeName from props', propStoreName);
+    console.log('Storefront: storeName from params', paramStoreName);
+    console.log('Storefront: final storeName', storeName);
+  }, [location, propStoreName, paramStoreName, storeName]);
   
-  // Fetch store data based on name
+  // Fetch store data
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store with name', storeName);
-      
       if (!storeName) {
-        console.error('Storefront: No store name provided');
         throw new Error('No store name provided');
       }
       
-      // Try to find the store with case-insensitive matching
       const { data, error } = await supabase
         .from('stores')
         .select('*')
         .ilike('name', storeName)
         .single();
         
-      // If no store found, try with URL decoded name (in case of spaces or special characters)
       if (error && error.code === 'PGRST116') {
         const decodedStoreName = decodeURIComponent(storeName);
-        console.log('Storefront: Trying with decoded store name', decodedStoreName);
-        
         const secondAttempt = await supabase
           .from('stores')
           .select('*')
@@ -52,15 +54,11 @@ const Storefront = () => {
       }
         
       if (error) {
-        console.error('Storefront: Error fetching store', error);
         throw error;
       }
-      console.log('Storefront: Store data received', data);
       return data;
     },
     enabled: !!storeName,
-    retry: 3,
-    retryDelay: 1000,
   });
   
   // Fetch products for the store - PUBLIC ACCESS with simplified filtering
