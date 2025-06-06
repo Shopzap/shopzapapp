@@ -2,8 +2,11 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tables } from '@/integrations/supabase/types';
 import AddToCartButton from './AddToCartButton';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Eye } from 'lucide-react';
 
 interface StorefrontProductCardProps {
   product: Tables<'products'>;
@@ -14,6 +17,21 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   product, 
   viewMode = 'grid' 
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Extract store slug from current path
+  const storeSlug = location.pathname.split('/store/')[1]?.split('/')[0];
+  
+  // Create product slug from product name
+  const productSlug = product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  const handleViewDetails = () => {
+    if (storeSlug) {
+      navigate(`/store/${storeSlug}/product/${productSlug}`);
+    }
+  };
+
   const imageUrl = product.image_url || '/placeholder.svg';
 
   if (viewMode === 'list') {
@@ -49,8 +67,16 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="ml-6 flex flex-col justify-between h-full">
-                <div></div>
+              <div className="ml-6 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewDetails}
+                  className="flex items-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  View Details
+                </Button>
                 <AddToCartButton product={product} />
               </div>
             </div>
@@ -86,7 +112,18 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
             {product.status}
           </Badge>
         </div>
-        <AddToCartButton product={product} />
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleViewDetails}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            View Details
+          </Button>
+          <AddToCartButton product={product} />
+        </div>
       </CardContent>
     </Card>
   );

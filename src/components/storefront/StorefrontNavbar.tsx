@@ -38,7 +38,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
 
   const navItems = [
     {
-      label: 'Home',
+      label: 'Shop',
       path: `/store/${storeName}`,
       icon: Home,
       active: !isAboutPage
@@ -91,7 +91,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
               );
             })}
             
-            {/* Cart Button */}
+            {/* Single Cart Button */}
             <Button
               variant="outline"
               onClick={() => handleNavigation(`/store/${storeName}/cart`)}
@@ -107,7 +107,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
             </Button>
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile menu button and cart */}
           <div className="md:hidden flex items-center space-x-2">
             {/* Mobile Cart Button */}
             <Button
@@ -126,7 +126,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
             
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+              className="p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100 touch-target"
             >
               {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -143,7 +143,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
                   <button
                     key={item.label}
                     onClick={() => handleNavigation(item.path)}
-                    className={`flex items-center space-x-3 w-full px-4 py-3 text-left rounded-md transition-colors ${
+                    className={`flex items-center space-x-3 w-full px-4 py-3 text-left rounded-md transition-colors touch-target ${
                       item.active
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'

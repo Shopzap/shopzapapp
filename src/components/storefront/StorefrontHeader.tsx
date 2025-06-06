@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Grid, List, Filter, ShoppingCart, Search, Info } from 'lucide-react';
+import { Grid, List, Filter, Search, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface StorefrontHeaderProps {
@@ -56,7 +56,7 @@ const StorefrontHeader: React.FC<StorefrontHeaderProps> = ({
   };
 
   return (
-    <div className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <div className="bg-white shadow-sm border-b sticky top-16 z-40">
       {/* Store Header */}
       <div className="border-b bg-gradient-to-r from-gray-50 to-white">
         <div className="container mx-auto px-4 md:px-8 py-6">
@@ -83,36 +83,19 @@ const StorefrontHeader: React.FC<StorefrontHeaderProps> = ({
               </div>
             </div>
             
-            {/* Navigation */}
-            <div className="flex items-center space-x-4">
-              <Button
-                variant={!isAboutPage ? "default" : "outline"}
-                size="sm"
-                onClick={handleHomeClick}
-                className="hidden md:flex"
-              >
-                Shop
-              </Button>
-              <Button
-                variant={isAboutPage ? "default" : "outline"}
-                size="sm"
-                onClick={handleAboutClick}
-                className="hidden md:flex"
-              >
-                <Info className="w-4 h-4 mr-2" />
-                About
-              </Button>
-              
-              {/* Cart Icon */}
-              <Button variant="outline" size="sm" className="relative">
-                <ShoppingCart className="w-4 h-4" />
-                {cartItemCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                    {cartItemCount}
-                  </Badge>
-                )}
-              </Button>
-            </div>
+            {/* Single About Button - Only show if not on about page */}
+            {!isAboutPage && (
+              <div className="hidden md:flex">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAboutClick}
+                >
+                  <Info className="w-4 h-4 mr-2" />
+                  About Store
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
