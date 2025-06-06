@@ -63,11 +63,11 @@ const Storefront = () => {
     retryDelay: 1000,
   });
   
-  // Fetch products for the store - improved for public access
+  // Fetch products for the store - PUBLIC ACCESS with published filter
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
-      console.log('Storefront: Fetching products for store ID', store?.id);
+      console.log('Storefront: Fetching PUBLIC products for store ID', store?.id);
       
       if (!store?.id) {
         console.error('Storefront: No store ID available');
@@ -75,13 +75,14 @@ const Storefront = () => {
       }
       
       try {
-        // Fetch products without authentication requirements
-        // Filter by store_id and only show active/published products
+        // Fetch ONLY published and active products for public viewing
+        // No authentication required - this is public storefront
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
-          .eq('status', 'active') // Only show active products
+          .eq('status', 'active')
+          .eq('is_published', true) // Only show published products
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -90,8 +91,8 @@ const Storefront = () => {
           return [];
         }
         
-        console.log('Storefront: Raw products fetched:', data?.length || 0);
-        console.log('Storefront: Product data preview:', data?.slice(0, 2));
+        console.log('Storefront: Raw published products fetched:', data?.length || 0);
+        console.log('Storefront: Products will be shown publicly for store:', store.name);
         
         // Ensure data is properly formatted and filter out invalid products
         const validProducts = (data || []).filter(product => {
@@ -100,17 +101,18 @@ const Storefront = () => {
             product.name && 
             typeof product.price !== 'undefined' &&
             product.price !== null &&
-            product.store_id === store.id; // Double-check store ownership
+            product.store_id === store.id &&
+            product.is_published === true && // Double-check published status
+            product.status === 'active'; // Double-check active status
           
           if (!isValid) {
-            console.log('Storefront: Invalid product filtered out:', product);
+            console.log('Storefront: Invalid or unpublished product filtered out:', product);
           }
           
           return isValid;
         });
         
-        console.log('Storefront: Valid products after filtering:', validProducts.length);
-        console.log('Storefront: Products will be displayed for store:', store.name);
+        console.log('Storefront: Valid published products for public display:', validProducts.length);
         
         return validProducts;
       } catch (err) {
@@ -136,10 +138,10 @@ const Storefront = () => {
     
     if (!productsLoading) {
       const productCount = products?.length || 0;
-      console.log(`Storefront: Final product count for display: ${productCount}`);
+      console.log(`Storefront: Final PUBLIC product count for display: ${productCount}`);
       
       if (productCount === 0) {
-        console.log('Storefront: No products to display - will show empty state');
+        console.log('Storefront: No published products to display - will show empty state');
       }
     }
   }, [storeError, productsError, productsLoading, products]);
@@ -188,7 +190,7 @@ const Storefront = () => {
   // Ensure products is always an array and show appropriate message if empty
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  console.log('Storefront: Rendering with products count:', safeProducts.length);
+  console.log('Storefront: Rendering PUBLIC storefront with published products count:', safeProducts.length);
 
   return (
     <StorefrontContent 
