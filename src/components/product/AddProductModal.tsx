@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
@@ -41,7 +40,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       price: '',
       image_url: '',
       status: 'active',
-      payment_method: ''
+      payment_method: 'online'
     }
   });
 
@@ -190,7 +189,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No specific method</SelectItem>
                   <SelectItem value="cash">Cash on Delivery</SelectItem>
                   <SelectItem value="online">Online Payment</SelectItem>
                   <SelectItem value="both">Both</SelectItem>

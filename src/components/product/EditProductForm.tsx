@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -30,7 +29,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       price: product.price.toString(),
       image_url: product.image_url || '',
       status: product.status,
-      payment_method: product.payment_method || ''
+      payment_method: product.payment_method || 'online'
     }
   });
 
@@ -118,7 +117,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         <div>
           <Label htmlFor="status">Status</Label>
           <Select 
-            value={watch('status') || ''} 
+            value={watch('status') || 'active'} 
             onValueChange={(value: string) => setValue('status', value)}
           >
             <SelectTrigger>
@@ -134,14 +133,13 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         <div>
           <Label htmlFor="payment_method">Payment Method</Label>
           <Select 
-            value={watch('payment_method') || ''} 
+            value={watch('payment_method') || 'online'} 
             onValueChange={(value: string) => setValue('payment_method', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select payment method" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No specific method</SelectItem>
               <SelectItem value="cash">Cash on Delivery</SelectItem>
               <SelectItem value="online">Online Payment</SelectItem>
               <SelectItem value="both">Both</SelectItem>
