@@ -51,9 +51,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <StoreProvider>
-            <Router>
+        <Router>
+          <AuthProvider>
+            <StoreProvider>
               <div className="App">
                 {isSubdomain ? (
                   // Subdomain routing (e.g., store.shopzap.io)
@@ -165,9 +165,9 @@ function App() {
                 )}
                 <Toaster />
               </div>
-            </Router>
-          </StoreProvider>
-        </AuthProvider>
+            </StoreProvider>
+          </AuthProvider>
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );
