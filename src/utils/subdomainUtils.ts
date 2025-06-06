@@ -7,12 +7,24 @@ export const getSubdomain = (): string | null => {
     return null;
   }
   
+  // Handle root domain cases - these should NOT be treated as subdomains
+  if (hostname === 'shopzap.io' || hostname === 'www.shopzap.io') {
+    return null;
+  }
+  
   // Extract subdomain from hostname
   const parts = hostname.split('.');
   
   // If it's a subdomain setup like store.shopzap.io
   if (parts.length >= 3) {
-    return parts[0];
+    const subdomain = parts[0];
+    
+    // Don't treat 'www' as a valid store subdomain
+    if (subdomain === 'www') {
+      return null;
+    }
+    
+    return subdomain;
   }
   
   return null;

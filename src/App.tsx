@@ -45,8 +45,11 @@ import './App.css';
 const queryClient = new QueryClient();
 
 function App() {
-  // Check if this is a subdomain route
+  // Check if this is a subdomain route - this will be null for shopzap.io and www.shopzap.io
   const isSubdomain = isSubdomainRoute();
+  
+  console.log('App: Current hostname:', window.location.hostname);
+  console.log('App: Is subdomain route:', isSubdomain);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -56,10 +59,10 @@ function App() {
             <StoreProvider>
               <div className="App">
                 {isSubdomain ? (
-                  // Subdomain routing (e.g., store.shopzap.io)
+                  // Subdomain routing (e.g., leabro.shopzap.io)
                   <SubdomainStorefront />
                 ) : (
-                  // Main app routing (e.g., shopzap.io)
+                  // Main app routing (e.g., shopzap.io, www.shopzap.io)
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
@@ -68,7 +71,7 @@ function App() {
                     <Route path="/features" element={<Features />} />
                     <Route path="/pricing" element={<Pricing />} />
                     
-                    {/* Legacy storefront routes */}
+                    {/* Legacy storefront routes - these are for /store/storeName URLs */}
                     <Route path="/store/:storeName" element={<Storefront />} />
                     <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
                     <Route path="/product/:productId" element={<ProductDetails />} />
