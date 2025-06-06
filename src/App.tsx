@@ -47,17 +47,13 @@ const queryClient = new QueryClient();
 function App() {
   // Check if this is a subdomain route
   const isSubdomain = isSubdomainRoute();
-  
-  console.log('App: Current hostname =', window.location.hostname);
-  console.log('App: Is subdomain route =', isSubdomain);
-  console.log('App: Current pathname =', window.location.pathname);
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router>
-          <AuthProvider>
-            <StoreProvider>
+        <AuthProvider>
+          <StoreProvider>
+            <Router>
               <div className="App">
                 {isSubdomain ? (
                   // Subdomain routing (e.g., store.shopzap.io)
@@ -169,9 +165,9 @@ function App() {
                 )}
                 <Toaster />
               </div>
-            </StoreProvider>
-          </AuthProvider>
-        </Router>
+            </Router>
+          </StoreProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
