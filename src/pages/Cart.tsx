@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
@@ -11,6 +11,7 @@ const Cart = () => {
   const { items, updateQuantity, removeFromCart, getTotalPrice, getItemCount } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { storeSlug } = useParams<{ storeSlug?: string }>();
   
   const total = getTotalPrice();
   const itemCount = getItemCount();
@@ -60,7 +61,16 @@ const Cart = () => {
       return;
     }
     
-    navigate('/checkout');
+    // Navigate to checkout with store context
+    if (storeSlug) {
+      navigate(`/store/${storeSlug}/checkout`);
+    } else {
+      navigate('/checkout');
+    }
+  };
+
+  const getStoreLink = () => {
+    return storeSlug ? `/store/${storeSlug}` : '/';
   };
 
   if (items.length === 0) {
@@ -71,7 +81,7 @@ const Cart = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
           <p className="text-gray-600 mb-6">Start shopping to add items to your cart</p>
           <Button asChild>
-            <Link to="/store/demo">Continue Shopping</Link>
+            <Link to={getStoreLink()}>Continue Shopping</Link>
           </Button>
         </div>
       </div>
@@ -185,7 +195,7 @@ const Cart = () => {
             </Button>
             
             <Button variant="outline" className="w-full mt-3" asChild>
-              <Link to="/store/demo">Continue Shopping</Link>
+              <Link to={getStoreLink()}>Continue Shopping</Link>
             </Button>
           </div>
         </div>

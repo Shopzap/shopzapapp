@@ -9,14 +9,6 @@ import { formatPrice } from '@/lib/utils';
 import NotFound from './NotFound';
 import ProductDetailsContent from '@/components/product/ProductDetailsContent';
 
-// Reserved paths that should not be treated as store slugs
-const RESERVED_PATHS = [
-  'auth', 'login', 'signup', 'verify', 'auth-callback',
-  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
-  'pricing', 'features', 'about', 'privacy', 'terms',
-  'order-success', 'track-order', 'order', 'admin'
-];
-
 const ProductDetails = () => {
   const { storeSlug, productSlug, productId } = useParams<{ 
     storeSlug?: string; 
@@ -27,13 +19,7 @@ const ProductDetails = () => {
 
   console.log('ProductDetails: Params received', { storeSlug, productSlug, productId });
 
-  // Check if this is a reserved path for storeSlug
-  if (storeSlug && RESERVED_PATHS.includes(storeSlug.toLowerCase())) {
-    console.log('ProductDetails: Reserved path detected, redirecting to 404');
-    return <NotFound />;
-  }
-
-  // Determine if we're using the new route format (/:storeSlug/:productSlug) or legacy (/product/:productId)
+  // Determine if we're using the new route format (/store/:storeSlug/product/:productSlug) or legacy (/product/:productId)
   const isNewRouteFormat = !!(storeSlug && productSlug);
   const isLegacyFormat = !!productId;
 
@@ -62,6 +48,8 @@ const ProductDetails = () => {
           .select('*, stores(*)')
           .eq('store_id', store.id)
           .ilike('name', productSlug.replace(/-/g, ' ')) // Convert slug back to name
+          .eq('is_published', true)
+          .eq('status', 'active')
           .single();
           
         if (error) {
@@ -78,6 +66,8 @@ const ProductDetails = () => {
           .from('products')
           .select('*, stores(*)')
           .eq('id', productId)
+          .eq('is_published', true)
+          .eq('status', 'active')
           .single();
           
         if (error) {
@@ -108,7 +98,7 @@ const ProductDetails = () => {
     
     // Navigate to checkout with order item
     if (isNewRouteFormat && storeSlug) {
-      navigate(`/${storeSlug}/checkout`, { 
+      navigate(`/store/${storeSlug}/checkout`, { 
         state: { 
           orderItems: [orderItem]
         } 
@@ -125,7 +115,7 @@ const ProductDetails = () => {
   // Handle back button
   const handleBack = () => {
     if (isNewRouteFormat && storeSlug) {
-      navigate(`/${storeSlug}`);
+      navigate(`/store/${storeSlug}`);
     } else {
       navigate(-1);
     }

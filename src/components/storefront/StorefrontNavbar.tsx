@@ -94,7 +94,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
             {/* Cart Button */}
             <Button
               variant="outline"
-              onClick={() => handleNavigation('/cart')}
+              onClick={() => handleNavigation(`/store/${storeName}/cart`)}
               className="relative"
             >
               <ShoppingCart className="w-4 h-4 mr-2" />
@@ -113,7 +113,7 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({ storeName }) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleNavigation('/cart')}
+              onClick={() => handleNavigation(`/store/${storeName}/cart`)}
               className="relative"
             >
               <ShoppingCart className="w-4 h-4" />

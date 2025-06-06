@@ -8,22 +8,8 @@ import NotFound from "./NotFound";
 import StorefrontAbout from "@/components/storefront/StorefrontAbout";
 import StorefrontNavbar from "@/components/storefront/StorefrontNavbar";
 
-// Reserved paths that should not be treated as store slugs
-const RESERVED_PATHS = [
-  'auth', 'login', 'signup', 'verify', 'auth-callback',
-  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
-  'pricing', 'features', 'about', 'privacy', 'terms',
-  'order-success', 'track-order', 'order', 'admin'
-];
-
 const StorefrontAboutPage: React.FC = () => {
   const { storeSlug } = useParams<{ storeSlug: string }>();
-
-  // Check if this is a reserved path
-  if (storeSlug && RESERVED_PATHS.includes(storeSlug.toLowerCase())) {
-    console.log('StorefrontAbout: Reserved path detected, redirecting to 404');
-    return <NotFound />;
-  }
   
   // Fetch store data using the slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({

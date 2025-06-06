@@ -1,20 +1,12 @@
 
 import React, { useEffect } from "react";
-import { useParams, Navigate, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
 import NotFound from "./NotFound";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
-
-// Reserved paths that should not be treated as store slugs
-const RESERVED_PATHS = [
-  'auth', 'login', 'signup', 'verify', 'auth-callback',
-  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
-  'pricing', 'features', 'about', 'privacy', 'terms',
-  'order-success', 'track-order', 'order', 'admin'
-];
 
 const Storefront: React.FC = () => {
   const { storeSlug } = useParams<{ storeSlug: string }>();
@@ -24,12 +16,6 @@ const Storefront: React.FC = () => {
     console.log('Storefront: Current path', location.pathname);
     console.log('Storefront: storeSlug from params', storeSlug);
   }, [location, storeSlug]);
-
-  // Check if this is a reserved path
-  if (storeSlug && RESERVED_PATHS.includes(storeSlug.toLowerCase())) {
-    console.log('Storefront: Reserved path detected, redirecting to 404');
-    return <NotFound />;
-  }
   
   // Fetch store data using the slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
@@ -75,11 +61,11 @@ const Storefront: React.FC = () => {
     enabled: !!storeSlug,
   });
   
-  // Fetch products for the store - PUBLIC ACCESS with simplified filtering
+  // Fetch products for the store - only published products
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
-      console.log('Storefront: Fetching PUBLIC products for store ID', store?.id);
+      console.log('Storefront: Fetching products for store ID', store?.id);
       
       if (!store?.id) {
         console.error('Storefront: No store ID available');
@@ -87,66 +73,21 @@ const Storefront: React.FC = () => {
       }
       
       try {
-        // First, let's check ALL products for this store to see what's available
-        const { data: allProducts, error: allError } = await supabase
+        const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
+          .eq('is_published', true)
+          .eq('status', 'active')
           .order('created_at', { ascending: false });
           
-        console.log('Storefront: ALL products in database for this store:', allProducts?.length || 0);
-        console.log('Storefront: Raw ALL products data:', allProducts);
-        
-        if (allError) {
-          console.error('Storefront: Error fetching all products', allError);
+        if (error) {
+          console.error('Storefront: Error fetching products', error);
+          throw error;
         }
         
-        if (!allProducts || allProducts.length === 0) {
-          console.log('Storefront: No products found in database for this store - this is the root cause');
-          return [];
-        }
-        
-        // Now filter for public display
-        const publicProducts = allProducts.filter(product => {
-          console.log(`Storefront: Checking product "${product.name}":`, {
-            id: product.id,
-            status: product.status,
-            is_published: product.is_published,
-            store_id: product.store_id
-          });
-          
-          // Basic validation
-          if (!product || !product.id || !product.name) {
-            console.log('Storefront: Product missing basic data:', product);
-            return false;
-          }
-          
-          // Check if product belongs to this store
-          if (product.store_id !== store.id) {
-            console.log('Storefront: Product belongs to different store:', product.store_id, 'vs', store.id);
-            return false;
-          }
-          
-          // Only show active products (allow null status to default to active)
-          if (product.status && product.status !== 'active') {
-            console.log('Storefront: Product not active, status:', product.status);
-            return false;
-          }
-          
-          // Show published products (treat null as published by default)
-          if (product.is_published === false) {
-            console.log('Storefront: Product explicitly unpublished');
-            return false;
-          }
-          
-          console.log('Storefront: Product passed all filters:', product.name);
-          return true;
-        });
-        
-        console.log('Storefront: Products after filtering for public display:', publicProducts.length);
-        console.log('Storefront: Final public products:', publicProducts);
-        
-        return publicProducts;
+        console.log('Storefront: Products data received', data?.length || 0, 'products');
+        return data;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
         return [];
@@ -169,11 +110,7 @@ const Storefront: React.FC = () => {
     
     if (!productsLoading) {
       const productCount = products?.length || 0;
-      console.log(`Storefront: Final PUBLIC product count for display: ${productCount}`);
-      
-      if (productCount === 0) {
-        console.log('Storefront: No products to display - will show improved empty state');
-      }
+      console.log(`Storefront: Final product count for display: ${productCount}`);
     }
   }, [storeError, productsError, productsLoading, products]);
   
@@ -229,10 +166,10 @@ const Storefront: React.FC = () => {
     font_style: store.font_style || 'Poppins'
   };
 
-  // Ensure products is always an array and show appropriate message if empty
+  // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  console.log('Storefront: Rendering PUBLIC storefront with product count:', safeProducts.length);
+  console.log('Storefront: Rendering storefront with product count:', safeProducts.length);
 
   return (
     <StorefrontContent 

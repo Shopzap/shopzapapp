@@ -42,14 +42,6 @@ import DashboardLayout from "./components/layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
 
-// Reserved paths that should not be treated as store slugs
-const RESERVED_PATHS = [
-  'auth', 'login', 'signup', 'verify', 'auth-callback',
-  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
-  'pricing', 'features', 'about', 'privacy', 'terms',
-  'order-success', 'track-order', 'order', 'admin'
-];
-
 // Main App component with properly nested providers
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -63,7 +55,7 @@ const App = () => (
                   {/* Main homepage */}
                   <Route path="/" element={<Index />} />
                   
-                  {/* Reserved paths - Internal ShopZap pages */}
+                  {/* Public pages */}
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/features" element={<Features />} />
                   <Route path="/auth" element={<Auth />} />
@@ -73,9 +65,32 @@ const App = () => (
                   <Route path="/order-success" element={<OrderSuccess />} />
                   <Route path="/order" element={<OrderRedirect />} />
 
-                  {/* Legacy store routes - redirect to new format */}
-                  <Route path="/store/:storeSlug" element={<Navigate to="/:storeSlug" replace />} />
-                  <Route path="/store/:storeSlug/about" element={<Navigate to="/:storeSlug/about" replace />} />
+                  {/* Store routes with original /store/:slug format */}
+                  <Route path="/store/:storeSlug" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+                        <Storefront />
+                      </Suspense>
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/store/:storeSlug/about" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
+                        <StorefrontAboutPage />
+                      </Suspense>
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/store/:storeSlug/cart" element={<Cart />} />
+                  <Route path="/store/:storeSlug/checkout" element={<Checkout />} />
+                  <Route path="/store/:storeSlug/product/:productSlug" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+                        <ProductDetails />
+                      </Suspense>
+                    </ErrorBoundary>
+                  } />
+
+                  {/* Legacy product route for backwards compatibility */}
                   <Route path="/product/:productId" element={
                     <ErrorBoundary>
                       <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
@@ -107,37 +122,12 @@ const App = () => (
                           <Route index element={<Dashboard />} />
                           <Route path="products" element={<ProductManager />} />
                           <Route path="orders" element={<Orders />} />
-                          <Route path="customize-store" element={<CustomizeStore />} />
+                          <Route path="customize" element={<CustomizeStore />} />
                           <Route path="analytics" element={<Analytics />} />
                           <Route path="settings" element={<Settings />} />
                         </Route>
                       </Routes>
                     </ProtectedRoute>
-                  } />
-
-                  {/* Store-specific routes - Dynamic store slug routing */}
-                  <Route path="/:storeSlug" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-                        <Storefront />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-                  <Route path="/:storeSlug/about" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
-                        <StorefrontAboutPage />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-                  <Route path="/:storeSlug/cart" element={<Cart />} />
-                  <Route path="/:storeSlug/checkout" element={<Checkout />} />
-                  <Route path="/:storeSlug/:productSlug" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-                        <ProductDetails />
-                      </Suspense>
-                    </ErrorBoundary>
                   } />
 
                   {/* 404 catch-all */}
