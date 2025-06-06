@@ -7,7 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatPrice } from '@/utils/priceUtils';
+import BulkOrderActions from '@/components/orders/BulkOrderActions';
 
 const Orders = () => {
   const { toast } = useToast();
@@ -16,6 +18,8 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
   const [storeData, setStoreData] = useState<any>(null);
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [recentlyUpdated, setRecentlyUpdated] = useState<string[]>([]);
 
   useEffect(() => {
     fetchOrders();
@@ -25,7 +29,6 @@ const Orders = () => {
     try {
       setLoading(true);
       
-      // Get current user from Supabase auth
       const { data: sessionData } = await supabase.auth.getSession();
       
       if (!sessionData?.session?.user) {
@@ -35,7 +38,6 @@ const Orders = () => {
       
       const userId = sessionData.session.user.id;
       
-      // Get store data from 'stores' table where user_id = current_user.id
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('*')
@@ -54,7 +56,6 @@ const Orders = () => {
       
       setStoreData(storeData);
       
-      // Build query for orders with order items and products
       let query = supabase
         .from('orders')
         .select(`
@@ -73,7 +74,6 @@ const Orders = () => {
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
-      // Apply status filter if not "All"
       if (statusFilter !== 'All') {
         query = query.eq('status', statusFilter.toLowerCase());
       }
@@ -129,6 +129,39 @@ const Orders = () => {
     return productNames.length > 50 ? productNames.substring(0, 50) + '...' : productNames;
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedOrders(orders.map(order => order.id));
+    } else {
+      setSelectedOrders([]);
+    }
+  };
+
+  const handleSelectOrder = (orderId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedOrders(prev => [...prev, orderId]);
+    } else {
+      setSelectedOrders(prev => prev.filter(id => id !== orderId));
+    }
+  };
+
+  const handleBulkStatusUpdate = (orderIds: string[], newStatus: string) => {
+    // Update local state
+    setOrders(prev => prev.map(order => 
+      orderIds.includes(order.id) 
+        ? { ...order, status: newStatus, updated_at: new Date().toISOString() }
+        : order
+    ));
+    
+    // Mark as recently updated for highlighting
+    setRecentlyUpdated(orderIds);
+    setTimeout(() => setRecentlyUpdated([]), 3000);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOrders([]);
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -161,6 +194,12 @@ const Orders = () => {
         </Select>
       </div>
 
+      <BulkOrderActions
+        selectedOrders={selectedOrders}
+        onStatusUpdate={handleBulkStatusUpdate}
+        onClearSelection={handleClearSelection}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -184,6 +223,13 @@ const Orders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedOrders.length === orders.length && orders.length > 0}
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all orders"
+                      />
+                    </TableHead>
                     <TableHead>Order ID</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Products</TableHead>
@@ -194,7 +240,17 @@ const Orders = () => {
                 </TableHeader>
                 <TableBody>
                   {orders.map((order) => (
-                    <TableRow key={order.id}>
+                    <TableRow 
+                      key={order.id}
+                      className={recentlyUpdated.includes(order.id) ? 'bg-green-50 border-green-200' : ''}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedOrders.includes(order.id)}
+                          onCheckedChange={(checked) => handleSelectOrder(order.id, checked as boolean)}
+                          aria-label={`Select order ${order.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">
                         #{order.id.substring(0, 8)}
                       </TableCell>
