@@ -118,8 +118,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         <div>
           <Label htmlFor="status">Status</Label>
           <Select 
-            value={watch('status')} 
-            onValueChange={(value) => setValue('status', value)}
+            value={watch('status') || ''} 
+            onValueChange={(value: string) => setValue('status', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
@@ -134,8 +134,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         <div>
           <Label htmlFor="payment_method">Payment Method</Label>
           <Select 
-            value={watch('payment_method')} 
-            onValueChange={(value) => setValue('payment_method', value)}
+            value={watch('payment_method') || ''} 
+            onValueChange={(value: string) => setValue('payment_method', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select payment method" />
@@ -149,7 +149,6 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           </Select>
         </div>
 
-        {/* Product Visibility Toggle */}
         <ProductVisibilityToggle
           isPublished={isPublished}
           onToggle={setIsPublished}

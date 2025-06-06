@@ -21,7 +21,7 @@ interface AddProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onProductAdded: () => void;
-  storeId: string;
+  storeId?: string;
 }
 
 const AddProductModal: React.FC<AddProductModalProps> = ({
@@ -32,7 +32,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPublished, setIsPublished] = useState(true); // Default to published
+  const [isPublished, setIsPublished] = useState(true);
   
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -49,6 +49,36 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     try {
       setIsSubmitting(true);
       
+      // Get store ID if not provided
+      let currentStoreId = storeId;
+      if (!currentStoreId) {
+        const { data: session } = await supabase.auth.getSession();
+        if (!session.session) {
+          toast({
+            title: "Authentication required",
+            description: "Please login to add products",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const { data: storeData } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('user_id', session.session.user.id)
+          .single();
+
+        if (!storeData) {
+          toast({
+            title: "Store not found",
+            description: "Please complete the onboarding process",
+            variant: "destructive"
+          });
+          return;
+        }
+        currentStoreId = storeData.id;
+      }
+      
       const { error } = await supabase
         .from('products')
         .insert({
@@ -58,15 +88,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           image_url: data.image_url,
           status: data.status,
           payment_method: data.payment_method,
-          store_id: storeId,
-          is_published: isPublished // Include visibility setting
+          store_id: currentStoreId,
+          is_published: isPublished
         });
         
       if (error) throw error;
       
       toast({ title: "Product added successfully!" });
       reset();
-      setIsPublished(true); // Reset to default
+      setIsPublished(true);
       onOpenChange(false);
       onProductAdded();
     } catch (error) {
@@ -168,7 +198,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               </Select>
             </div>
 
-            {/* Product Visibility Toggle */}
             <ProductVisibilityToggle
               isPublished={isPublished}
               onToggle={setIsPublished}

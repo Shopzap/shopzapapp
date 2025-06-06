@@ -261,7 +261,7 @@ const ProductManager: React.FC = () => {
 
       <AddProductModal
         open={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onOpenChange={setShowAddModal}
         onProductAdded={handleProductAdded}
       />
 

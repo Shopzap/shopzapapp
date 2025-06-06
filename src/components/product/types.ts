@@ -9,4 +9,6 @@ export type Product = {
   sku?: string;
   inventory_count?: number;
   status: string;
+  is_published?: boolean;
+  payment_method?: string;
 };
