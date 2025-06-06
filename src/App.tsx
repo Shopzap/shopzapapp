@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import React, { Suspense, lazy } from 'react';
 
 // Pages
@@ -42,6 +42,14 @@ import DashboardLayout from "./components/layouts/DashboardLayout";
 
 const queryClient = new QueryClient();
 
+// Reserved paths that should not be treated as store slugs
+const RESERVED_PATHS = [
+  'auth', 'login', 'signup', 'verify', 'auth-callback',
+  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
+  'pricing', 'features', 'about', 'privacy', 'terms',
+  'order-success', 'track-order', 'order', 'admin'
+];
+
 // Main App component with properly nested providers
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -52,33 +60,22 @@ const App = () => (
             <CartProvider>
               <ErrorBoundary>
                 <Routes>
-                  {/* Public routes - Main seller app */}
+                  {/* Main homepage */}
                   <Route path="/" element={<Index />} />
+                  
+                  {/* Reserved paths - Internal ShopZap pages */}
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/features" element={<Features />} />
-
-                  {/* Auth routes */}
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/verify" element={<Verify />} /> 
                   <Route path="/auth-callback" element={<AuthCallback />} />
+                  <Route path="/track-order" element={<OrderTracking />} />
+                  <Route path="/order-success" element={<OrderSuccess />} />
+                  <Route path="/order" element={<OrderRedirect />} />
 
-                  {/* Legacy store routes - /store/{slug} pattern for buyer storefronts */}
-                  <Route path="/store/:storeName" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-                        <Storefront />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-                  <Route path="/store/:storeName/about" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
-                        <StorefrontAboutPage />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-
-                  {/* Product details route */}
+                  {/* Legacy store routes - redirect to new format */}
+                  <Route path="/store/:storeSlug" element={<Navigate to="/:storeSlug" replace />} />
+                  <Route path="/store/:storeSlug/about" element={<Navigate to="/:storeSlug/about" replace />} />
                   <Route path="/product/:productId" element={
                     <ErrorBoundary>
                       <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
@@ -87,13 +84,6 @@ const App = () => (
                     </ErrorBoundary>
                   } />
 
-                  {/* Cart and checkout routes */}
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/order-success" element={<OrderSuccess />} />
-                  <Route path="/order" element={<OrderRedirect />} />
-                  <Route path="/track-order" element={<OrderTracking />} />
-                  
                   {/* Protected routes - Seller dashboard */}
                   <Route path="/onboarding" element={
                     <ProtectedRoute>
@@ -123,6 +113,31 @@ const App = () => (
                         </Route>
                       </Routes>
                     </ProtectedRoute>
+                  } />
+
+                  {/* Store-specific routes - Dynamic store slug routing */}
+                  <Route path="/:storeSlug" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+                        <Storefront />
+                      </Suspense>
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/:storeSlug/about" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
+                        <StorefrontAboutPage />
+                      </Suspense>
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/:storeSlug/cart" element={<Cart />} />
+                  <Route path="/:storeSlug/checkout" element={<Checkout />} />
+                  <Route path="/:storeSlug/:productSlug" element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+                        <ProductDetails />
+                      </Suspense>
+                    </ErrorBoundary>
                   } />
 
                   {/* 404 catch-all */}

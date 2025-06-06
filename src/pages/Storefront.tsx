@@ -8,35 +8,55 @@ import NotFound from "./NotFound";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
 
+// Reserved paths that should not be treated as store slugs
+const RESERVED_PATHS = [
+  'auth', 'login', 'signup', 'verify', 'auth-callback',
+  'dashboard', 'onboarding', 'store-builder', 'embed-generator',
+  'pricing', 'features', 'about', 'privacy', 'terms',
+  'order-success', 'track-order', 'order', 'admin'
+];
+
 const Storefront: React.FC = () => {
-  const { storeName } = useParams<{ storeName: string }>();
+  const { storeSlug } = useParams<{ storeSlug: string }>();
   const location = useLocation();
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: storeName from params', storeName);
-  }, [location, storeName]);
+    console.log('Storefront: storeSlug from params', storeSlug);
+  }, [location, storeSlug]);
+
+  // Check if this is a reserved path
+  if (storeSlug && RESERVED_PATHS.includes(storeSlug.toLowerCase())) {
+    console.log('Storefront: Reserved path detected, redirecting to 404');
+    return <NotFound />;
+  }
   
-  // Fetch store data
+  // Fetch store data using the slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store', storeName],
+    queryKey: ['store-by-slug', storeSlug],
     queryFn: async () => {
-      if (!storeName) {
-        throw new Error('No store name provided');
+      if (!storeSlug) {
+        throw new Error('No store slug provided');
       }
       
+      console.log('Storefront: Fetching store with slug', storeSlug);
+      
+      // Try to find the store using the name field (case-insensitive)
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeName)
+        .ilike('name', storeSlug)
         .single();
         
       if (error && error.code === 'PGRST116') {
-        const decodedStoreName = decodeURIComponent(storeName);
+        // Try with URL decoded name (in case of spaces or special characters)
+        const decodedStoreSlug = decodeURIComponent(storeSlug);
+        console.log('Storefront: Trying with decoded store slug', decodedStoreSlug);
+        
         const secondAttempt = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', decodedStoreName)
+          .ilike('name', decodedStoreSlug)
           .single();
           
         if (!secondAttempt.error) {
@@ -45,11 +65,14 @@ const Storefront: React.FC = () => {
       }
         
       if (error) {
+        console.error('Storefront: Error fetching store', error);
         throw error;
       }
+      
+      console.log('Storefront: Store data received', data);
       return data;
     },
-    enabled: !!storeName,
+    enabled: !!storeSlug,
   });
   
   // Fetch products for the store - PUBLIC ACCESS with simplified filtering
@@ -160,7 +183,7 @@ const Storefront: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store you're looking for doesn't exist or is unavailable.</p>
+        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
         <button 
           onClick={() => window.location.href = '/'}
           className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
@@ -177,14 +200,25 @@ const Storefront: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading store...</p>
-        <p className="mt-2 text-sm text-muted-foreground">Store: {storeName}</p>
+        <p className="mt-2 text-sm text-muted-foreground">Store: {storeSlug}</p>
       </div>
     );
   }
   
   // Store not found (should be caught by error above, but just in case)
   if (!store) {
-    return <NotFound />;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
+        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+        >
+          Return to Home
+        </button>
+      </div>
+    );
   }
 
   // Extract theme data from store.theme if it exists
