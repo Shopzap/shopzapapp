@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalL
 
 import StoreStats from '@/components/dashboard/StoreStats';
 import RecentOrdersList from '@/components/dashboard/RecentOrdersList';
-import { siteConfig } from '@/config/site';
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -91,19 +89,19 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [navigate, toast]);
   
-  // Copy store link to clipboard
+  // Copy store link to clipboard - Updated to use new URL format
   const handleCopyStoreLink = () => {
     if (storeData) {
-      const storeLink = siteConfig.store.generateUrl(storeData.name);
+      const storeLink = `${window.location.origin}/${storeData.name}`;
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
     }
   };
   
-  // Open store in new tab
+  // Open store in new tab - Updated to use new URL format
   const handleOpenStore = () => {
     if (storeData) {
-      const storeLink = siteConfig.store.generateUrl(storeData.name);
+      const storeLink = `${window.location.origin}/${storeData.name}`;
       window.open(storeLink, '_blank');
     }
   };
@@ -153,7 +151,7 @@ const Dashboard = () => {
           )}
         </div>
         
-        {/* Your Store Link Box */}
+        {/* Your Store Link Box - Updated to show new URL format */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Your Store Link</CardTitle>
@@ -161,7 +159,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-                {siteConfig.store.generateUrl(storeData.name)}
+                {window.location.origin}/{storeData.name}
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
