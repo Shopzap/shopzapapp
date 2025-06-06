@@ -47,6 +47,10 @@ const queryClient = new QueryClient();
 function App() {
   // Check if this is a subdomain route
   const isSubdomain = isSubdomainRoute();
+  
+  console.log('App: Current hostname =', window.location.hostname);
+  console.log('App: Is subdomain route =', isSubdomain);
+  console.log('App: Current pathname =', window.location.pathname);
 
   return (
     <QueryClientProvider client={queryClient}>

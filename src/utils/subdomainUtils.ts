@@ -7,11 +7,21 @@ export const getSubdomain = (): string | null => {
     return null;
   }
   
+  // Handle lovable.app domains
+  if (hostname.includes('lovable.app') || hostname.includes('lovableproject.com')) {
+    return null;
+  }
+  
+  // Handle main shopzap.io domain
+  if (hostname === 'shopzap.io' || hostname === 'www.shopzap.io') {
+    return null;
+  }
+  
   // Extract subdomain from hostname
   const parts = hostname.split('.');
   
   // If it's a subdomain setup like store.shopzap.io
-  if (parts.length >= 3) {
+  if (parts.length >= 3 && parts[parts.length - 2] === 'shopzap' && parts[parts.length - 1] === 'io') {
     return parts[0];
   }
   
@@ -19,7 +29,10 @@ export const getSubdomain = (): string | null => {
 };
 
 export const isSubdomainRoute = (): boolean => {
-  return getSubdomain() !== null;
+  const subdomain = getSubdomain();
+  console.log('isSubdomainRoute: hostname =', window.location.hostname);
+  console.log('isSubdomainRoute: subdomain =', subdomain);
+  return subdomain !== null;
 };
 
 export const generateProductSlug = (productName: string): string => {
