@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -103,7 +104,7 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({
                 type="button"
                 variant="destructive"
                 size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-100 group-hover:opacity-100 transition-opacity"
                 onClick={() => removeExistingImage(index)}
               >
                 <X className="h-3 w-3" />
@@ -132,7 +133,7 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({
                 type="button"
                 variant="destructive"
                 size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-100 group-hover:opacity-100 transition-opacity"
                 onClick={() => removeNewFile(index)}
               >
                 <X className="h-3 w-3" />

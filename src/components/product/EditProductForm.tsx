@@ -41,6 +41,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
   });
 
   const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
+    console.log('Uploading images for store:', storeId);
     const uploadPromises = files.map(async (file) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -68,6 +69,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      console.log('Starting product update process...');
       
       if (images.length === 0 && newFiles.length === 0) {
         toast({
@@ -78,9 +80,22 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         return;
       }
 
-      // Get user's store for uploads
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) {
+      // Get user's session
+      console.log('Getting user session...');
+      const { data: session, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        toast({
+          title: "Authentication error",
+          description: "Please try logging in again",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!session.session?.user) {
+        console.error('No authenticated user found');
         toast({
           title: "Authentication required",
           description: "Please login to update products",
@@ -89,13 +104,28 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         return;
       }
 
-      const { data: storeData } = await supabase
+      console.log('User authenticated:', session.session.user.id);
+
+      // Get user's store
+      console.log('Fetching store data...');
+      const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', session.session.user.id)
-        .single();
+        .maybeSingle();
+
+      if (storeError) {
+        console.error('Store fetch error:', storeError);
+        toast({
+          title: "Error fetching store",
+          description: "Unable to access store information",
+          variant: "destructive"
+        });
+        return;
+      }
 
       if (!storeData) {
+        console.error('No store found for user');
         toast({
           title: "Store not found",
           description: "Please complete the onboarding process",
@@ -104,13 +134,28 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         return;
       }
 
+      console.log('Store found:', storeData.id);
+
       // Upload new images
       let finalImages = [...images];
       if (newFiles.length > 0) {
-        const uploadedUrls = await uploadImages(newFiles, storeData.id);
-        finalImages = [...finalImages, ...uploadedUrls];
+        console.log('Uploading new images...');
+        try {
+          const uploadedUrls = await uploadImages(newFiles, storeData.id);
+          finalImages = [...finalImages, ...uploadedUrls];
+          console.log('Images uploaded successfully');
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          toast({
+            title: "Image upload failed",
+            description: "Please try again with smaller images",
+            variant: "destructive"
+          });
+          return;
+        }
       }
       
+      console.log('Updating product in database...');
       const { error } = await supabase
         .from('products')
         .update({
@@ -121,13 +166,17 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           payment_method: data.payment_method,
           is_published: isPublished,
           images: finalImages,
-          image_url: finalImages[0] || null, // Keep first image as primary for backward compatibility
+          image_url: finalImages[0] || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', product.id);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Product update error:', error);
+        throw error;
+      }
       
+      console.log('Product updated successfully');
       toast({ title: "Product updated successfully!" });
       onSuccess();
     } catch (error) {

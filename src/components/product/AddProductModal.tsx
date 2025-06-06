@@ -48,6 +48,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   });
 
   const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
+    console.log('Uploading images for store:', storeId);
     const uploadPromises = files.map(async (file) => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
@@ -75,6 +76,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      console.log('Starting product creation process...');
       
       if (newFiles.length === 0) {
         toast({
@@ -88,8 +90,21 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       // Get store ID if not provided
       let currentStoreId = storeId;
       if (!currentStoreId) {
-        const { data: session } = await supabase.auth.getSession();
-        if (!session.session) {
+        console.log('Getting user session...');
+        const { data: session, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          toast({
+            title: "Authentication error",
+            description: "Please try logging in again",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!session.session?.user) {
+          console.error('No authenticated user found');
           toast({
             title: "Authentication required",
             description: "Please login to add products",
@@ -98,13 +113,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           return;
         }
 
-        const { data: storeData } = await supabase
+        console.log('User authenticated:', session.session.user.id);
+
+        console.log('Fetching store data...');
+        const { data: storeData, error: storeError } = await supabase
           .from('stores')
           .select('id')
           .eq('user_id', session.session.user.id)
-          .single();
+          .maybeSingle();
+
+        if (storeError) {
+          console.error('Store fetch error:', storeError);
+          toast({
+            title: "Error fetching store",
+            description: "Unable to access store information",
+            variant: "destructive"
+          });
+          return;
+        }
 
         if (!storeData) {
+          console.error('No store found for user');
           toast({
             title: "Store not found",
             description: "Please complete the onboarding process",
@@ -112,13 +141,29 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           });
           return;
         }
+        
         currentStoreId = storeData.id;
+        console.log('Store found:', currentStoreId);
       }
 
       // Upload images
-      const uploadedImages = await uploadImages(newFiles, currentStoreId);
+      console.log('Uploading images...');
+      let uploadedImages: string[] = [];
+      try {
+        uploadedImages = await uploadImages(newFiles, currentStoreId);
+        console.log('Images uploaded successfully');
+      } catch (uploadError) {
+        console.error('Image upload failed:', uploadError);
+        toast({
+          title: "Image upload failed",
+          description: "Please try again with smaller images",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Insert product with images array
+      console.log('Creating product in database...');
       const { error } = await supabase
         .from('products')
         .insert({
@@ -130,11 +175,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           store_id: currentStoreId,
           is_published: isPublished,
           images: uploadedImages,
-          image_url: uploadedImages[0] || null // Keep first image as primary for backward compatibility
+          image_url: uploadedImages[0] || null
         });
         
-      if (error) throw error;
+      if (error) {
+        console.error('Product creation error:', error);
+        throw error;
+      }
       
+      console.log('Product created successfully');
       toast({ title: "Product added successfully!" });
       reset();
       setIsPublished(true);
