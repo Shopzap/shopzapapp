@@ -204,10 +204,66 @@ export const ordersApi = {
     shippingCarrier?: string;
     estimatedDeliveryDate?: string;
   }) => {
-    return apiRequest(`/orders/${orderId}/status`, {
+    const result = await apiRequest(`/orders/${orderId}/status`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+
+    // Send email notification for status updates
+    try {
+      const { emailService } = await import('@/services/emailService');
+      
+      // Get order details for email
+      const { data: orderDetails } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            quantity,
+            price_at_purchase,
+            products (name)
+          ),
+          stores (name)
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (orderDetails && orderDetails.buyer_email) {
+        const emailData = {
+          buyerName: orderDetails.buyer_name,
+          storeName: orderDetails.stores?.name || 'Store',
+          items: orderDetails.order_items?.map((item: any) => ({
+            name: item.products?.name || 'Product',
+            quantity: item.quantity,
+            price: item.price_at_purchase
+          })) || [],
+          totalPrice: orderDetails.total_price,
+          trackingNumber: data.trackingNumber,
+          estimatedDelivery: data.estimatedDeliveryDate
+        };
+
+        // Send appropriate email based on status
+        switch (data.status) {
+          case 'confirmed':
+            await emailService.sendOrderConfirmedEmail(orderId, orderDetails.buyer_email, emailData);
+            break;
+          case 'shipped':
+            await emailService.sendOrderShippedEmail(orderId, orderDetails.buyer_email, emailData);
+            break;
+          case 'delivered':
+            await emailService.sendOrderDeliveredEmail(orderId, orderDetails.buyer_email, emailData);
+            break;
+          case 'cancelled':
+            await emailService.sendOrderCancelledEmail(orderId, orderDetails.buyer_email, emailData);
+            break;
+        }
+      }
+    } catch (emailError) {
+      console.error('Failed to send status update email:', emailError);
+      // Don't fail the status update if email fails
+    }
+
+    return result;
   },
 
   // Get analytics data

@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { formatPrice, safeParsePrice, isValidProduct } from '@/utils/priceUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { emailService } from '@/services/emailService';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -196,6 +197,17 @@ const Checkout = () => {
         throw new Error('Store ID not found in cart items');
       }
 
+      // Get store information for email
+      const { data: storeData, error: storeError } = await supabase
+        .from('stores')
+        .select('name, business_email')
+        .eq('id', storeId)
+        .single();
+
+      if (storeError) {
+        console.error('Error fetching store data:', storeError);
+      }
+
       // Create order directly in Supabase with correct store_id
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
@@ -238,6 +250,33 @@ const Checkout = () => {
       }
 
       console.log('Order items created successfully');
+
+      // Send order confirmation emails
+      try {
+        const emailData = {
+          buyerName: formData.fullName,
+          storeName: storeData?.name || 'Store',
+          items: cartItems.map(item => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: safeParsePrice(item.product.price)
+          })),
+          totalPrice: total,
+          estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+        };
+
+        await emailService.sendOrderPlacedEmail(
+          orderData.id,
+          formData.email,
+          emailData,
+          storeData?.business_email
+        );
+        
+        console.log('Order confirmation email sent');
+      } catch (emailError) {
+        console.error('Failed to send order confirmation email:', emailError);
+        // Don't fail the order creation if email fails
+      }
       
       await clearCart();
       
