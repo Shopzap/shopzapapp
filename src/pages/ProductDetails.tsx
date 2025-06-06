@@ -35,26 +35,37 @@ const ProductDetails = () => {
           .from('stores')
           .select('id, name')
           .ilike('name', storeSlug)
-          .single();
+          .maybeSingle();
           
         if (storeError) {
           console.error('ProductDetails: Store not found', storeError);
           throw new Error('Store not found');
         }
         
-        // Then fetch the product by name within that store
+        if (!store) {
+          throw new Error('Store not found');
+        }
+        
+        // Convert product slug back to potential product name (replace hyphens with spaces)
+        const productNameQuery = productSlug.replace(/-/g, ' ');
+        
+        // Then fetch the product by name within that store, using maybeSingle to handle no results
         const { data, error } = await supabase
           .from('products')
           .select('*, stores(*)')
           .eq('store_id', store.id)
-          .ilike('name', productSlug.replace(/-/g, ' ')) // Convert slug back to name
+          .ilike('name', productNameQuery)
           .eq('is_published', true)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error('ProductDetails: Error fetching product by slug', error);
           throw error;
+        }
+        
+        if (!data) {
+          throw new Error('Product not found');
         }
         
         return data;
@@ -68,11 +79,15 @@ const ProductDetails = () => {
           .eq('id', productId)
           .eq('is_published', true)
           .eq('status', 'active')
-          .single();
+          .maybeSingle();
           
         if (error) {
           console.error('ProductDetails: Error fetching product by ID', error);
           throw error;
+        }
+        
+        if (!data) {
+          throw new Error('Product not found');
         }
         
         return data;

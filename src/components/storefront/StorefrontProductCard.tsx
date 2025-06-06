@@ -23,8 +23,13 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   // Extract store slug from current path
   const storeSlug = location.pathname.split('/store/')[1]?.split('/')[0];
   
-  // Create product slug from product name
-  const productSlug = product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  // Create product slug from product name - make it more URL-friendly
+  const productSlug = product.name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim(); // Remove leading/trailing whitespace
   
   const handleViewDetails = () => {
     if (storeSlug) {
