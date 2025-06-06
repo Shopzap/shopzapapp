@@ -2,6 +2,7 @@
 import React from "react";
 import StorefrontProductCard from "./StorefrontProductCard";
 import { Tables } from "@/integrations/supabase/types";
+import { Package, Plus } from "lucide-react";
 
 interface ProductGridProps {
   products: Tables<"products">[];
@@ -22,16 +23,30 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products, viewMode = 'grid' }
     console.log('ProductGrid: No products to display, showing empty state');
     return (
       <div className="text-center py-16 px-4">
-        <div className="text-gray-400 mb-4">
-          <svg className="mx-auto h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="relative">
+            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
+              <Package className="w-12 h-12 text-gray-400" />
+            </div>
+            <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <Plus className="w-4 h-4 text-white" />
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold text-gray-900">No Products Available</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              This store is currently being set up and doesn't have any products available yet. 
+              Please check back soon for new arrivals!
+            </p>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+            <p className="text-sm text-blue-800">
+              <strong>Store Owner?</strong> Add your first products in the dashboard to start selling!
+            </p>
+          </div>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No products available</h3>
-        <p className="text-gray-500 max-w-md mx-auto">
-          This store doesn't have any products available for purchase at the moment. 
-          Please check back later for new arrivals.
-        </p>
       </div>
     );
   }

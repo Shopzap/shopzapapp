@@ -5,6 +5,7 @@ import ProductGrid from "./ProductGrid";
 import StorefrontFilters from "./StorefrontFilters";
 import StorefrontNavbar from "./StorefrontNavbar";
 import { Tables } from "@/integrations/supabase/types";
+import { AlertCircle } from "lucide-react";
 
 interface StorefrontContentProps {
   store: {
@@ -116,6 +117,9 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
     setSelectedCategories([]);
   };
 
+  // Only show filters if there are products
+  const shouldShowFilters = safeProducts.length > 0 && showFilters;
+
   return (
     <div className={`min-h-screen bg-gray-50 ${fontClass}`}>
       <StorefrontNavbar storeName={store.name} />
@@ -134,8 +138,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
 
       <div className="container mx-auto px-4 md:px-8 py-6">
         <div className="flex gap-8">
-          {/* Filters Sidebar */}
-          {showFilters && (
+          {/* Filters Sidebar - Only show if there are products */}
+          {shouldShowFilters && (
             <div className="hidden lg:block w-64 flex-shrink-0">
               <StorefrontFilters
                 priceRange={priceRange}
@@ -153,13 +157,25 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
           <div className="flex-1" id="products-section">
             {isLoading ? (
               <div className="text-center py-16">
+                <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">Loading products...</h3>
                 <p className="text-gray-600">Please wait while we load the products.</p>
               </div>
-            ) : filteredAndSortedProducts.length === 0 ? (
+            ) : filteredAndSortedProducts.length === 0 && safeProducts.length > 0 ? (
               <div className="text-center py-16">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                <p className="text-gray-600">Try adjusting your filters or browse all products.</p>
+                <div className="flex flex-col items-center space-y-4">
+                  <AlertCircle className="w-16 h-16 text-gray-400" />
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No products match your filters</h3>
+                    <p className="text-gray-600 mb-4">Try adjusting your price range or categories to see more products.</p>
+                    <button 
+                      onClick={handleClearFilters}
+                      className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <ProductGrid products={filteredAndSortedProducts} viewMode={viewMode} />

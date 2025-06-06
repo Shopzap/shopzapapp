@@ -87,28 +87,27 @@ const Storefront: React.FC = () => {
       }
       
       try {
-        // Fetch ALL products for this store first, then filter in JavaScript
-        const { data, error } = await supabase
+        // First, let's check ALL products for this store to see what's available
+        const { data: allProducts, error: allError } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
           .order('created_at', { ascending: false });
           
-        if (error) {
-          console.error('Storefront: Error fetching products', error);
+        console.log('Storefront: ALL products in database for this store:', allProducts?.length || 0);
+        console.log('Storefront: Raw ALL products data:', allProducts);
+        
+        if (allError) {
+          console.error('Storefront: Error fetching all products', allError);
+        }
+        
+        if (!allProducts || allProducts.length === 0) {
+          console.log('Storefront: No products found in database for this store - this is the root cause');
           return [];
         }
         
-        console.log('Storefront: ALL products fetched from DB:', data?.length || 0);
-        console.log('Storefront: Raw product data:', data);
-        
-        if (!data || data.length === 0) {
-          console.log('Storefront: No products found in database for this store');
-          return [];
-        }
-        
-        // Filter products for public display with detailed logging
-        const publicProducts = data.filter(product => {
+        // Now filter for public display
+        const publicProducts = allProducts.filter(product => {
           console.log(`Storefront: Checking product "${product.name}":`, {
             id: product.id,
             status: product.status,
@@ -173,7 +172,7 @@ const Storefront: React.FC = () => {
       console.log(`Storefront: Final PUBLIC product count for display: ${productCount}`);
       
       if (productCount === 0) {
-        console.log('Storefront: No products to display - will show empty state');
+        console.log('Storefront: No products to display - will show improved empty state');
       }
     }
   }, [storeError, productsError, productsLoading, products]);
