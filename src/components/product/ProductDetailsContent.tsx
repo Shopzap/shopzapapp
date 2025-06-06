@@ -1,17 +1,26 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
+import ProductImageCarousel from './ProductImageCarousel';
+
+interface Product {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  images?: string[];
+  payment_method?: string;
+  stores?: {
+    name: string;
+    tagline?: string;
+  };
+}
 
 interface ProductDetailsContentProps {
-  product: {
-    id: string;
-    name: string;
-    price: number;
-    description: string;
-    image_url: string;
-    stores: { name: string } | null;
-  };
+  product: Product;
   handleBuyNow: () => void;
   handleBack: () => void;
 }
@@ -19,58 +28,105 @@ interface ProductDetailsContentProps {
 const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
   product,
   handleBuyNow,
-  handleBack,
+  handleBack
 }) => {
+  // Get images array, fallback to single image_url if images array is empty
+  const productImages = product.images && product.images.length > 0 
+    ? product.images 
+    : (product.image_url ? [product.image_url] : []);
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          className="mb-6 flex items-center gap-2"
-          onClick={handleBack}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-background border-b">
+        <div className="container mx-auto px-4 py-4">
+          <Button
+            variant="ghost"
+            onClick={handleBack}
+            className="mb-2"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Product Image */}
-          <div className="bg-accent rounded-lg overflow-hidden flex items-center justify-center h-[400px]">
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.name}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="text-muted-foreground">No image available</div>
-            )}
+      {/* Product Content */}
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Product Images */}
+          <div className="w-full">
+            <ProductImageCarousel 
+              images={productImages}
+              productName={product.name}
+            />
           </div>
 
-          {/* Product Details */}
-          <div className="flex flex-col">
-            <h1 className="text-3xl font-bold">{product.name}</h1>
-            <p className="text-2xl font-bold text-primary mt-2">
-              {formatPrice(product.price)}
-            </p>
-
-            {product.description && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-2">Description</h3>
-                <p className="text-muted-foreground">{product.description}</p>
+          {/* Product Info */}
+          <div className="space-y-6">
+            {/* Store Info */}
+            {product.stores && (
+              <div className="border-b pb-4">
+                <h3 className="font-semibold text-lg">{product.stores.name}</h3>
+                {product.stores.tagline && (
+                  <p className="text-muted-foreground">{product.stores.tagline}</p>
+                )}
               </div>
             )}
 
-            <div className="mt-8">
-              <Button size="lg" className="w-full md:w-auto" onClick={handleBuyNow}>
-                Buy Now
-              </Button>
+            {/* Product Details */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">{product.name}</h1>
+              <p className="text-3xl font-bold text-primary mb-4">
+                {formatPrice(product.price)}
+              </p>
+              
+              {product.description && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-2">Description</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">
+                    {product.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Payment Method */}
+              {product.payment_method && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-2">Payment Options</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {product.payment_method === 'both' ? (
+                      <>
+                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                          Online Payment
+                        </span>
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                          Cash on Delivery
+                        </span>
+                      </>
+                    ) : product.payment_method === 'cash' ? (
+                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                        Cash on Delivery
+                      </span>
+                    ) : (
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+                        Online Payment
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="mt-auto pt-8">
-              <p className="text-sm text-muted-foreground">
-                From {product.stores?.name || 'Store'}
-              </p>
+            {/* Buy Button */}
+            <div className="sticky bottom-4 bg-background pt-4 border-t">
+              <Button 
+                onClick={handleBuyNow}
+                className="w-full py-6 text-lg font-semibold"
+                size="lg"
+              >
+                Buy Now - {formatPrice(product.price)}
+              </Button>
             </div>
           </div>
         </div>

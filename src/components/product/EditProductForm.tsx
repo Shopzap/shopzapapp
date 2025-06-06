@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import ProductVisibilityToggle from './ProductVisibilityToggle';
+import MultiImageUploader from './MultiImageUploader';
 import { Product } from './types';
 
 interface EditProductFormProps {
@@ -21,21 +23,93 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublished, setIsPublished] = useState(product.is_published ?? true);
+  const [images, setImages] = useState<string[]>(
+    Array.isArray(product.images) && product.images.length > 0 
+      ? product.images 
+      : (product.image_url ? [product.image_url] : [])
+  );
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
       name: product.name,
       description: product.description || '',
       price: product.price.toString(),
-      image_url: product.image_url || '',
       status: product.status,
       payment_method: product.payment_method || 'online'
     }
   });
 
+  const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
+    const uploadPromises = files.map(async (file) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${storeId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      
+      if (images.length === 0 && newFiles.length === 0) {
+        toast({
+          title: "Images required",
+          description: "Please add at least one product image",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get user's store for uploads
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        toast({
+          title: "Authentication required",
+          description: "Please login to update products",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', session.session.user.id)
+        .single();
+
+      if (!storeData) {
+        toast({
+          title: "Store not found",
+          description: "Please complete the onboarding process",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Upload new images
+      let finalImages = [...images];
+      if (newFiles.length > 0) {
+        const uploadedUrls = await uploadImages(newFiles, storeData.id);
+        finalImages = [...finalImages, ...uploadedUrls];
+      }
       
       const { error } = await supabase
         .from('products')
@@ -43,10 +117,11 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           name: data.name,
           description: data.description,
           price: parseFloat(data.price),
-          image_url: data.image_url,
           status: data.status,
           payment_method: data.payment_method,
           is_published: isPublished,
+          images: finalImages,
+          image_url: finalImages[0] || null, // Keep first image as primary for backward compatibility
           updated_at: new Date().toISOString()
         })
         .eq('id', product.id);
@@ -105,14 +180,12 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
         </div>
 
-        <div>
-          <Label htmlFor="image_url">Image URL</Label>
-          <Input
-            id="image_url"
-            {...register('image_url')}
-            placeholder="https://example.com/image.jpg"
-          />
-        </div>
+        <MultiImageUploader
+          images={images}
+          onImagesChange={setImages}
+          onFilesChange={setNewFiles}
+          disabled={isSubmitting}
+        />
 
         <div>
           <Label htmlFor="status">Status</Label>

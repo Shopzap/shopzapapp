@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import ProductVisibilityToggle from './ProductVisibilityToggle';
+import MultiImageUploader from './MultiImageUploader';
 
 interface AddProductModalProps {
   open: boolean;
@@ -32,22 +33,57 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPublished, setIsPublished] = useState(true); // Default to published
+  const [isPublished, setIsPublished] = useState(true);
+  const [images, setImages] = useState<string[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       description: '',
       price: '',
-      image_url: '',
       status: 'active',
       payment_method: 'online'
     }
   });
 
+  const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
+    const uploadPromises = files.map(async (file) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${storeId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      
+      if (newFiles.length === 0) {
+        toast({
+          title: "Images required",
+          description: "Please add at least one product image",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Get store ID if not provided
       let currentStoreId = storeId;
@@ -78,26 +114,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         }
         currentStoreId = storeData.id;
       }
+
+      // Upload images
+      const uploadedImages = await uploadImages(newFiles, currentStoreId);
       
-      // Insert product with explicit is_published value
+      // Insert product with images array
       const { error } = await supabase
         .from('products')
         .insert({
           name: data.name,
           description: data.description,
           price: parseFloat(data.price),
-          image_url: data.image_url,
           status: data.status,
           payment_method: data.payment_method,
           store_id: currentStoreId,
-          is_published: isPublished // Explicitly set the published status
+          is_published: isPublished,
+          images: uploadedImages,
+          image_url: uploadedImages[0] || null // Keep first image as primary for backward compatibility
         });
         
       if (error) throw error;
       
       toast({ title: "Product added successfully!" });
       reset();
-      setIsPublished(true); // Reset to default published state
+      setIsPublished(true);
+      setImages([]);
+      setNewFiles([]);
       onOpenChange(false);
       onProductAdded();
     } catch (error) {
@@ -114,7 +156,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
@@ -156,14 +198,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
             </div>
 
-            <div>
-              <Label htmlFor="image_url">Image URL</Label>
-              <Input
-                id="image_url"
-                {...register('image_url')}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
+            <MultiImageUploader
+              images={images}
+              onImagesChange={setImages}
+              onFilesChange={setNewFiles}
+              disabled={isSubmitting}
+            />
 
             <div>
               <Label htmlFor="status">Status</Label>

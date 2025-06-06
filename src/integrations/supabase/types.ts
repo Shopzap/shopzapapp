@@ -231,6 +231,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          images: string[] | null
           is_published: boolean | null
           name: string
           payment_method: string | null
@@ -245,6 +246,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_published?: boolean | null
           name: string
           payment_method?: string | null
@@ -259,6 +261,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          images?: string[] | null
           is_published?: boolean | null
           name?: string
           payment_method?: string | null
