@@ -44,8 +44,7 @@ import './App.css';
 
 const queryClient = new QueryClient();
 
-// AppContent component that contains the routing logic
-function AppContent() {
+function App() {
   // Check if this is a subdomain route
   const isSubdomain = isSubdomainRoute();
   
@@ -54,128 +53,122 @@ function AppContent() {
   console.log('App: Current pathname =', window.location.pathname);
 
   return (
-    <div className="App">
-      {isSubdomain ? (
-        // Subdomain routing (e.g., store.shopzap.io)
-        <SubdomainStorefront />
-      ) : (
-        // Main app routing (e.g., shopzap.io)
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/verify" element={<Verify />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/pricing" element={<Pricing />} />
-          
-          {/* Legacy storefront routes */}
-          <Route path="/store/:storeName" element={<Storefront />} />
-          <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
-          <Route path="/product/:productId" element={<ProductDetails />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/order-success" element={<OrderSuccess />} />
-          <Route path="/order-redirect" element={<OrderRedirect />} />
-          <Route path="/order-tracking" element={<OrderTracking />} />
-          
-          {/* Protected dashboard routes */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/products" 
-            element={
-              <ProtectedRoute>
-                <ProductManager />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/onboarding" 
-            element={
-              <ProtectedRoute>
-                <Onboarding />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/customize" 
-            element={
-              <ProtectedRoute>
-                <CustomizeStore />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/orders" 
-            element={
-              <ProtectedRoute>
-                <Orders />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/dashboard/orders" 
-            element={
-              <ProtectedRoute>
-                <DashboardOrders />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/analytics" 
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/embed" 
-            element={
-              <ProtectedRoute>
-                <EmbedGenerator />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/builder" 
-            element={
-              <ProtectedRoute>
-                <StoreBuilder />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      )}
-      <Toaster />
-    </div>
-  );
-}
-
-function App() {
-  return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Router>
           <AuthProvider>
             <StoreProvider>
-              <AppContent />
+              <div className="App">
+                {isSubdomain ? (
+                  // Subdomain routing (e.g., store.shopzap.io)
+                  <SubdomainStorefront />
+                ) : (
+                  // Main app routing (e.g., shopzap.io)
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/verify" element={<Verify />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    
+                    {/* Legacy storefront routes */}
+                    <Route path="/store/:storeName" element={<Storefront />} />
+                    <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
+                    <Route path="/product/:productId" element={<ProductDetails />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/order-success" element={<OrderSuccess />} />
+                    <Route path="/order-redirect" element={<OrderRedirect />} />
+                    <Route path="/order-tracking" element={<OrderTracking />} />
+                    
+                    {/* Protected dashboard routes */}
+                    <Route 
+                      path="/dashboard" 
+                      element={
+                        <ProtectedRoute>
+                          <Dashboard />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/products" 
+                      element={
+                        <ProtectedRoute>
+                          <ProductManager />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/onboarding" 
+                      element={
+                        <ProtectedRoute>
+                          <Onboarding />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/customize" 
+                      element={
+                        <ProtectedRoute>
+                          <CustomizeStore />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/settings" 
+                      element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/orders" 
+                      element={
+                        <ProtectedRoute>
+                          <Orders />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/dashboard/orders" 
+                      element={
+                        <ProtectedRoute>
+                          <DashboardOrders />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/analytics" 
+                      element={
+                        <ProtectedRoute>
+                          <Analytics />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/embed" 
+                      element={
+                        <ProtectedRoute>
+                          <EmbedGenerator />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    <Route 
+                      path="/builder" 
+                      element={
+                        <ProtectedRoute>
+                          <StoreBuilder />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                )}
+                <Toaster />
+              </div>
             </StoreProvider>
           </AuthProvider>
         </Router>
