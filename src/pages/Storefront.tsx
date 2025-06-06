@@ -8,23 +8,14 @@ import NotFound from "./NotFound";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
 
-interface StorefrontProps {
-  storeName?: string; // For subdomain usage
-}
-
-const Storefront: React.FC<StorefrontProps> = ({ storeName: propStoreName }) => {
-  const { storeName: paramStoreName } = useParams<{ storeName: string }>();
+const Storefront: React.FC = () => {
+  const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
-  
-  // Use storeName from props (subdomain) or from route params (legacy URLs)
-  const storeName = propStoreName || paramStoreName;
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: storeName from props', propStoreName);
-    console.log('Storefront: storeName from params', paramStoreName);
-    console.log('Storefront: final storeName', storeName);
-  }, [location, propStoreName, paramStoreName, storeName]);
+    console.log('Storefront: storeName from params', storeName);
+  }, [location, storeName]);
   
   // Fetch store data
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({

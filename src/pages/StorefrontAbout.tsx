@@ -8,15 +8,8 @@ import NotFound from "./NotFound";
 import StorefrontAbout from "@/components/storefront/StorefrontAbout";
 import StorefrontNavbar from "@/components/storefront/StorefrontNavbar";
 
-interface StorefrontAboutPageProps {
-  storeName?: string; // For subdomain usage
-}
-
-const StorefrontAboutPage: React.FC<StorefrontAboutPageProps> = ({ storeName: propStoreName }) => {
-  const { storeName: paramStoreName } = useParams<{ storeName: string }>();
-  
-  // Use storeName from props (subdomain) or from route params (legacy URLs)
-  const storeName = propStoreName || paramStoreName;
+const StorefrontAboutPage: React.FC = () => {
+  const { storeName } = useParams<{ storeName: string }>();
   
   // Fetch store data
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
