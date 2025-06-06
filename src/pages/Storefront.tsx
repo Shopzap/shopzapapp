@@ -75,14 +75,15 @@ const Storefront = () => {
       }
       
       try {
-        // Fetch ONLY published and active products for public viewing
-        // No authentication required - this is public storefront
+        // Fetch products with explicit filters - NO AUTHENTICATION REQUIRED
+        // This is a public storefront, so we don't check user sessions
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
           .eq('status', 'active')
-          .eq('is_published', true) // Only show published products
+          // Use COALESCE to handle null is_published values, defaulting to true
+          .or('is_published.is.true,is_published.is.null')
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -91,10 +92,10 @@ const Storefront = () => {
           return [];
         }
         
-        console.log('Storefront: Raw published products fetched:', data?.length || 0);
-        console.log('Storefront: Products will be shown publicly for store:', store.name);
+        console.log('Storefront: Raw products fetched:', data?.length || 0);
+        console.log('Storefront: Products data details:', data);
         
-        // Ensure data is properly formatted and filter out invalid products
+        // Filter out any invalid products and ensure all have required fields
         const validProducts = (data || []).filter(product => {
           const isValid = product && 
             product.id && 
@@ -102,8 +103,9 @@ const Storefront = () => {
             typeof product.price !== 'undefined' &&
             product.price !== null &&
             product.store_id === store.id &&
-            product.is_published === true && // Double-check published status
-            product.status === 'active'; // Double-check active status
+            product.status === 'active' &&
+            // Handle both explicit true and null (default to published)
+            (product.is_published === true || product.is_published === null);
           
           if (!isValid) {
             console.log('Storefront: Invalid or unpublished product filtered out:', product);

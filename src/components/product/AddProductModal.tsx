@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
@@ -31,7 +32,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPublished, setIsPublished] = useState(true);
+  const [isPublished, setIsPublished] = useState(true); // Default to published
   
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -78,6 +79,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         currentStoreId = storeData.id;
       }
       
+      // Insert product with explicit is_published value
       const { error } = await supabase
         .from('products')
         .insert({
@@ -88,14 +90,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           status: data.status,
           payment_method: data.payment_method,
           store_id: currentStoreId,
-          is_published: isPublished
+          is_published: isPublished // Explicitly set the published status
         });
         
       if (error) throw error;
       
       toast({ title: "Product added successfully!" });
       reset();
-      setIsPublished(true);
+      setIsPublished(true); // Reset to default published state
       onOpenChange(false);
       onProductAdded();
     } catch (error) {

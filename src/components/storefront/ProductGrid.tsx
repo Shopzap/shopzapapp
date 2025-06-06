@@ -10,6 +10,7 @@ interface ProductGridProps {
 
 const ProductGrid: React.FC<ProductGridProps> = ({ products, viewMode = 'grid' }) => {
   console.log('ProductGrid: Rendering with products:', products?.length || 0);
+  console.log('ProductGrid: Products data:', products);
   
   // Handle empty products case - improved messaging for public storefront
   if (!products || products.length === 0) {
