@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -60,6 +59,10 @@ const Checkout = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Debug: Log cart items to verify data
+  console.log('Checkout: Current cart items:', cartItems);
+  console.log('Checkout: Cart items count:', cartItems.length);
 
   React.useEffect(() => {
     if (cartItems.length === 0) {
