@@ -11,7 +11,7 @@ const Cart = () => {
   const { items, updateQuantity, removeFromCart, getTotalPrice, getItemCount } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { storeSlug } = useParams<{ storeSlug?: string }>();
+  const { storeName } = useParams<{ storeName?: string }>();
   
   const total = getTotalPrice();
   const itemCount = getItemCount();
@@ -62,15 +62,15 @@ const Cart = () => {
     }
     
     // Navigate to checkout with store context
-    if (storeSlug) {
-      navigate(`/store/${storeSlug}/checkout`);
+    if (storeName) {
+      navigate(`/store/${storeName}/checkout`);
     } else {
       navigate('/checkout');
     }
   };
 
   const getStoreLink = () => {
-    return storeSlug ? `/store/${storeSlug}` : '/';
+    return storeName ? `/store/${storeName}` : '/';
   };
 
   if (items.length === 0) {

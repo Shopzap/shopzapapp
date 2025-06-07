@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,7 @@ const Checkout = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { storeName } = useParams<{ storeName?: string }>();
   const { items: cartItems, getTotalPrice, clearCart } = useCart();
   
   const [formData, setFormData] = useState<FormData>({
@@ -64,6 +66,7 @@ const Checkout = () => {
   // Debug: Log cart items to verify data
   console.log('Checkout: Current cart items:', cartItems);
   console.log('Checkout: Cart items count:', cartItems.length);
+  console.log('Checkout: Store name:', storeName);
 
   React.useEffect(() => {
     if (cartItems.length === 0) {
@@ -72,7 +75,13 @@ const Checkout = () => {
         description: "Please add items to your cart before checking out.",
         variant: "destructive"
       });
-      navigate('/cart');
+      
+      // Navigate back to store or home
+      if (storeName) {
+        navigate(`/store/${storeName}`);
+      } else {
+        navigate('/');
+      }
       return;
     }
 
@@ -85,10 +94,14 @@ const Checkout = () => {
         variant: "destructive"
       });
       setTimeout(() => {
-        navigate('/store/demo');
+        if (storeName) {
+          navigate(`/store/${storeName}`);
+        } else {
+          navigate('/');
+        }
       }, 3000);
     }
-  }, [cartItems, navigate, toast]);
+  }, [cartItems, navigate, toast, storeName]);
 
   const total = getTotalPrice();
 
@@ -324,13 +337,21 @@ const Checkout = () => {
     }
   };
 
+  const getCartLink = () => {
+    return storeName ? `/store/${storeName}/cart` : '/cart';
+  };
+
+  const getStoreLink = () => {
+    return storeName ? `/store/${storeName}` : '/';
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Your cart is empty</h1>
           <Button asChild>
-            <Link to="/store/demo">Continue Shopping</Link>
+            <Link to={getStoreLink()}>Continue Shopping</Link>
           </Button>
         </div>
       </div>
@@ -344,7 +365,7 @@ const Checkout = () => {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/cart">Cart</Link>
+              <Link to={getCartLink()}>Cart</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -360,7 +381,7 @@ const Checkout = () => {
 
       {/* Back to Cart Button */}
       <Button variant="ghost" asChild className="mb-6">
-        <Link to="/cart">
+        <Link to={getCartLink()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Return to Cart
         </Link>

@@ -64,26 +64,21 @@ const ProductDetails = () => {
   const handleBuyNow = () => {
     if (!product) return;
     
-    // Create an order item from the product
-    const orderItem = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      quantity: 1,
-      image: product.image_url || 'https://placehold.co/80x80'
-    };
-    
-    // Navigate to checkout with order item
-    navigate(`/store/${storeName}/checkout`, { 
-      state: { 
-        orderItems: [orderItem]
-      } 
-    });
+    // Navigate to store-specific checkout
+    if (storeName) {
+      navigate(`/store/${storeName}/checkout`);
+    } else {
+      navigate('/checkout');
+    }
   };
 
   // Handle back button
   const handleBack = () => {
-    navigate(`/store/${storeName}`);
+    if (storeName) {
+      navigate(`/store/${storeName}`);
+    } else {
+      navigate('/');
+    }
   };
 
   // Show error page if store or product not found
