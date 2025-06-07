@@ -1,6 +1,6 @@
 
 import React, { useEffect } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
@@ -17,21 +17,10 @@ const Storefront: React.FC = () => {
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
 
-  // Show error if no store name is provided
-  if (!storeName) {
+  // Redirect to home if no store name provided
+  if (!storeName || storeName.trim() === '') {
     console.error('Storefront: No store name provided in URL');
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Invalid Store URL</h1>
-        <p className="text-muted-foreground mb-6">Please provide a valid store name in the URL.</p>
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Return to Home
-        </button>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
   
   // Fetch store data using the store name

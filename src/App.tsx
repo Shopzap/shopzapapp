@@ -51,6 +51,10 @@ const App = () => {
                   <Route path="/order-success" element={<OrderSuccess />} />
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
                   
+                  {/* Handle /store/ without store name - redirect to home */}
+                  <Route path="/store" element={<Index />} />
+                  <Route path="/store/" element={<Index />} />
+                  
                   {/* Store routes - these need to be specific and in correct order */}
                   <Route path="/store/:storeName" element={<Storefront />} />
                   <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
