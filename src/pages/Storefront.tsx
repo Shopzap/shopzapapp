@@ -16,15 +16,28 @@ const Storefront: React.FC = () => {
     console.log('Storefront: Current path', location.pathname);
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
+
+  // Show error if no store name is provided
+  if (!storeName) {
+    console.error('Storefront: No store name provided in URL');
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-bold mb-4">Invalid Store URL</h1>
+        <p className="text-muted-foreground mb-6">Please provide a valid store name in the URL.</p>
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+        >
+          Return to Home
+        </button>
+      </div>
+    );
+  }
   
   // Fetch store data using the store name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      if (!storeName) {
-        throw new Error('No store name provided');
-      }
-      
       console.log('Storefront: Fetching store with name', storeName);
       
       // Try to find the store using the name field (case-insensitive)
@@ -59,6 +72,8 @@ const Storefront: React.FC = () => {
       return data;
     },
     enabled: !!storeName,
+    retry: 2,
+    retryDelay: 1000,
   });
   
   // Fetch products for the store - only published products
@@ -68,7 +83,7 @@ const Storefront: React.FC = () => {
       console.log('Storefront: Fetching products for store ID', store?.id);
       
       if (!store?.id) {
-        console.error('Storefront: No store ID available');
+        console.log('Storefront: No store ID available, returning empty array');
         return [];
       }
       
@@ -87,7 +102,7 @@ const Storefront: React.FC = () => {
         }
         
         console.log('Storefront: Products data received', data?.length || 0, 'products');
-        return data;
+        return data || [];
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
         return [];
@@ -116,16 +131,21 @@ const Storefront: React.FC = () => {
   
   // Show error page if store not found
   if (storeError) {
+    console.error('Storefront: Rendering error page due to store error');
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeName}" doesn't exist or is unavailable.</p>
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Return to Home
-        </button>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <h1 className="text-3xl font-bold mb-4 text-gray-900">Store Not Found</h1>
+          <p className="text-gray-600 mb-6 max-w-md">
+            The store "{storeName}" doesn't exist or is currently unavailable.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Return to Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -133,26 +153,31 @@ const Storefront: React.FC = () => {
   // Loading state
   if (storeLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading store...</p>
-        <p className="mt-2 text-sm text-muted-foreground">Store: {storeName}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader className="h-8 w-8 animate-spin text-blue-600 mb-4" />
+        <p className="text-gray-600 text-lg">Loading store...</p>
+        <p className="text-gray-500 text-sm mt-2">Store: {storeName}</p>
       </div>
     );
   }
   
   // Store not found (should be caught by error above, but just in case)
   if (!store) {
+    console.error('Storefront: No store data available');
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeName}" doesn't exist or is unavailable.</p>
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Return to Home
-        </button>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <h1 className="text-3xl font-bold mb-4 text-gray-900">Store Not Found</h1>
+          <p className="text-gray-600 mb-6 max-w-md">
+            The store "{storeName}" doesn't exist or is currently unavailable.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Return to Home
+          </button>
+        </div>
       </div>
     );
   }

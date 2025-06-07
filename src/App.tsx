@@ -27,6 +27,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import CustomizeStore from "./pages/CustomizeStore";
 import Analytics from "./pages/Analytics";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -39,70 +40,72 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <StoreProvider>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth-callback" element={<AuthCallback />} />
-                <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/track-order/:orderId" element={<OrderTracking />} />
-                
-                {/* Store routes - Fixed routing structure */}
-                <Route path="/store/:storeName" element={<Storefront />} />
-                <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
-                <Route path="/store/:storeName/cart" element={<Cart />} />
-                <Route path="/store/:storeName/checkout" element={<Checkout />} />
-                <Route path="/store/:storeName/product/:productSlug" element={<ProductDetails />} />
-                
-                {/* Dashboard routes with sidebar layout */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Dashboard />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard/products" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <ProductManager />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard/orders" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Orders />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard/customize-store" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <CustomizeStore />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard/analytics" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Analytics />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard/settings" element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <Settings />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                } />
-                
-                {/* Fallback */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <ErrorBoundary>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth-callback" element={<AuthCallback />} />
+                  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                  <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
+                  <Route path="/order-success" element={<OrderSuccess />} />
+                  <Route path="/track-order/:orderId" element={<OrderTracking />} />
+                  
+                  {/* Store routes - these need to be specific and in correct order */}
+                  <Route path="/store/:storeName" element={<Storefront />} />
+                  <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
+                  <Route path="/store/:storeName/cart" element={<Cart />} />
+                  <Route path="/store/:storeName/checkout" element={<Checkout />} />
+                  <Route path="/store/:storeName/product/:productSlug" element={<ProductDetails />} />
+                  
+                  {/* Dashboard routes with sidebar layout */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Dashboard />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/products" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <ProductManager />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/orders" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Orders />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/customize-store" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <CustomizeStore />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/analytics" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Analytics />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/dashboard/settings" element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <Settings />
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Fallback */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </ErrorBoundary>
             </StoreProvider>
           </AuthProvider>
         </BrowserRouter>

@@ -24,8 +24,8 @@ interface StorefrontContentProps {
 }
 
 const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, isLoading = false }) => {
-  console.log('StorefrontContent: Products received', products);
-  console.log('StorefrontContent: Products count', products?.length || 0);
+  console.log('StorefrontContent: Rendering with store:', store?.name);
+  console.log('StorefrontContent: Products received', products?.length || 0);
   console.log('StorefrontContent: Is loading', isLoading);
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -33,6 +33,26 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Safety check for store
+  if (!store || !store.id || !store.name) {
+    console.error('StorefrontContent: Invalid store data', store);
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center p-8">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-4 text-gray-900">Store Data Error</h1>
+          <p className="text-gray-600 mb-6">There was an error loading the store information.</p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Apply font style to the entire storefront
   const fontClass = store.font_style ? `font-${store.font_style.toLowerCase()}` : 'font-poppins';
@@ -119,6 +139,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
 
   // Only show filters if there are products
   const shouldShowFilters = safeProducts.length > 0 && showFilters;
+
+  console.log('StorefrontContent: About to render with filtered products:', filteredAndSortedProducts.length);
 
   return (
     <div className={`min-h-screen bg-gray-50 ${fontClass}`}>
