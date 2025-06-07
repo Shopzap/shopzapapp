@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StoreProvider } from "@/contexts/StoreContext";
+import { CartProvider } from "@/hooks/useCart";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
@@ -55,12 +56,32 @@ const App = () => {
                   <Route path="/store" element={<Index />} />
                   <Route path="/store/" element={<Index />} />
                   
-                  {/* Store routes - these need to be specific and in correct order */}
-                  <Route path="/store/:storeName" element={<Storefront />} />
-                  <Route path="/store/:storeName/about" element={<StorefrontAbout />} />
-                  <Route path="/store/:storeName/cart" element={<Cart />} />
-                  <Route path="/store/:storeName/checkout" element={<Checkout />} />
-                  <Route path="/store/:storeName/product/:productSlug" element={<ProductDetails />} />
+                  {/* Store routes wrapped with CartProvider */}
+                  <Route path="/store/:storeName" element={
+                    <CartProvider>
+                      <Storefront />
+                    </CartProvider>
+                  } />
+                  <Route path="/store/:storeName/about" element={
+                    <CartProvider>
+                      <StorefrontAbout />
+                    </CartProvider>
+                  } />
+                  <Route path="/store/:storeName/cart" element={
+                    <CartProvider>
+                      <Cart />
+                    </CartProvider>
+                  } />
+                  <Route path="/store/:storeName/checkout" element={
+                    <CartProvider>
+                      <Checkout />
+                    </CartProvider>
+                  } />
+                  <Route path="/store/:storeName/product/:productSlug" element={
+                    <CartProvider>
+                      <ProductDetails />
+                    </CartProvider>
+                  } />
                   
                   {/* Dashboard routes with sidebar layout */}
                   <Route path="/dashboard" element={
