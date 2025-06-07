@@ -9,40 +9,40 @@ import StorefrontContent from "@/components/storefront/StorefrontContent";
 import { Tables } from "@/integrations/supabase/types";
 
 const Storefront: React.FC = () => {
-  const { storeSlug } = useParams<{ storeSlug: string }>();
+  const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: storeSlug from params', storeSlug);
-  }, [location, storeSlug]);
+    console.log('Storefront: storeName from params', storeName);
+  }, [location, storeName]);
   
-  // Fetch store data using the slug
+  // Fetch store data using the store name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', storeSlug],
+    queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      if (!storeSlug) {
-        throw new Error('No store slug provided');
+      if (!storeName) {
+        throw new Error('No store name provided');
       }
       
-      console.log('Storefront: Fetching store with slug', storeSlug);
+      console.log('Storefront: Fetching store with name', storeName);
       
       // Try to find the store using the name field (case-insensitive)
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeSlug)
+        .ilike('name', storeName)
         .single();
         
       if (error && error.code === 'PGRST116') {
         // Try with URL decoded name (in case of spaces or special characters)
-        const decodedStoreSlug = decodeURIComponent(storeSlug);
-        console.log('Storefront: Trying with decoded store slug', decodedStoreSlug);
+        const decodedStoreName = decodeURIComponent(storeName);
+        console.log('Storefront: Trying with decoded store name', decodedStoreName);
         
         const secondAttempt = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', decodedStoreSlug)
+          .ilike('name', decodedStoreName)
           .single();
           
         if (!secondAttempt.error) {
@@ -58,7 +58,7 @@ const Storefront: React.FC = () => {
       console.log('Storefront: Store data received', data);
       return data;
     },
-    enabled: !!storeSlug,
+    enabled: !!storeName,
   });
   
   // Fetch products for the store - only published products
@@ -119,7 +119,7 @@ const Storefront: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
+        <p className="text-muted-foreground mb-6">The store "{storeName}" doesn't exist or is unavailable.</p>
         <button 
           onClick={() => window.location.href = '/'}
           className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
@@ -136,7 +136,7 @@ const Storefront: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center">
         <Loader className="h-8 w-8 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading store...</p>
-        <p className="mt-2 text-sm text-muted-foreground">Store: {storeSlug}</p>
+        <p className="mt-2 text-sm text-muted-foreground">Store: {storeName}</p>
       </div>
     );
   }
@@ -146,7 +146,7 @@ const Storefront: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
+        <p className="text-muted-foreground mb-6">The store "{storeName}" doesn't exist or is unavailable.</p>
         <button 
           onClick={() => window.location.href = '/'}
           className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"

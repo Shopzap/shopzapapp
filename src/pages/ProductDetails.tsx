@@ -5,98 +5,60 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Loader, ArrowLeft } from 'lucide-react';
-import { formatPrice } from '@/lib/utils';
 import NotFound from './NotFound';
 import ProductDetailsContent from '@/components/product/ProductDetailsContent';
 
 const ProductDetails = () => {
-  const { storeSlug, productSlug, productId } = useParams<{ 
-    storeSlug?: string; 
-    productSlug?: string; 
-    productId?: string; 
-  }>();
+  const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
   const navigate = useNavigate();
 
-  console.log('ProductDetails: Params received', { storeSlug, productSlug, productId });
-
-  // Determine if we're using the new route format (/store/:storeSlug/product/:productSlug) or legacy (/product/:productId)
-  const isNewRouteFormat = !!(storeSlug && productSlug);
-  const isLegacyFormat = !!productId;
-
-  // Fetch product data based on route format
-  const { data: product, isLoading, error } = useQuery({
-    queryKey: ['product', isNewRouteFormat ? `${storeSlug}-${productSlug}` : productId],
+  // First, fetch the store to get store_id
+  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
+    queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      if (isNewRouteFormat && storeSlug && productSlug) {
-        console.log('ProductDetails: Fetching product using new format', { storeSlug, productSlug });
-        
-        // First, get the store to validate it exists
-        const { data: store, error: storeError } = await supabase
-          .from('stores')
-          .select('id, name')
-          .ilike('name', storeSlug)
-          .maybeSingle();
-          
-        if (storeError) {
-          console.error('ProductDetails: Store not found', storeError);
-          throw new Error('Store not found');
-        }
-        
-        if (!store) {
-          throw new Error('Store not found');
-        }
-        
-        // Convert product slug back to potential product name (replace hyphens with spaces)
-        const productNameQuery = productSlug.replace(/-/g, ' ');
-        
-        // Then fetch the product by name within that store, using maybeSingle to handle no results
-        const { data, error } = await supabase
-          .from('products')
-          .select('*, stores(*)')
-          .eq('store_id', store.id)
-          .ilike('name', productNameQuery)
-          .eq('is_published', true)
-          .eq('status', 'active')
-          .maybeSingle();
-          
-        if (error) {
-          console.error('ProductDetails: Error fetching product by slug', error);
-          throw error;
-        }
-        
-        if (!data) {
-          throw new Error('Product not found');
-        }
-        
-        return data;
-      } else if (isLegacyFormat && productId) {
-        console.log('ProductDetails: Fetching product using legacy format', productId);
-        
-        // Legacy format - fetch by product ID
-        const { data, error } = await supabase
-          .from('products')
-          .select('*, stores(*)')
-          .eq('id', productId)
-          .eq('is_published', true)
-          .eq('status', 'active')
-          .maybeSingle();
-          
-        if (error) {
-          console.error('ProductDetails: Error fetching product by ID', error);
-          throw error;
-        }
-        
-        if (!data) {
-          throw new Error('Product not found');
-        }
-        
-        return data;
-      } else {
-        throw new Error('Invalid route parameters');
+      if (!storeName) {
+        throw new Error('No store name provided');
       }
+      
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .ilike('name', storeName)
+        .single();
+        
+      if (error) throw error;
+      return data;
     },
-    enabled: !!(isNewRouteFormat ? (storeSlug && productSlug) : productId),
+    enabled: !!storeName,
   });
+
+  // Then fetch product data using the product slug and store_id
+  const { data: product, isLoading: productLoading, error: productError } = useQuery({
+    queryKey: ['product-by-slug', productSlug, store?.id],
+    queryFn: async () => {
+      if (!productSlug || !store?.id) {
+        throw new Error('Missing product slug or store ID');
+      }
+
+      // Convert slug back to product name for searching
+      const productName = productSlug.replace(/-/g, ' ');
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, stores(*)')
+        .eq('store_id', store.id)
+        .ilike('name', productName)
+        .eq('status', 'active')
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!productSlug && !!store?.id,
+  });
+
+  const isLoading = storeLoading || productLoading;
+  const hasError = storeError || productError;
 
   // Handle navigation to checkout
   const handleBuyNow = () => {
@@ -112,42 +74,28 @@ const ProductDetails = () => {
     };
     
     // Navigate to checkout with order item
-    if (isNewRouteFormat && storeSlug) {
-      navigate(`/store/${storeSlug}/checkout`, { 
-        state: { 
-          orderItems: [orderItem]
-        } 
-      });
-    } else {
-      navigate('/checkout', { 
-        state: { 
-          orderItems: [orderItem]
-        } 
-      });
-    }
+    navigate(`/store/${storeName}/checkout`, { 
+      state: { 
+        orderItems: [orderItem]
+      } 
+    });
   };
 
   // Handle back button
   const handleBack = () => {
-    if (isNewRouteFormat && storeSlug) {
-      navigate(`/store/${storeSlug}`);
-    } else {
-      navigate(-1);
-    }
+    navigate(`/store/${storeName}`);
   };
 
-  // Show error page if product not found
-  if (error) {
+  // Show error page if store or product not found
+  if (hasError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or is unavailable.</p>
-        <button 
-          onClick={handleBack}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Go Back
-        </button>
+        <p className="text-muted-foreground mb-6">The product "{productSlug}" doesn't exist in this store.</p>
+        <Button onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Store
+        </Button>
       </div>
     );
   }
@@ -167,13 +115,11 @@ const ProductDetails = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-6">The product you're looking for doesn't exist or is unavailable.</p>
-        <button 
-          onClick={handleBack}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Go Back
-        </button>
+        <p className="text-muted-foreground mb-6">The product "{productSlug}" doesn't exist in this store.</p>
+        <Button onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Store
+        </Button>
       </div>
     );
   }
