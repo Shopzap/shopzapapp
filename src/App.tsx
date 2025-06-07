@@ -3,145 +3,104 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
-import React, { Suspense, lazy } from 'react';
-
-// Pages
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { StoreProvider } from "@/contexts/StoreContext";
 import Index from "./pages/Index";
-import Pricing from "./pages/Pricing";
-import Features from "./pages/Features";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
+import Dashboard from "./pages/Dashboard";
+import ProductManager from "./pages/ProductManager";
+import Orders from "./pages/Orders";
+import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import StoreBuilder from "./pages/StoreBuilder";
-import EmbedGenerator from "./pages/EmbedGenerator";
-import Dashboard from "./pages/Dashboard.tsx";
-import ProductManager from './pages/ProductManager';
-import Analytics from './pages/Analytics';
-import Orders from "./pages/Orders";
-import CustomizeStore from "./pages/CustomizeStore";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
-import Verify from "./pages/Verify"; 
-import AuthCallback from "./pages/AuthCallback";
-import OrderTracking from "./pages/OrderTracking";
+import Storefront from "./pages/Storefront";
+import StorefrontAbout from "./pages/StorefrontAbout";
+import ProductDetails from "./pages/ProductDetails";
 import Cart from "./pages/Cart";
-const Storefront = lazy(() => import("./pages/Storefront"));
-const StorefrontAboutPage = lazy(() => import("./pages/StorefrontAbout"));
-const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
-import OrderRedirect from "./pages/OrderRedirect";
-
-// Auth components
-import { AuthProvider } from "./contexts/AuthContext"; 
-import { StoreProvider } from './contexts/StoreContext';
-import { CartProvider } from './hooks/useCart';
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import ErrorBoundary from "./components/ErrorBoundary";
-import DashboardLayout from "./components/layouts/DashboardLayout";
+import OrderTracking from "./pages/OrderTracking";
+import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { isReservedPath, extractStoreSlug } from "./utils/routeHelpers";
+import { useLocation } from "react-router-dom";
 
 const queryClient = new QueryClient();
 
-// Main App component with properly nested providers
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <StoreProvider>
-            <CartProvider>
-              <ErrorBoundary>
-                <Routes>
-                  {/* Main homepage */}
-                  <Route path="/" element={<Index />} />
-                  
-                  {/* Public pages */}
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/features" element={<Features />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/verify" element={<Verify />} /> 
-                  <Route path="/auth-callback" element={<AuthCallback />} />
-                  <Route path="/track-order" element={<OrderTracking />} />
-                  <Route path="/order-success" element={<OrderSuccess />} />
-                  <Route path="/order" element={<OrderRedirect />} />
+// Component to handle dynamic routing logic
+const DynamicRouter = () => {
+  const location = useLocation();
+  const pathname = location.pathname;
+  const segments = pathname.split('/').filter(Boolean);
+  
+  // Handle root path
+  if (segments.length === 0) {
+    return <Index />;
+  }
+  
+  const firstSegment = segments[0];
+  
+  // Handle reserved paths (admin/dashboard routes)
+  if (isReservedPath(firstSegment)) {
+    return (
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/auth-callback" element={<AuthCallback />} />
+        <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/products" element={<ProtectedRoute><ProductManager /></ProtectedRoute>} />
+        <Route path="/dashboard/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/order-success" element={<OrderSuccess />} />
+        <Route path="/track-order/:orderId" element={<OrderTracking />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
+  
+  // Handle store routes (/{storeName}, /{storeName}/about, etc.)
+  const storeSlug = extractStoreSlug(pathname);
+  if (storeSlug) {
+    if (segments.length === 1) {
+      // /{storeName} - Storefront
+      return <Storefront />;
+    } else if (segments[1] === 'about') {
+      // /{storeName}/about
+      return <StorefrontAbout />;
+    } else if (segments[1] === 'cart') {
+      // /{storeName}/cart
+      return <Cart />;
+    } else if (segments[1] === 'checkout') {
+      // /{storeName}/checkout
+      return <Checkout />;
+    } else {
+      // /{storeName}/{productSlug} - Product details
+      return <ProductDetails />;
+    }
+  }
+  
+  return <NotFound />;
+};
 
-                  {/* Store routes with original /store/:slug format */}
-                  <Route path="/store/:storeSlug" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-                        <Storefront />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-                  <Route path="/store/:storeSlug/about" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading about page...</p></div>}>
-                        <StorefrontAboutPage />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-                  <Route path="/store/:storeSlug/cart" element={<Cart />} />
-                  <Route path="/store/:storeSlug/checkout" element={<Checkout />} />
-                  <Route path="/store/:storeSlug/product/:productSlug" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-                        <ProductDetails />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-
-                  {/* Legacy product route for backwards compatibility */}
-                  <Route path="/product/:productId" element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-                        <ProductDetails />
-                      </Suspense>
-                    </ErrorBoundary>
-                  } />
-
-                  {/* Protected routes - Seller dashboard */}
-                  <Route path="/onboarding" element={
-                    <ProtectedRoute>
-                      <Onboarding />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/store-builder" element={
-                    <ProtectedRoute>
-                      <StoreBuilder />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/embed-generator" element={
-                    <ProtectedRoute>
-                      <EmbedGenerator />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/*" element={
-                    <ProtectedRoute>
-                      <Routes>
-                        <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
-                          <Route index element={<Dashboard />} />
-                          <Route path="products" element={<ProductManager />} />
-                          <Route path="orders" element={<Orders />} />
-                          <Route path="customize" element={<CustomizeStore />} />
-                          <Route path="analytics" element={<Analytics />} />
-                          <Route path="settings" element={<Settings />} />
-                        </Route>
-                      </Routes>
-                    </ProtectedRoute>
-                  } />
-
-                  {/* 404 catch-all */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </ErrorBoundary>
-              <Toaster />
-              <Sonner />
-            </CartProvider>
-          </StoreProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <StoreProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <DynamicRouter />
+            </BrowserRouter>
+          </TooltipProvider>
+        </StoreProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
