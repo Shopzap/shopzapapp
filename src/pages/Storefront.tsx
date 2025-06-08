@@ -65,7 +65,7 @@ const Storefront: React.FC = () => {
     retryDelay: 1000,
   });
   
-  // Fetch products for the store - only published products
+  // Fetch products for the store - only published and active products
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {

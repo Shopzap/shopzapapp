@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -51,7 +52,7 @@ const App = () => {
                   <Route path="/order-success" element={<OrderSuccess />} />
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
                   
-                  {/* Store routes with CartProvider - Updated for proper scoping */}
+                  {/* Store routes with proper CartProvider scoping */}
                   <Route path="/store/:storeName" element={
                     <CartProvider>
                       <Storefront />

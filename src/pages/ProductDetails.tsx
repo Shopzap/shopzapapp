@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Loader, ArrowLeft } from 'lucide-react';
 import StoreNotFound from '@/components/storefront/StoreNotFound';
 import ProductDetailsContent from '@/components/product/ProductDetailsContent';
+import { useCart } from '@/hooks/useCart';
 
 const ProductDetails = () => {
   const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
   const navigate = useNavigate();
+  const { addItem } = useCart();
 
   // First, fetch the store to get store_id
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
@@ -49,6 +51,7 @@ const ProductDetails = () => {
         .eq('store_id', store.id)
         .ilike('name', productName)
         .eq('status', 'active')
+        .eq('is_published', true)
         .single();
         
       if (error) throw error;
@@ -60,15 +63,29 @@ const ProductDetails = () => {
   const isLoading = storeLoading || productLoading;
   const hasError = storeError || productError;
 
+  // Handle add to cart
+  const handleAddToCart = () => {
+    if (!product) return;
+    
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: Number(product.price),
+      quantity: 1,
+      image: product.image_url || 'https://placehold.co/80x80'
+    });
+  };
+
   // Handle navigation to checkout
   const handleBuyNow = () => {
     if (!product) return;
     
+    // Add to cart first
+    handleAddToCart();
+    
     // Navigate to store-specific checkout
     if (storeName) {
       navigate(`/store/${storeName}/checkout`);
-    } else {
-      navigate('/checkout');
     }
   };
 
@@ -81,8 +98,13 @@ const ProductDetails = () => {
     }
   };
 
-  // Show error page if store or product not found
-  if (hasError) {
+  // Show error page if store not found
+  if (storeError) {
+    return <StoreNotFound storeName={storeName} />;
+  }
+
+  // Show error page if product not found but store exists
+  if (productError && store) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
@@ -124,6 +146,7 @@ const ProductDetails = () => {
       product={product}
       handleBuyNow={handleBuyNow}
       handleBack={handleBack}
+      onAddToCart={handleAddToCart}
     />
   );
 };

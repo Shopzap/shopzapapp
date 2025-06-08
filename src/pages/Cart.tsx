@@ -1,203 +1,202 @@
 
 import React from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/hooks/useCart';
-import { Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { formatPrice, safeParsePrice, isValidProduct } from '@/utils/priceUtils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react';
+import StoreHeader from '@/components/storefront/StoreHeader';
+import StoreNotFound from '@/components/storefront/StoreNotFound';
 
 const Cart = () => {
-  const { items, updateQuantity, removeFromCart, getTotalPrice, getItemCount } = useCart();
-  const { toast } = useToast();
+  const { storeName } = useParams<{ storeName: string }>();
   const navigate = useNavigate();
-  const { storeName } = useParams<{ storeName?: string }>();
-  
-  const total = getTotalPrice();
-  const itemCount = getItemCount();
+  const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCart();
 
-  const handleQuantityUpdate = async (productId: string, newQuantity: number) => {
-    try {
-      await updateQuantity(productId, newQuantity);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update quantity",
-        variant: "destructive"
-      });
-    }
-  };
+  // Fetch store data
+  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
+    queryKey: ['store-by-name', storeName],
+    queryFn: async () => {
+      if (!storeName) {
+        throw new Error('No store name provided');
+      }
+      
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .ilike('name', storeName)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!storeName,
+  });
 
-  const handleRemoveItem = async (productId: string) => {
-    try {
-      await removeFromCart(productId);
-    } catch (error) {
-      toast({
-        title: "Error", 
-        description: "Failed to remove item",
-        variant: "destructive"
-      });
-    }
+  const formatPrice = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   const handleCheckout = () => {
-    if (items.length === 0) {
-      toast({
-        title: "Cart is empty",
-        description: "Please add items to your cart before checking out.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check for invalid products before checkout
-    const invalidProducts = items.filter(item => !isValidProduct(item.product));
-    if (invalidProducts.length > 0) {
-      toast({
-        title: "Some products are unavailable",
-        description: "Please remove unavailable products before checkout.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Navigate to checkout with store context
     if (storeName) {
       navigate(`/store/${storeName}/checkout`);
-    } else {
-      navigate('/checkout');
     }
   };
 
-  const getStoreLink = () => {
-    return storeName ? `/store/${storeName}` : '/';
+  const handleContinueShopping = () => {
+    if (storeName) {
+      navigate(`/store/${storeName}`);
+    } else {
+      navigate('/');
+    }
   };
 
-  if (items.length === 0) {
+  if (storeError) {
+    return <StoreNotFound storeName={storeName} />;
+  }
+
+  if (storeLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-16">
-          <ShoppingBag className="mx-auto h-24 w-24 text-gray-300 mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Your cart is empty</h2>
-          <p className="text-gray-600 mb-6">Start shopping to add items to your cart</p>
-          <Button asChild>
-            <Link to={getStoreLink()}>Continue Shopping</Link>
-          </Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
+  if (!store) {
+    return <StoreNotFound storeName={storeName} />;
+  }
+
+  const storeWithTheme = {
+    ...store,
+    primary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).primary_color || '#6c5ce7' : '#6c5ce7',
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6">Shopping Cart</h1>
+    <div className="min-h-screen bg-gray-50">
+      <StoreHeader store={storeWithTheme} />
       
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="flex-1">
-          <div className="space-y-4">
-            {items.map((item) => {
-              const isProductValid = isValidProduct(item.product);
-              const price = safeParsePrice(item.product?.price);
-              const itemTotal = price * item.quantity;
-              
-              return (
-                <div key={item.id} className={`flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border ${!isProductValid ? 'border-red-200 bg-red-50' : ''}`}>
-                  <img
-                    src={item.product?.image_url || '/placeholder.svg'}
-                    alt={item.product?.name || 'Product'}
-                    className="w-20 h-20 object-cover rounded-md"
-                  />
-                  
-                  <div className="flex-1">
-                    <h3 className={`font-semibold ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
-                      {item.product?.name || 'Unknown Product'}
-                    </h3>
-                    {!isProductValid ? (
-                      <p className="text-red-500 text-sm">This product is not available anymore</p>
-                    ) : (
-                      <p className="text-gray-600 text-sm">{item.product?.description || ''}</p>
-                    )}
-                    <p className={`text-lg font-bold mt-1 ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
-                      ₹{formatPrice(price)}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuantityUpdate(item.product.id, item.quantity - 1)}
-                      className="h-8 w-8 p-0"
-                      disabled={!isProductValid}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    
-                    <span className="font-medium w-8 text-center">{item.quantity}</span>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuantityUpdate(item.product.id, item.quantity + 1)}
-                      className="h-8 w-8 p-0"
-                      disabled={!isProductValid}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className={`font-bold text-lg ${!isProductValid ? 'text-red-600' : 'text-gray-900'}`}>
-                      {isProductValid ? `₹${formatPrice(itemTotal)}` : 'N/A'}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveItem(item.product.id)}
-                      className="text-red-500 hover:text-red-700 mt-1"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <Button
+              variant="ghost"
+              onClick={handleContinueShopping}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Continue Shopping
+            </Button>
+            <h1 className="text-3xl font-bold">Shopping Cart</h1>
           </div>
-        </div>
-        
-        <div className="lg:w-1/3">
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            
-            <div className="space-y-3 mb-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Items ({itemCount})</span>
-                <span>₹{formatPrice(total)}</span>
+
+          {items.length === 0 ? (
+            <Card className="text-center py-16">
+              <CardContent>
+                <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
+                <p className="text-gray-600 mb-6">Add some products to get started!</p>
+                <Button onClick={handleContinueShopping}>
+                  Start Shopping
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Cart Items */}
+              <div className="lg:col-span-2 space-y-4">
+                {items.map((item) => (
+                  <Card key={item.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-20 h-20 object-cover rounded-lg"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{item.name}</h3>
+                          <p className="text-gray-600">{formatPrice(item.price)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <span className="w-8 text-center">{item.quantity}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeItem(item.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Shipping</span>
-                <span className="text-green-600">FREE</span>
-              </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
-                  <span>₹{formatPrice(total)}</span>
-                </div>
+
+              {/* Order Summary */}
+              <div className="lg:col-span-1">
+                <Card className="sticky top-4">
+                  <CardHeader>
+                    <CardTitle>Order Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>{formatPrice(getTotalPrice())}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Shipping</span>
+                      <span>Free</span>
+                    </div>
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between font-semibold text-lg">
+                        <span>Total</span>
+                        <span>{formatPrice(getTotalPrice())}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={handleCheckout}
+                      disabled={items.length === 0}
+                    >
+                      Proceed to Checkout
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={clearCart}
+                      disabled={items.length === 0}
+                    >
+                      Clear Cart
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             </div>
-            
-            <Button 
-              className="w-full" 
-              onClick={handleCheckout}
-              disabled={items.length === 0 || items.some(item => !isValidProduct(item.product))}
-            >
-              Proceed to Checkout
-            </Button>
-            
-            <Button variant="outline" className="w-full mt-3" asChild>
-              <Link to={getStoreLink()}>Continue Shopping</Link>
-            </Button>
-          </div>
+          )}
         </div>
       </div>
     </div>
