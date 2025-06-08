@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { ordersApi } from '@/services/api';
 import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2 } from 'lucide-react';
+import { paymentConfig } from '@/config/payment';
 
 // Add Razorpay to window type
 declare global {
@@ -24,7 +26,7 @@ declare global {
 const Checkout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cartItems, clearCart, getCartTotal } = useCart();
+  const { items: cartItems, clearCart, getTotalPrice } = useCart();
   const { toast } = useToast();
 
   const [customerInfo, setCustomerInfo] = useState({
@@ -52,7 +54,7 @@ const Checkout = () => {
         const { data: store } = await supabase
           .from('stores')
           .select('*')
-          .eq('id', cartItems[0].store_id)
+          .eq('id', cartItems[0].product.store_id)
           .single();
         setStoreInfo(store);
       }
@@ -84,8 +86,8 @@ const Checkout = () => {
     }
 
     const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_9WaeLLTuasdhHX', // Use environment variable or fallback to test key
-      amount: Math.round(getCartTotal() * 100), // Amount in paise
+      key: paymentConfig.razorpay.keyId,
+      amount: Math.round(getTotalPrice() * 100), // Amount in paise
       currency: 'INR',
       name: storeInfo?.name || 'Store',
       description: `Order from ${storeInfo?.name || 'Store'}`,
@@ -110,13 +112,13 @@ const Checkout = () => {
               state: {
                 orderId: orderData.orderId,
                 orderItems: cartItems.map(item => ({
-                  id: item.product_id,
-                  name: item.name,
-                  price: item.price,
+                  id: item.product.id,
+                  name: item.product.name,
+                  price: item.product.price,
                   quantity: item.quantity,
-                  image: item.image_url
+                  image: item.product.image_url
                 })),
-                total: getCartTotal(),
+                total: getTotalPrice(),
                 customerInfo,
                 paymentInfo: {
                   paymentId: response.razorpay_payment_id,
@@ -179,20 +181,20 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Create order
-      const { data: orderResult } = await ordersApi.createOrder({
-        store_id: cartItems[0].store_id,
-        buyer_name: customerInfo.fullName,
-        buyer_email: customerInfo.email,
-        buyer_phone: customerInfo.phone,
-        buyer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-        total_price: getCartTotal(),
-        payment_method: customerInfo.paymentMethod,
-        payment_status: customerInfo.paymentMethod === 'online' ? 'pending' : 'pending',
+      // Create order using the API
+      const orderResult = await ordersApi.createOrder({
+        storeId: cartItems[0].product.store_id,
+        buyerName: customerInfo.fullName,
+        buyerEmail: customerInfo.email,
+        buyerPhone: customerInfo.phone,
+        buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+        totalPrice: getTotalPrice(),
+        paymentMethod: customerInfo.paymentMethod,
+        paymentStatus: customerInfo.paymentMethod === 'online' ? 'pending' : 'pending',
         items: cartItems.map(item => ({
-          product_id: item.product_id,
+          productId: item.product.id,
           quantity: item.quantity,
-          price_at_purchase: item.price
+          priceAtPurchase: Number(item.product.price)
         }))
       });
 
@@ -209,13 +211,13 @@ const Checkout = () => {
           state: {
             orderId: orderResult.orderId,
             orderItems: cartItems.map(item => ({
-              id: item.product_id,
-              name: item.name,
-              price: item.price,
+              id: item.product.id,
+              name: item.product.name,
+              price: item.product.price,
               quantity: item.quantity,
-              image: item.image_url
+              image: item.product.image_url
             })),
-            total: getCartTotal(),
+            total: getTotalPrice(),
             customerInfo,
             estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
               day: '2-digit',
@@ -379,7 +381,7 @@ const Checkout = () => {
                       {customerInfo.paymentMethod === 'online' ? (
                         <>
                           <CreditCard className="mr-2 h-4 w-4" />
-                          Pay ₹{getCartTotal().toLocaleString()} Now
+                          Pay ₹{getTotalPrice().toLocaleString()} Now
                         </>
                       ) : (
                         <>
@@ -405,19 +407,19 @@ const Checkout = () => {
             <CardContent>
               <div className="space-y-4">
                 {cartItems.map((item) => (
-                  <div key={item.product_id} className="flex justify-between items-center">
+                  <div key={item.product.id} className="flex justify-between items-center">
                     <div className="flex items-center space-x-3">
                       <img 
-                        src={item.image_url || 'https://placehold.co/50x50'} 
-                        alt={item.name}
+                        src={item.product.image_url || 'https://placehold.co/50x50'} 
+                        alt={item.product.name}
                         className="w-12 h-12 rounded object-cover"
                       />
                       <div>
-                        <p className="font-medium">{item.name}</p>
+                        <p className="font-medium">{item.product.name}</p>
                         <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                       </div>
                     </div>
-                    <p className="font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="font-semibold">₹{(Number(item.product.price) * item.quantity).toLocaleString()}</p>
                   </div>
                 ))}
                 
@@ -426,7 +428,7 @@ const Checkout = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>₹{getCartTotal().toLocaleString()}</span>
+                    <span>₹{getTotalPrice().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -434,7 +436,7 @@ const Checkout = () => {
                   </div>
                   <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
                     <span>Total</span>
-                    <span>₹{getCartTotal().toLocaleString()}</span>
+                    <span>₹{getTotalPrice().toLocaleString()}</span>
                   </div>
                 </div>
               </div>
