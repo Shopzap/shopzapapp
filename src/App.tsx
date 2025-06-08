@@ -8,6 +8,13 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { CartProvider } from "@/hooks/useCart";
 import Index from "./pages/Index";
+import Features from "./pages/Features";
+import Pricing from "./pages/Pricing";
+import StoreThemes from "./pages/StoreThemes";
+import EmbedButton from "./pages/EmbedButton";
+import Help from "./pages/Help";
+import Blog from "./pages/Blog";
+import Tutorials from "./pages/Tutorials";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
@@ -54,6 +61,15 @@ const App = () => {
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth-callback" element={<AuthCallback />} />
+                  
+                  {/* New public pages */}
+                  <Route path="/features" element={<Features />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/store-themes" element={<StoreThemes />} />
+                  <Route path="/embed-button" element={<EmbedButton />} />
+                  <Route path="/help" element={<Help />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/tutorials" element={<Tutorials />} />
                   
                   {/* Legal pages */}
                   <Route path="/terms" element={<Terms />} />
