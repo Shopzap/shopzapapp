@@ -54,7 +54,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   };
 
   // Apply store font style with fallback
-  const fontStyle = store.font_style || 'Poppins';
+  const fontStyle = store.font_style || 'Inter';
   const fontFamily = `${fontStyle}, sans-serif`;
 
   // Load Google Font dynamically
@@ -77,6 +77,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   const secondaryColor = themeColors.secondary_color || store.secondary_color || '#f1c40f';
 
   return (
+    // Apply font only to the store layout, not globally
     <div 
       className="min-h-screen bg-gray-50"
       style={{
@@ -108,20 +109,20 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                 ) : (
                   <div 
                     className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg"
-                    style={{ backgroundColor: primaryColor, fontFamily }}
+                    style={{ backgroundColor: primaryColor }}
                   >
                     {store.name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1">
-                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2" style={{ fontFamily }}>
+                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
                     {store.name}
                   </h1>
                   {store.tagline && (
-                    <p className="text-lg text-gray-600 mb-4" style={{ fontFamily }}>{store.tagline}</p>
+                    <p className="text-lg text-gray-600 mb-4">{store.tagline}</p>
                   )}
                   {store.description && (
-                    <p className="text-gray-700 max-w-2xl" style={{ fontFamily }}>{store.description}</p>
+                    <p className="text-gray-700 max-w-2xl">{store.description}</p>
                   )}
                 </div>
               </div>
@@ -140,7 +141,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
 
             {/* Products Section */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily }}>Products</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Products</h2>
               {isLoading ? (
                 <div className="flex justify-center items-center py-16">
                   <Loader className="h-8 w-8 animate-spin text-primary" />
@@ -165,8 +166,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-4 md:mb-0">
-              <h3 className="font-bold text-lg" style={{ fontFamily }}>{store.name}</h3>
-              <p className="text-gray-600" style={{ fontFamily }}>Powered by ShopZap</p>
+              <h3 className="font-bold text-lg">{store.name}</h3>
+              <p className="text-gray-600">Powered by ShopZap</p>
             </div>
             
             {/* Social Media Links */}

@@ -165,7 +165,7 @@ const CustomizeStore = () => {
     }
   };
 
-  // Load Google Font dynamically for preview
+  // Load Google Font dynamically for preview only
   React.useEffect(() => {
     const googleFontUrl = FONT_MAP[selectedFont];
     if (googleFontUrl) {
@@ -198,21 +198,20 @@ const CustomizeStore = () => {
     );
   }
 
-  // Apply selected font for live preview
-  const fontFamily = `${selectedFont}, sans-serif`;
+  // Apply selected font only to preview areas, not globally
+  const previewFontFamily = `${selectedFont}, sans-serif`;
 
   return (
-    <div className="space-y-6" style={{ fontFamily }}>
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900" style={{ fontFamily }}>Customize Store</h1>
-          <p className="text-gray-600 mt-2" style={{ fontFamily }}>Personalize your store's appearance and content</p>
+          <h1 className="text-3xl font-bold text-gray-900">Customize Store</h1>
+          <p className="text-gray-600 mt-2">Personalize your store's appearance and content</p>
         </div>
         <Button 
           onClick={openLiveStore}
           variant="outline"
           className="flex items-center gap-2"
-          style={{ fontFamily }}
         >
           <ExternalLink className="w-4 h-4" />
           View Live Store
@@ -294,7 +293,7 @@ const CustomizeStore = () => {
         <TabsContent value="fonts">
           <Card>
             <CardHeader>
-              <CardTitle style={{ fontFamily }}>Font Style</CardTitle>
+              <CardTitle>Font Style</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -307,7 +306,6 @@ const CustomizeStore = () => {
                   onClick={handleFontSave}
                   disabled={updateStoreMutation.isPending}
                   className="w-full"
-                  style={{ fontFamily }}
                 >
                   {updateStoreMutation.isPending ? 'Saving...' : 'Save Font Style'}
                 </Button>
@@ -330,36 +328,34 @@ const CustomizeStore = () => {
         <TabsContent value="preview">
           <Card>
             <CardHeader>
-              <CardTitle style={{ fontFamily }}>Store Preview</CardTitle>
+              <CardTitle>Store Preview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="p-6 border rounded-lg bg-white" style={{ fontFamily }}>
+              {/* Apply font only to the preview area */}
+              <div className="p-6 border rounded-lg bg-white" style={{ fontFamily: previewFontFamily }}>
                 <div className="space-y-4">
                   <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900" style={{ fontFamily }}>
+                    <h2 className="text-3xl font-bold text-gray-900">
                       {formData.name || 'Your Store Name'}
                     </h2>
                     {formData.tagline && (
-                      <p className="text-lg text-gray-600 mt-2" style={{ fontFamily }}>{formData.tagline}</p>
+                      <p className="text-lg text-gray-600 mt-2">{formData.tagline}</p>
                     )}
                   </div>
                   
                   {formData.description && (
                     <div className="mt-6">
-                      <p className="text-gray-700" style={{ fontFamily }}>{formData.description}</p>
+                      <p className="text-gray-700">{formData.description}</p>
                     </div>
                   )}
                   
                   <div className="mt-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4" style={{ fontFamily }}>Sample Product</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Sample Product</h3>
                     <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900" style={{ fontFamily }}>Product Name</h4>
-                      <p className="text-gray-600 text-sm mt-1" style={{ fontFamily }}>This is how product descriptions will look.</p>
-                      <p className="text-lg font-bold text-gray-900 mt-2" style={{ fontFamily }}>₹999</p>
-                      <button 
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm"
-                        style={{ fontFamily }}
-                      >
+                      <h4 className="font-semibold text-gray-900">Product Name</h4>
+                      <p className="text-gray-600 text-sm mt-1">This is how product descriptions will look.</p>
+                      <p className="text-lg font-bold text-gray-900 mt-2">₹999</p>
+                      <button className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm">
                         Add to Cart
                       </button>
                     </div>
