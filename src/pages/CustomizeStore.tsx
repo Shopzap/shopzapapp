@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Palette, FileText, Type } from "lucide-react";
+import { Upload, Palette, FileText, Type, ExternalLink } from "lucide-react";
 import FontStyleSelector from "@/components/storefront/FontStyleSelector";
 import AboutPageManager from "@/components/storefront/AboutPageManager";
 
@@ -42,7 +43,8 @@ const CustomizeStore = () => {
     tagline: '',
     logo_image: '',
     banner_image: '',
-    font_style: 'Poppins'
+    font_style: 'Poppins',
+    theme: {}
   });
 
   useEffect(() => {
@@ -53,7 +55,8 @@ const CustomizeStore = () => {
         tagline: store.tagline || '',
         logo_image: store.logo_image || '',
         banner_image: store.banner_image || '',
-        font_style: store.font_style || 'Poppins'
+        font_style: store.font_style || 'Poppins',
+        theme: store.theme || {}
       });
       setSelectedFont(store.font_style || 'Poppins');
     }
@@ -63,22 +66,40 @@ const CustomizeStore = () => {
     mutationFn: async (updates: Partial<typeof formData>) => {
       if (!store?.id) throw new Error('No store found');
       
+      console.log('Saving store updates:', updates);
+      
       const { data, error } = await supabase
         .from('stores')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', store.id)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating store:', error);
+        throw error;
+      }
+      
+      console.log('Store updated successfully:', data);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Success",
-        description: "Store updated successfully!",
+        title: "Store Updated Successfully!",
+        description: "Your changes have been saved and will appear on your live store.",
       });
+      
+      // Invalidate queries to refresh cached data
       queryClient.invalidateQueries({ queryKey: ['userStore', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-name'] });
+      
+      // Force refresh any cached store data
+      if (store?.name) {
+        queryClient.invalidateQueries({ queryKey: ['store-by-name', store.name] });
+      }
     },
     onError: (error) => {
       console.error('Error updating store:', error);
@@ -92,10 +113,12 @@ const CustomizeStore = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateStoreMutation.mutate({
+    const updatedData = {
       ...formData,
       font_style: selectedFont
-    });
+    };
+    console.log('Submitting form data:', updatedData);
+    updateStoreMutation.mutate(updatedData);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -105,12 +128,41 @@ const CustomizeStore = () => {
     });
   };
 
+  const handleFontSave = () => {
+    console.log('Saving font style:', selectedFont);
+    updateStoreMutation.mutate({ 
+      font_style: selectedFont,
+      theme: {
+        ...formData.theme,
+        font_style: selectedFont
+      }
+    });
+  };
+
+  const openLiveStore = () => {
+    if (store?.name) {
+      const storeUrl = `/store/${encodeURIComponent(store.name)}`;
+      window.open(storeUrl, '_blank');
+    }
+  };
+
   if (isLoading) {
-    return <div>Loading store data...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
   }
 
   if (!store) {
-    return <div>No store found. Please create a store first.</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Store Found</h2>
+          <p className="text-gray-600">Please create a store first to customize it.</p>
+        </div>
+      </div>
+    );
   }
 
   // Apply selected font for live preview
@@ -118,9 +170,19 @@ const CustomizeStore = () => {
 
   return (
     <div className={`space-y-6 ${fontClass}`}>
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Customize Store</h1>
-        <p className="text-gray-600 mt-2">Personalize your store's appearance and content</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Customize Store</h1>
+          <p className="text-gray-600 mt-2">Personalize your store's appearance and content</p>
+        </div>
+        <Button 
+          onClick={openLiveStore}
+          variant="outline"
+          className="flex items-center gap-2"
+        >
+          <ExternalLink className="w-4 h-4" />
+          View Live Store
+        </Button>
       </div>
 
       <Tabs defaultValue="basic" className="space-y-6">
@@ -188,7 +250,7 @@ const CustomizeStore = () => {
                   disabled={updateStoreMutation.isPending}
                   className="w-full"
                 >
-                  {updateStoreMutation.isPending ? 'Updating...' : 'Save Changes'}
+                  {updateStoreMutation.isPending ? 'Saving...' : 'Save Basic Info'}
                 </Button>
               </form>
             </CardContent>
@@ -208,7 +270,7 @@ const CustomizeStore = () => {
                 />
                 
                 <Button
-                  onClick={() => updateStoreMutation.mutate({ font_style: selectedFont })}
+                  onClick={handleFontSave}
                   disabled={updateStoreMutation.isPending}
                   className="w-full"
                 >

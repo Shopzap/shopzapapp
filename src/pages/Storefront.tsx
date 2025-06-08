@@ -1,7 +1,7 @@
 
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
 import ModernStorefront from "@/components/storefront/ModernStorefront";
@@ -11,11 +11,17 @@ import { Tables } from "@/integrations/supabase/types";
 const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
+  const queryClient = useQueryClient();
   
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
     console.log('Storefront: storeName from params', storeName);
-  }, [location, storeName]);
+    
+    // Force refresh store data when route changes
+    if (storeName) {
+      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
+    }
+  }, [location, storeName, queryClient]);
 
   // Redirect to home if no store name provided
   if (!storeName || storeName.trim() === '') {
@@ -23,11 +29,11 @@ const Storefront: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
-  // Fetch store data using the store name
+  // Fetch store data using the store name with forced refresh
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store with name', storeName);
+      console.log('Storefront: Fetching fresh store data for', storeName);
       
       // Try to find the store using the name field (case-insensitive)
       const { data, error } = await supabase
@@ -57,12 +63,15 @@ const Storefront: React.FC = () => {
         throw error;
       }
       
-      console.log('Storefront: Store data received', data);
+      console.log('Storefront: Fresh store data received', data);
       return data;
     },
     enabled: !!storeName,
     retry: 2,
     retryDelay: 1000,
+    // Ensure fresh data on every mount
+    staleTime: 0,
+    gcTime: 0,
   });
   
   // Fetch products for the store - only published and active products
@@ -100,6 +109,8 @@ const Storefront: React.FC = () => {
     enabled: !!store?.id,
     retry: 2,
     retryDelay: 1000,
+    // Ensure fresh data
+    staleTime: 0,
   });
   
   // Handle errors and loading states
@@ -145,6 +156,13 @@ const Storefront: React.FC = () => {
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
   console.log('Storefront: Rendering modern storefront with product count:', safeProducts.length);
+  console.log('Storefront: Store data being passed:', {
+    name: store.name,
+    font_style: store.font_style,
+    theme: store.theme,
+    tagline: store.tagline,
+    description: store.description
+  });
 
   return (
     <ModernStorefront 

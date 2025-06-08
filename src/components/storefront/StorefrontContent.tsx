@@ -23,6 +23,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   isLoading = false
 }) => {
   console.log('StorefrontContent: Rendering with store:', store?.name);
+  console.log('StorefrontContent: Store font_style:', store?.font_style);
+  console.log('StorefrontContent: Store theme:', store?.theme);
   console.log('StorefrontContent: Products count:', products?.length || 0);
 
   const socialLinks = {
@@ -31,12 +33,23 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
     whatsapp: store.theme && typeof store.theme === 'object' ? (store.theme as any).whatsapp_url : ''
   };
 
+  // Apply store font style
+  const fontStyle = store.font_style || 'Poppins';
+  const fontClass = `font-${fontStyle.toLowerCase().replace(/\s+/g, '')}`;
+
+  // Apply theme colors
+  const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
+  const primaryColor = themeColors.primary_color || store.primary_color || '#6c5ce7';
+  const secondaryColor = themeColors.secondary_color || store.secondary_color || '#f1c40f';
+
   return (
     <div 
-      className="min-h-screen bg-gray-50"
+      className={`min-h-screen bg-gray-50 ${fontClass}`}
       style={{
-        fontFamily: store.font_style || 'Poppins, sans-serif'
-      }}
+        fontFamily: `${fontStyle}, sans-serif`,
+        '--primary-color': primaryColor,
+        '--secondary-color': secondaryColor,
+      } as React.CSSProperties}
     >
       {/* Navigation Bar */}
       <StorefrontNavbar 
@@ -61,7 +74,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                 ) : (
                   <div 
                     className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg"
-                    style={{ backgroundColor: store.primary_color || '#6c5ce7' }}
+                    style={{ backgroundColor: primaryColor }}
                   >
                     {store.name.charAt(0).toUpperCase()}
                   </div>
@@ -79,6 +92,17 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Banner Image */}
+            {store.banner_image && (
+              <div className="mb-8">
+                <img 
+                  src={store.banner_image} 
+                  alt={`${store.name} banner`}
+                  className="w-full h-64 object-cover rounded-lg shadow-md"
+                />
+              </div>
+            )}
 
             {/* Products Section */}
             <div className="mb-8">
