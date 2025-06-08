@@ -209,11 +209,11 @@ const ShippingPolicy = () => {
               For shipping-related queries:
             </p>
             <p>
-              Email: {{shippingEmail}}<br/>
-              Phone: {{supportPhone}}<br/>
-              WhatsApp: {{whatsappNumber}}<br/>
+              Email: [SHIPPING_EMAIL]<br/>
+              Phone: [SUPPORT_PHONE]<br/>
+              WhatsApp: [WHATSAPP_NUMBER]<br/>
               Business Hours: 9 AM to 8 PM, Monday to Saturday<br/>
-              Address: {{companyAddress}}
+              Address: [COMPANY_ADDRESS]
             </p>
 
             <h2>12. Policy Updates</h2>

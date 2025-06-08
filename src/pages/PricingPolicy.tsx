@@ -173,7 +173,7 @@ const PricingPolicy = () => {
             <ul>
               <li>All prices inclusive of 18% GST</li>
               <li>GST invoice provided for all transactions</li>
-              <li>GSTIN: {{companyGSTIN}}</li>
+              <li>GSTIN: [COMPANY_GSTIN]</li>
               <li>Tax calculation based on registered address</li>
             </ul>
 
@@ -210,10 +210,10 @@ const PricingPolicy = () => {
               For pricing-related questions or custom quotes:
             </p>
             <p>
-              Email: {{salesEmail}}<br/>
-              Phone: {{salesPhone}}<br/>
+              Email: [SALES_EMAIL]<br/>
+              Phone: [SALES_PHONE]<br/>
               Business Hours: Monday to Friday, 9 AM to 6 PM IST<br/>
-              Address: {{companyAddress}}
+              Address: [COMPANY_ADDRESS]
             </p>
 
             <h2>12. Policy Updates</h2>

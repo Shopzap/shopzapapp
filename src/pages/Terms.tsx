@@ -16,7 +16,7 @@ const Terms = () => {
           <div className="prose prose-lg max-w-none">
             <h2>1. Introduction</h2>
             <p>
-              Welcome to ShopZap.io ("we," "our," or "us"). These Terms and Conditions ("Terms") govern your use of our website located at {{websiteUrl}} and our services provided through the ShopZap platform.
+              Welcome to ShopZap.io ("we," "our," or "us"). These Terms and Conditions ("Terms") govern your use of our website located at [WEBSITE_URL] and our services provided through the ShopZap platform.
             </p>
             <p>
               By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part of these terms, then you may not access the service.
@@ -105,8 +105,8 @@ const Terms = () => {
               If you have any questions about these Terms, please contact us at:
             </p>
             <p>
-              Email: {{supportEmail}}<br/>
-              Address: {{companyAddress}}
+              Email: [SUPPORT_EMAIL]<br/>
+              Address: [COMPANY_ADDRESS]
             </p>
           </div>
         </div>

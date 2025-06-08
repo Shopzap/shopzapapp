@@ -128,8 +128,8 @@ const Privacy = () => {
               If you have any questions about this Privacy Policy, please contact us at:
             </p>
             <p>
-              Email: {{privacyEmail}}<br/>
-              Address: {{companyAddress}}
+              Email: [PRIVACY_EMAIL]<br/>
+              Address: [COMPANY_ADDRESS]
             </p>
           </div>
         </div>

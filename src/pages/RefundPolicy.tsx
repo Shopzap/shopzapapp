@@ -93,7 +93,7 @@ const RefundPolicy = () => {
             
             <h3>5.1 How to Request a Refund</h3>
             <ol>
-              <li>Contact our support team at {{supportEmail}}</li>
+              <li>Contact our support team at [SUPPORT_EMAIL]</li>
               <li>Provide order/subscription details</li>
               <li>Specify reason for refund request</li>
               <li>Submit any required documentation</li>
@@ -137,7 +137,7 @@ const RefundPolicy = () => {
               <li>Contact our support team first</li>
               <li>Escalate to management if unresolved</li>
               <li>Mediation through consumer forums if needed</li>
-              <li>Legal jurisdiction: {{jurisdiction}}</li>
+              <li>Legal jurisdiction: [JURISDICTION]</li>
             </ul>
 
             <h2>8. Contact Information</h2>
@@ -145,10 +145,10 @@ const RefundPolicy = () => {
               For refund and cancellation requests:
             </p>
             <p>
-              Email: {{supportEmail}}<br/>
-              Phone: {{supportPhone}}<br/>
+              Email: [SUPPORT_EMAIL]<br/>
+              Phone: [SUPPORT_PHONE]<br/>
               Business Hours: Monday to Friday, 9 AM to 6 PM IST<br/>
-              Address: {{companyAddress}}
+              Address: [COMPANY_ADDRESS]
             </p>
 
             <h2>9. Policy Updates</h2>
