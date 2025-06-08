@@ -7,6 +7,7 @@ import { Loader } from "lucide-react";
 import ModernStorefront from "@/components/storefront/ModernStorefront";
 import StoreNotFound from "@/components/storefront/StoreNotFound";
 import { Tables } from "@/integrations/supabase/types";
+import { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
 
 const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -155,18 +156,40 @@ const Storefront: React.FC = () => {
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  console.log('Storefront: Rendering modern storefront with product count:', safeProducts.length);
-  console.log('Storefront: Store data being passed:', {
-    name: store.name,
-    font_style: store.font_style,
-    theme: store.theme,
-    tagline: store.tagline,
-    description: store.description
+  // Process theme data and apply color palette
+  const themeData = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
+  const colorPaletteId = themeData.color_palette || 'urban-modern';
+  const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
+  
+  // Enhanced store object with proper theme application
+  const enhancedStore = {
+    ...store,
+    primary_color: themeData.primary_color || selectedPalette.primary,
+    secondary_color: themeData.secondary_color || selectedPalette.accent,
+    theme_style: themeData.theme_style || themeData.theme_layout || 'card',
+    font_style: store.font_style || themeData.font_style || 'Poppins',
+    theme: {
+      ...themeData,
+      primary_color: themeData.primary_color || selectedPalette.primary,
+      accent_color: themeData.accent_color || selectedPalette.accent,
+      cta_color: themeData.cta_color || selectedPalette.cta,
+      color_palette: colorPaletteId,
+      instagram_url: themeData.instagram_url || '',
+      facebook_url: themeData.facebook_url || '',
+      whatsapp_url: themeData.whatsapp_url || ''
+    }
+  };
+  
+  console.log('Storefront: Rendering modern storefront with enhanced store data:', {
+    name: enhancedStore.name,
+    font_style: enhancedStore.font_style,
+    primary_color: enhancedStore.primary_color,
+    theme: enhancedStore.theme
   });
 
   return (
     <ModernStorefront 
-      store={store} 
+      store={enhancedStore} 
       products={safeProducts} 
       isLoading={productsLoading}
     />

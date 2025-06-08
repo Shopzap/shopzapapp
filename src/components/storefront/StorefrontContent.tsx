@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Loader, Instagram, Facebook } from "lucide-react";
 import StorefrontNavbar from "./StorefrontNavbar";
@@ -47,42 +48,47 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   console.log('StorefrontContent: Store theme:', store?.theme);
   console.log('StorefrontContent: Products count:', products?.length || 0);
 
-  const socialLinks = {
-    instagram: store.theme && typeof store.theme === 'object' ? (store.theme as any).instagram_url : '',
-    facebook: store.theme && typeof store.theme === 'object' ? (store.theme as any).facebook_url : '',
-    whatsapp: store.theme && typeof store.theme === 'object' ? (store.theme as any).whatsapp_url : ''
-  };
-
-  // Apply store font style with fallback
-  const fontStyle = store.font_style || 'Inter';
-  const fontFamily = `${fontStyle}, sans-serif`;
-
-  // Get color palette
+  // Get theme data with proper fallbacks
   const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
   const colorPaletteId = themeColors.color_palette || 'urban-modern';
   const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
   
-  // Use colors from palette with fallbacks
-  const primaryColor = themeColors.primary_color || selectedPalette.primary;
-  const accentColor = themeColors.accent_color || selectedPalette.accent;
+  // Apply store font style with fallback
+  const fontStyle = store.font_style || themeColors.font_style || 'Poppins';
+  const fontFamily = `${fontStyle}, sans-serif`;
+  
+  // Use colors from theme or palette with fallbacks
+  const primaryColor = themeColors.primary_color || store.primary_color || selectedPalette.primary;
+  const accentColor = themeColors.accent_color || store.secondary_color || selectedPalette.accent;
   const ctaColor = themeColors.cta_color || selectedPalette.cta;
+
+  // Social links
+  const socialLinks = {
+    instagram: themeColors.instagram_url || '',
+    facebook: themeColors.facebook_url || '',
+    whatsapp: themeColors.whatsapp_url || ''
+  };
 
   // Load Google Font dynamically
   React.useEffect(() => {
     const googleFontUrl = FONT_MAP[fontStyle];
     if (googleFontUrl) {
-      const existingLink = document.querySelector(`link[href*="${googleFontUrl}"]`);
+      const existingLink = document.querySelector(`link[href*="${googleFontUrl.split('?')[0]}"]`);
       if (!existingLink) {
         const link = document.createElement('link');
         link.href = `https://fonts.googleapis.com/css2?family=${googleFontUrl}&display=swap`;
         link.rel = 'stylesheet';
+        link.onload = () => console.log(`Font loaded: ${fontStyle}`);
+        link.onerror = () => console.warn(`Failed to load font: ${fontStyle}`);
         document.head.appendChild(link);
       }
     }
   }, [fontStyle]);
 
+  console.log('StorefrontContent: Applied colors:', { primaryColor, accentColor, ctaColor });
+  console.log('StorefrontContent: Applied font:', fontStyle);
+
   return (
-    // Apply font and color palette only to the store layout, not globally
     <div 
       className="min-h-screen bg-gray-50"
       style={{
