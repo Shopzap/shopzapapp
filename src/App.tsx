@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,7 +49,11 @@ const App = () => {
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
                   <Route path="/order-success" element={<OrderSuccess />} />
+                  
+                  {/* Order tracking routes - make these accessible without authentication */}
+                  <Route path="/track-order" element={<OrderTracking />} />
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
+                  <Route path="/order-tracking" element={<OrderTracking />} />
                   
                   {/* Store routes with proper CartProvider scoping */}
                   <Route path="/store/:storeName" element={

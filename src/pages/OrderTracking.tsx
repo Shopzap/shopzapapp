@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,13 +44,23 @@ interface StatusHistory {
 
 const OrderTracking = () => {
   const [searchParams] = useSearchParams();
+  const { orderId: urlOrderId } = useParams();
   const { toast } = useToast();
   
-  const [orderId, setOrderId] = useState(searchParams.get('orderId') || '');
+  // Get order ID from URL params or search params
+  const initialOrderId = urlOrderId || searchParams.get('orderId') || '';
+  const [orderId, setOrderId] = useState(initialOrderId);
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+
+  // Auto-search if order ID is provided in URL
+  useEffect(() => {
+    if (initialOrderId && !orderDetails) {
+      searchOrder();
+    }
+  }, [initialOrderId]);
 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
