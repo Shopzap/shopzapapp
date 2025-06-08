@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Loader, ArrowLeft } from 'lucide-react';
-import NotFound from './NotFound';
+import StoreNotFound from '@/components/storefront/StoreNotFound';
 import ProductDetailsContent from '@/components/product/ProductDetailsContent';
 
 const ProductDetails = () => {

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -52,11 +51,7 @@ const App = () => {
                   <Route path="/order-success" element={<OrderSuccess />} />
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
                   
-                  {/* Handle /store/ without store name - redirect to home */}
-                  <Route path="/store" element={<Index />} />
-                  <Route path="/store/" element={<Index />} />
-                  
-                  {/* Store routes wrapped with CartProvider */}
+                  {/* Store routes with CartProvider - Updated for proper scoping */}
                   <Route path="/store/:storeName" element={
                     <CartProvider>
                       <Storefront />
@@ -127,7 +122,7 @@ const App = () => {
                     </ProtectedRoute>
                   } />
                   
-                  {/* Fallback */}
+                  {/* Fallback - redirect invalid routes to home */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </ErrorBoundary>

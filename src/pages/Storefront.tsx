@@ -4,8 +4,8 @@ import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
-import NotFound from "./NotFound";
 import StorefrontContent from "@/components/storefront/StorefrontContent";
+import StoreNotFound from "@/components/storefront/StoreNotFound";
 import { Tables } from "@/integrations/supabase/types";
 
 const Storefront: React.FC = () => {
@@ -121,22 +121,7 @@ const Storefront: React.FC = () => {
   // Show error page if store not found
   if (storeError) {
     console.error('Storefront: Rendering error page due to store error');
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="text-center p-8">
-          <h1 className="text-3xl font-bold mb-4 text-gray-900">Store Not Found</h1>
-          <p className="text-gray-600 mb-6 max-w-md">
-            The store "{storeName}" doesn't exist or is currently unavailable.
-          </p>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Return to Home
-          </button>
-        </div>
-      </div>
-    );
+    return <StoreNotFound storeName={storeName} />;
   }
   
   // Loading state
@@ -153,22 +138,7 @@ const Storefront: React.FC = () => {
   // Store not found (should be caught by error above, but just in case)
   if (!store) {
     console.error('Storefront: No store data available');
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="text-center p-8">
-          <h1 className="text-3xl font-bold mb-4 text-gray-900">Store Not Found</h1>
-          <p className="text-gray-600 mb-6 max-w-md">
-            The store "{storeName}" doesn't exist or is currently unavailable.
-          </p>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Return to Home
-          </button>
-        </div>
-      </div>
-    );
+    return <StoreNotFound storeName={storeName} />;
   }
 
   // Extract theme data from store.theme if it exists

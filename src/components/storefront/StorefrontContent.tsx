@@ -1,11 +1,10 @@
 
 import React, { useState, useMemo } from "react";
-import StorefrontHeader from "./StorefrontHeader";
+import StoreHeader from "./StoreHeader";
 import ProductGrid from "./ProductGrid";
 import StorefrontFilters from "./StorefrontFilters";
-import StorefrontNavbar from "./StorefrontNavbar";
 import { Tables } from "@/integrations/supabase/types";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Package } from "lucide-react";
 
 interface StorefrontContentProps {
   store: {
@@ -14,6 +13,7 @@ interface StorefrontContentProps {
     logo_image: string | null;
     banner_image: string | null;
     description: string | null;
+    tagline?: string | null;
     primary_color?: string;
     secondary_color?: string;
     theme_style?: 'card' | 'list';
@@ -23,10 +23,13 @@ interface StorefrontContentProps {
   isLoading?: boolean;
 }
 
-const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, isLoading = false }) => {
+const StorefrontContent: React.FC<StorefrontContentProps> = ({ 
+  store, 
+  products, 
+  isLoading = false 
+}) => {
   console.log('StorefrontContent: Rendering with store:', store?.name);
   console.log('StorefrontContent: Products received', products?.length || 0);
-  console.log('StorefrontContent: Is loading', isLoading);
   
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('newest');
@@ -54,8 +57,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
     );
   }
 
-  // Apply font style to the entire storefront
-  const fontClass = store.font_style ? `font-${store.font_style.toLowerCase()}` : 'font-poppins';
+  // Apply font style consistently
+  const fontClass = store.font_style === 'Roboto' ? 'font-roboto' : 'font-poppins';
 
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products : [];
@@ -66,7 +69,11 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
       return { availableCategories: [], maxPrice: 1000 };
     }
     
-    const categories = [...new Set(safeProducts.map(p => p.description?.includes('Category:') ? p.description.split('Category:')[1]?.trim() : null).filter(Boolean))] as string[];
+    const categories = [...new Set(safeProducts
+      .map(p => p.description?.includes('Category:') ? p.description.split('Category:')[1]?.trim() : null)
+      .filter(Boolean)
+    )] as string[];
+    
     const max = Math.max(...safeProducts.map(p => Number(p.price) || 0), 1000);
     return { availableCategories: categories, maxPrice: max };
   }, [safeProducts]);
@@ -79,14 +86,11 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
   // Filter and sort products
   const filteredAndSortedProducts = useMemo(() => {
     if (!safeProducts || safeProducts.length === 0) {
-      console.log('StorefrontContent: No products to filter');
       return [];
     }
 
     let filtered = safeProducts.filter(product => {
-      // Ensure product has required fields
       if (!product || !product.id || !product.name || typeof product.price === 'undefined') {
-        console.log('StorefrontContent: Skipping invalid product', product);
         return false;
       }
 
@@ -97,9 +101,11 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
         return false;
       }
       
-      // Category filter (using description field for categories)
+      // Category filter
       if (selectedCategories.length > 0) {
-        const productCategory = product.description?.includes('Category:') ? product.description.split('Category:')[1]?.trim() : null;
+        const productCategory = product.description?.includes('Category:') 
+          ? product.description.split('Category:')[1]?.trim() 
+          : null;
         if (!productCategory || !selectedCategories.includes(productCategory)) {
           return false;
         }
@@ -107,8 +113,6 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
       
       return true;
     });
-
-    console.log('StorefrontContent: Filtered products count', filtered.length);
 
     // Sort products
     filtered.sort((a, b) => {
@@ -137,31 +141,86 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
     setSelectedCategories([]);
   };
 
-  // Only show filters if there are products
-  const shouldShowFilters = safeProducts.length > 0 && showFilters;
-
-  console.log('StorefrontContent: About to render with filtered products:', filteredAndSortedProducts.length);
-
   return (
     <div className={`min-h-screen bg-gray-50 ${fontClass}`}>
-      <StorefrontNavbar storeName={store.name} />
+      <StoreHeader store={store} />
       
-      <StorefrontHeader
-        store={store}
-        productCount={filteredAndSortedProducts.length}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        cartItemCount={0}
-      />
+      {/* Hero Banner */}
+      {store.banner_image && (
+        <div className="relative h-48 md:h-64 bg-gray-200 overflow-hidden">
+          <img 
+            src={store.banner_image} 
+            alt={`${store.name} banner`}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+            <div className="text-center text-white">
+              <h2 className="text-3xl md:text-4xl font-bold mb-2">{store.name}</h2>
+              {store.description && (
+                <p className="text-lg md:text-xl max-w-2xl">{store.description}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="container mx-auto px-4 md:px-8 py-6">
+      {/* Store Description (if no banner) */}
+      {!store.banner_image && store.description && (
+        <div className="bg-white border-b">
+          <div className="container mx-auto px-4 py-8 text-center">
+            <h2 className="text-2xl font-bold mb-4">{store.name}</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">{store.description}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Products Section */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Filters and Sort Controls */}
+        {safeProducts.length > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Filters {showFilters ? '▼' : '▶'}
+              </button>
+              
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border rounded-lg"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="name-asc">Name: A to Z</option>
+                <option value="name-desc">Name: Z to A</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+              >
+                ⊞
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200'}`}
+              >
+                ☰
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-8">
-          {/* Filters Sidebar - Only show if there are products */}
-          {shouldShowFilters && (
+          {/* Filters Sidebar */}
+          {showFilters && safeProducts.length > 0 && (
             <div className="hidden lg:block w-64 flex-shrink-0">
               <StorefrontFilters
                 priceRange={priceRange}
@@ -176,7 +235,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
           )}
 
           {/* Products Grid */}
-          <div className="flex-1" id="products-section">
+          <div className="flex-1">
             {isLoading ? (
               <div className="text-center py-16">
                 <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -199,6 +258,22 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
                   </div>
                 </div>
               </div>
+            ) : safeProducts.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="flex flex-col items-center justify-center space-y-6">
+                  <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
+                    <Package className="w-12 h-12 text-gray-400" />
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-gray-900">No Products Available</h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      This store is currently being set up and doesn't have any products available yet. 
+                      Please check back soon for new arrivals!
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <ProductGrid products={filteredAndSortedProducts} viewMode={viewMode} />
             )}
@@ -208,7 +283,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({ store, products, 
 
       {/* Footer */}
       <footer className="bg-white border-t mt-16">
-        <div className="container mx-auto px-4 md:px-8 py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="text-center text-sm text-gray-600">
             © {new Date().getFullYear()} {store.name}. Powered by ShopZap.
           </div>
