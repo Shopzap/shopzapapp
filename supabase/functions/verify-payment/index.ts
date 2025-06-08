@@ -13,6 +13,7 @@ interface PaymentVerificationRequest {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
+  isTestMode?: boolean;
   orderData: {
     storeId: string;
     buyerName: string;
@@ -40,9 +41,9 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderData }: PaymentVerificationRequest = await req.json();
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, isTestMode = true, orderData }: PaymentVerificationRequest = await req.json();
 
-    console.log(`Verifying payment for Razorpay order ${razorpay_order_id}`);
+    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Verifying payment for Razorpay order ${razorpay_order_id}`);
 
     // Get Razorpay secret key from environment variables
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
@@ -76,11 +77,11 @@ const handler = async (req: Request): Promise<Response> => {
     const isSignatureValid = expectedSignature === razorpay_signature;
 
     if (!isSignatureValid) {
-      console.error('Invalid signature for payment:', razorpay_payment_id);
+      console.error(`[${isTestMode ? 'TEST' : 'LIVE'}] Invalid signature for payment:`, razorpay_payment_id);
       throw new Error('Payment verification failed');
     }
 
-    console.log('Payment signature verified successfully');
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Payment signature verified successfully`);
 
     // Create order in database after successful payment verification
     const { data: newOrder, error: orderError } = await supabaseClient
@@ -99,7 +100,9 @@ const handler = async (req: Request): Promise<Response> => {
         razorpay_order_id,
         razorpay_signature,
         paid_at: new Date().toISOString(),
-        status: 'pending'
+        status: 'pending',
+        // Add test mode flag to order notes
+        notes: isTestMode ? 'TEST MODE PAYMENT - This is a test transaction' : null
       })
       .select()
       .single();
@@ -128,13 +131,15 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(itemsError.message);
     }
 
-    console.log('Order created successfully after payment verification:', newOrder.id);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Order created successfully after payment verification:`, newOrder.id);
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: 'Payment verified and order created successfully',
+      message: `Payment verified and order created successfully${isTestMode ? ' (TEST MODE)' : ''}`,
       orderId: newOrder.id,
-      order: newOrder
+      order: newOrder,
+      testMode: isTestMode,
+      testMessage: isTestMode ? 'This was a test payment using Razorpay test environment' : undefined
     }), {
       status: 200,
       headers: {
@@ -147,7 +152,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: error.message,
+        testMode: true // Default to test mode for errors
       }),
       {
         status: 500,

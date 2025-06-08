@@ -11,6 +11,7 @@ interface CreateOrderRequest {
   amount: number;
   currency: string;
   receipt: string;
+  isTestMode?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,16 +21,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { amount, currency = 'INR', receipt }: CreateOrderRequest = await req.json();
+    const { amount, currency = 'INR', receipt, isTestMode = true }: CreateOrderRequest = await req.json();
 
-    console.log(`Creating Razorpay order for amount: ${amount}, currency: ${currency}, receipt: ${receipt}`);
+    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Creating Razorpay order for amount: ${amount}, currency: ${currency}, receipt: ${receipt}`);
 
     // Get Razorpay credentials from environment variables
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
     
-    console.log(`Razorpay Key ID: ${razorpayKeyId ? razorpayKeyId.substring(0, 10) + '...' : 'NOT SET'}`);
-    console.log(`Razorpay Secret: ${razorpaySecret ? razorpaySecret.substring(0, 10) + '...' : 'NOT SET'}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay Key ID: ${razorpayKeyId ? razorpayKeyId.substring(0, 10) + '...' : 'NOT SET'}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay Secret: ${razorpaySecret ? razorpaySecret.substring(0, 10) + '...' : 'NOT SET'}`);
+    
+    // Validate test mode keys
+    if (isTestMode && razorpayKeyId && !razorpayKeyId.startsWith('rzp_test_')) {
+      console.warn('WARNING: Test mode enabled but key does not appear to be a test key');
+    }
     
     if (!razorpayKeyId || !razorpaySecret) {
       console.error('Missing Razorpay credentials');
@@ -37,7 +43,8 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: false, 
           error: 'Payment gateway not configured. Please contact support.',
-          details: 'Missing API credentials'
+          details: 'Missing API credentials',
+          testMode: isTestMode
         }),
         {
           status: 500,
@@ -53,7 +60,8 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ 
           success: false, 
           error: 'Invalid payment amount',
-          details: 'Amount must be greater than 0'
+          details: 'Amount must be greater than 0',
+          testMode: isTestMode
         }),
         {
           status: 400,
@@ -66,11 +74,15 @@ const handler = async (req: Request): Promise<Response> => {
     const orderData = {
       amount: Math.round(amount * 100), // Convert rupees to paise and ensure integer
       currency: currency.toUpperCase(),
-      receipt: receipt,
-      payment_capture: 1 // Auto capture payment
+      receipt: `${isTestMode ? 'TEST_' : ''}${receipt}`,
+      payment_capture: 1, // Auto capture payment
+      notes: {
+        test_mode: isTestMode ? 'true' : 'false',
+        environment: isTestMode ? 'test' : 'production'
+      }
     };
 
-    console.log('Razorpay order payload:', orderData);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay order payload:`, orderData);
 
     // Create Basic Auth header - key_id:key_secret encoded in base64
     const credentials = `${razorpayKeyId}:${razorpaySecret}`;
@@ -78,8 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
     const data = encoder.encode(credentials);
     const encodedCredentials = btoa(String.fromCharCode(...Array.from(data)));
     
-    console.log('Making request to Razorpay API...');
-    console.log('Auth header preview:', `Basic ${encodedCredentials.substring(0, 20)}...`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Making request to Razorpay API...`);
 
     // Make request to Razorpay Orders API
     const response = await fetch('https://api.razorpay.com/v1/orders', {
@@ -91,18 +102,18 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify(orderData)
     });
 
-    console.log(`Razorpay API response status: ${response.status}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay API response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Razorpay API error response:', {
+      console.error(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay API error response:`, {
         status: response.status,
         statusText: response.statusText,
         body: errorText
       });
       
       let errorMessage = 'Payment initialization failed';
-      let userFriendlyMessage = 'Unable to process payment. Please try again or contact support.';
+      let userFriendlyMessage = `Unable to process payment${isTestMode ? ' (TEST MODE)' : ''}. Please try again or contact support.`;
       
       try {
         const errorData = JSON.parse(errorText);
@@ -112,12 +123,12 @@ const handler = async (req: Request): Promise<Response> => {
           // Provide user-friendly messages for common errors
           if (errorData.error.code === 'BAD_REQUEST_ERROR') {
             if (errorMessage.includes('Authentication failed')) {
-              userFriendlyMessage = 'Payment gateway configuration error. Please contact support.';
+              userFriendlyMessage = `Payment gateway authentication failed${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
             } else if (errorMessage.includes('amount')) {
               userFriendlyMessage = 'Invalid payment amount. Please try again.';
             }
           } else if (response.status === 401) {
-            userFriendlyMessage = 'Payment gateway authentication failed. Please contact support.';
+            userFriendlyMessage = `Payment gateway authentication failed${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
           }
         }
       } catch (parseError) {
@@ -129,21 +140,23 @@ const handler = async (req: Request): Promise<Response> => {
           success: false, 
           error: userFriendlyMessage,
           details: errorMessage,
-          code: response.status
+          code: response.status,
+          testMode: isTestMode
         }),
         {
-          status: 400, // Return 400 instead of 500 to indicate client error
+          status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
     }
 
     const razorpayOrder = await response.json();
-    console.log('Razorpay order created successfully:', {
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay order created successfully:`, {
       id: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
-      status: razorpayOrder.status
+      status: razorpayOrder.status,
+      testMode: isTestMode
     });
 
     return new Response(JSON.stringify({
@@ -151,7 +164,9 @@ const handler = async (req: Request): Promise<Response> => {
       razorpayOrderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
-      receipt: razorpayOrder.receipt
+      receipt: razorpayOrder.receipt,
+      testMode: isTestMode,
+      testMessage: isTestMode ? 'This is a test transaction. Use test card: 4111 1111 1111 1111' : undefined
     }), {
       status: 200,
       headers: {
@@ -167,7 +182,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: false, 
         error: 'Payment service temporarily unavailable. Please try again.',
-        details: error.message || 'Internal server error'
+        details: error.message || 'Internal server error',
+        testMode: true // Default to test mode for errors
       }),
       {
         status: 500,
