@@ -8,20 +8,52 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Loader, Save } from 'lucide-react';
+import { Upload, Loader, Save, Palette } from 'lucide-react';
 import ColorPaletteSelector from '@/components/storefront/ColorPaletteSelector';
 import FontStyleSelector from '@/components/storefront/FontStyleSelector';
+import { HexColorPicker } from 'react-colorful';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ThemeData {
   color_palette?: string;
-  primary_color?: string;
-  accent_color?: string;
-  cta_color?: string;
+  primaryColor?: string;
+  textColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  accentColor?: string;
   font_style?: string;
   instagram_url?: string;
   facebook_url?: string;
   whatsapp_url?: string;
 }
+
+interface ColorPickerProps {
+  color: string;
+  onChange: (color: string) => void;
+  label: string;
+}
+
+const ColorPicker: React.FC<ColorPickerProps> = ({ color, onChange, label }) => {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full justify-start text-left font-normal"
+          >
+            <div className="w-4 h-4 rounded border border-gray-300 mr-2" style={{ backgroundColor: color }} />
+            {color}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-3" align="start">
+          <HexColorPicker color={color} onChange={onChange} />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 const CustomizeStore: React.FC = () => {
   const { toast } = useToast();
@@ -34,11 +66,16 @@ const CustomizeStore: React.FC = () => {
   const [bannerImage, setBannerImage] = useState<string | null>(null);
   const [selectedPalette, setSelectedPalette] = useState('urban-modern');
   const [fontStyle, setFontStyle] = useState('Poppins');
-  const [customColors, setCustomColors] = useState({
-    primary: '',
-    accent: '',
-    cta: '',
+  
+  // Clear color system
+  const [storeColors, setStoreColors] = useState({
+    primaryColor: '#111827',      // Main background / navigation
+    textColor: '#F9FAFB',         // Text & headings
+    buttonColor: '#6366F1',       // CTAs / Buy buttons
+    buttonTextColor: '#FFFFFF',   // Text inside buttons
+    accentColor: '#E0F2FE'        // Highlights or secondary bg
   });
+  
   const [socialLinks, setSocialLinks] = useState({
     instagram: '',
     facebook: '',
@@ -77,11 +114,16 @@ const CustomizeStore: React.FC = () => {
       if (store.theme && typeof store.theme === 'object') {
         const themeData = store.theme as ThemeData;
         setSelectedPalette(themeData.color_palette || 'urban-modern');
-        setCustomColors({
-          primary: themeData.primary_color || '',
-          accent: themeData.accent_color || '',
-          cta: themeData.cta_color || '',
+        
+        // Set clear color mappings
+        setStoreColors({
+          primaryColor: themeData.primaryColor || '#111827',
+          textColor: themeData.textColor || '#F9FAFB',
+          buttonColor: themeData.buttonColor || '#6366F1',
+          buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
+          accentColor: themeData.accentColor || '#E0F2FE',
         });
+        
         setSocialLinks({
           instagram: themeData.instagram_url || '',
           facebook: themeData.facebook_url || '',
@@ -121,8 +163,8 @@ const CustomizeStore: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['store-by-name', data.name] });
       
       toast({
-        title: "Store Published!",
-        description: "Your store customization has been saved and published successfully.",
+        title: "Changes Saved Successfully!",
+        description: "Your store customization has been saved and published.",
       });
     },
     onError: (error) => {
@@ -149,9 +191,11 @@ const CustomizeStore: React.FC = () => {
         font_style: fontStyle,
         theme: {
           color_palette: selectedPalette,
-          primary_color: customColors.primary,
-          accent_color: customColors.accent,
-          cta_color: customColors.cta,
+          primaryColor: storeColors.primaryColor,
+          textColor: storeColors.textColor,
+          buttonColor: storeColors.buttonColor,
+          buttonTextColor: storeColors.buttonTextColor,
+          accentColor: storeColors.accentColor,
           font_style: fontStyle,
           instagram_url: socialLinks.instagram,
           facebook_url: socialLinks.facebook,
@@ -388,13 +432,47 @@ const CustomizeStore: React.FC = () => {
         <TabsContent value="colors" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Theme</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Store Colors
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <ColorPaletteSelector
-                selectedPalette={selectedPalette}
-                onPaletteChange={(palette) => setSelectedPalette(palette.id)}
-              />
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ColorPicker
+                  color={storeColors.primaryColor}
+                  onChange={(color) => setStoreColors(prev => ({ ...prev, primaryColor: color }))}
+                  label="Primary Background"
+                />
+                <ColorPicker
+                  color={storeColors.textColor}
+                  onChange={(color) => setStoreColors(prev => ({ ...prev, textColor: color }))}
+                  label="Text Color"
+                />
+                <ColorPicker
+                  color={storeColors.buttonColor}
+                  onChange={(color) => setStoreColors(prev => ({ ...prev, buttonColor: color }))}
+                  label="Button Color"
+                />
+                <ColorPicker
+                  color={storeColors.buttonTextColor}
+                  onChange={(color) => setStoreColors(prev => ({ ...prev, buttonTextColor: color }))}
+                  label="Button Text Color"
+                />
+                <ColorPicker
+                  color={storeColors.accentColor}
+                  onChange={(color) => setStoreColors(prev => ({ ...prev, accentColor: color }))}
+                  label="Accent Background"
+                />
+              </div>
+              
+              <div className="mt-6">
+                <ColorPaletteSelector
+                  selectedPalette={selectedPalette}
+                  onPaletteChange={(palette) => setSelectedPalette(palette.id)}
+                />
+              </div>
+              
               <FontStyleSelector
                 value={fontStyle}
                 onChange={(font) => setFontStyle(font)}
@@ -469,11 +547,11 @@ const CustomizeStore: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border rounded-lg overflow-hidden bg-gray-50 min-h-[500px]">
-                {/* Store Preview */}
-                <div className="bg-white">
+              <div className="border rounded-lg overflow-hidden min-h-[500px]" style={{ backgroundColor: storeColors.accentColor }}>
+                {/* Store Preview with applied colors */}
+                <div style={{ backgroundColor: storeColors.primaryColor, color: storeColors.textColor }}>
                   {/* Banner Section */}
-                  <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden">
+                  <div className="relative h-48 overflow-hidden" style={{ backgroundColor: storeColors.primaryColor }}>
                     {bannerImage && (
                       <img 
                         src={bannerImage} 
@@ -484,7 +562,7 @@ const CustomizeStore: React.FC = () => {
                     <div className="absolute inset-0 bg-black bg-opacity-20"></div>
                     
                     {/* Store Info Overlay */}
-                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                    <div className="absolute bottom-4 left-4 right-4" style={{ color: storeColors.textColor }}>
                       <div className="flex items-center gap-4">
                         {logoImage ? (
                           <img 
@@ -498,7 +576,7 @@ const CustomizeStore: React.FC = () => {
                           </div>
                         )}
                         <div>
-                          <h1 className="text-2xl font-bold" style={{ fontFamily: fontStyle }}>
+                          <h1 className="text-2xl font-bold" style={{ fontFamily: fontStyle, color: storeColors.textColor }}>
                             {storeName || 'Your Store Name'}
                           </h1>
                           {storeTagline && (
@@ -512,32 +590,35 @@ const CustomizeStore: React.FC = () => {
                   {/* Store Content */}
                   <div className="p-6">
                     {storeDescription && (
-                      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                        <p className="text-gray-700">{storeDescription}</p>
+                      <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: storeColors.accentColor }}>
+                        <p style={{ color: storeColors.textColor }}>{storeDescription}</p>
                       </div>
                     )}
 
                     {/* Sample Products */}
                     <div className="mb-6">
-                      <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: fontStyle }}>
+                      <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: fontStyle, color: storeColors.textColor }}>
                         Products
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {[1, 2, 3].map((i) => (
-                          <div key={i} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+                          <div key={i} className="border rounded-lg overflow-hidden shadow-sm" style={{ backgroundColor: storeColors.accentColor }}>
                             <div className="h-32 bg-gray-200 flex items-center justify-center">
                               <span className="text-gray-400">Product Image</span>
                             </div>
                             <div className="p-3">
-                              <h3 className="font-medium mb-1" style={{ fontFamily: fontStyle }}>
+                              <h3 className="font-medium mb-1" style={{ fontFamily: fontStyle, color: storeColors.textColor }}>
                                 Sample Product {i}
                               </h3>
-                              <p className="text-lg font-bold" style={{ color: customColors.primary || '#6366f1' }}>
+                              <p className="text-lg font-bold" style={{ color: storeColors.textColor }}>
                                 $99.99
                               </p>
                               <button 
-                                className="w-full mt-2 px-3 py-1 rounded text-white text-sm font-medium"
-                                style={{ backgroundColor: customColors.cta || '#10b981' }}
+                                className="w-full mt-2 px-3 py-1 rounded text-sm font-medium"
+                                style={{ 
+                                  backgroundColor: storeColors.buttonColor,
+                                  color: storeColors.buttonTextColor
+                                }}
                               >
                                 Add to Cart
                               </button>
@@ -549,8 +630,8 @@ const CustomizeStore: React.FC = () => {
 
                     {/* Social Links Preview */}
                     {(socialLinks.instagram || socialLinks.facebook || socialLinks.whatsapp) && (
-                      <div className="border-t pt-4">
-                        <h3 className="text-lg font-medium mb-3" style={{ fontFamily: fontStyle }}>
+                      <div className="border-t pt-4" style={{ borderColor: storeColors.accentColor }}>
+                        <h3 className="text-lg font-medium mb-3" style={{ fontFamily: fontStyle, color: storeColors.textColor }}>
                           Follow Us
                         </h3>
                         <div className="flex gap-3">

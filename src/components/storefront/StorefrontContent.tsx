@@ -9,8 +9,11 @@ import { COLOR_PALETTES } from "./ColorPaletteSelector";
 
 interface StorefrontContentProps {
   store: Tables<"stores"> & {
-    primary_color?: string;
-    secondary_color?: string;
+    primaryColor?: string;
+    textColor?: string;
+    buttonColor?: string;
+    buttonTextColor?: string;
+    accentColor?: string;
     theme_style?: string;
     font_style?: string;
   };
@@ -44,9 +47,12 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   isLoading = false
 }) => {
   console.log('StorefrontContent: Rendering with store:', store?.name);
-  console.log('StorefrontContent: Store font_style:', store?.font_style);
-  console.log('StorefrontContent: Store theme:', store?.theme);
-  console.log('StorefrontContent: Products count:', products?.length || 0);
+  console.log('StorefrontContent: Store theme colors:', {
+    primaryColor: store?.primaryColor,
+    textColor: store?.textColor,
+    buttonColor: store?.buttonColor,
+    accentColor: store?.accentColor
+  });
 
   // Get theme data with proper fallbacks
   const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
@@ -57,10 +63,12 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   const fontStyle = store.font_style || themeColors.font_style || 'Poppins';
   const fontFamily = `${fontStyle}, sans-serif`;
   
-  // Use colors from theme or palette with fallbacks
-  const primaryColor = themeColors.primary_color || store.primary_color || selectedPalette.primary;
-  const accentColor = themeColors.accent_color || store.secondary_color || selectedPalette.accent;
-  const ctaColor = themeColors.cta_color || selectedPalette.cta;
+  // Use new color system with fallbacks
+  const primaryColor = store.primaryColor || themeColors.primaryColor || selectedPalette.primary;
+  const textColor = store.textColor || themeColors.textColor || '#F9FAFB';
+  const buttonColor = store.buttonColor || themeColors.buttonColor || selectedPalette.cta;
+  const buttonTextColor = store.buttonTextColor || themeColors.buttonTextColor || '#FFFFFF';
+  const accentColor = store.accentColor || themeColors.accentColor || selectedPalette.accent;
 
   // Social links
   const socialLinks = {
@@ -85,18 +93,26 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
     }
   }, [fontStyle]);
 
-  console.log('StorefrontContent: Applied colors:', { primaryColor, accentColor, ctaColor });
-  console.log('StorefrontContent: Applied font:', fontStyle);
+  console.log('StorefrontContent: Applied colors:', { 
+    primaryColor, 
+    textColor, 
+    buttonColor, 
+    buttonTextColor, 
+    accentColor 
+  });
 
   return (
     <div 
-      className="min-h-screen bg-gray-50"
+      className="min-h-screen"
       style={{
         fontFamily,
+        backgroundColor: accentColor,
         '--primary-color': primaryColor,
+        '--text-color': textColor,
+        '--button-color': buttonColor,
+        '--button-text-color': buttonTextColor,
         '--accent-color': accentColor,
-        '--cta-color': ctaColor,
-        color: primaryColor
+        color: textColor
       } as React.CSSProperties}
     >
       {/* Navigation Bar */}
@@ -121,25 +137,28 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   />
                 ) : (
                   <div 
-                    className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg"
-                    style={{ backgroundColor: primaryColor }}
+                    className="w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold shadow-lg"
+                    style={{ 
+                      backgroundColor: primaryColor,
+                      color: buttonTextColor
+                    }}
                   >
                     {store.name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1">
-                  <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ color: primaryColor }}>
+                  <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ color: textColor }}>
                     {store.name}
                   </h1>
                   {store.tagline && (
-                    <p className="text-lg mb-4" style={{ color: `${primaryColor}99` }}>{store.tagline}</p>
+                    <p className="text-lg mb-4" style={{ color: textColor, opacity: 0.8 }}>{store.tagline}</p>
                   )}
                   {store.description && (
                     <div 
                       className="p-4 rounded-lg max-w-2xl"
-                      style={{ backgroundColor: accentColor }}
+                      style={{ backgroundColor: primaryColor }}
                     >
-                      <p style={{ color: primaryColor }}>{store.description}</p>
+                      <p style={{ color: buttonTextColor }}>{store.description}</p>
                     </div>
                   )}
                 </div>
@@ -159,10 +178,10 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
 
             {/* Products Section */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>Products</h2>
+              <h2 className="text-2xl font-bold mb-6" style={{ color: textColor }}>Products</h2>
               {isLoading ? (
                 <div className="flex justify-center items-center py-16">
-                  <Loader className="h-8 w-8 animate-spin" style={{ color: ctaColor }} />
+                  <Loader className="h-8 w-8 animate-spin" style={{ color: buttonColor }} />
                 </div>
               ) : (
                 <ProductGrid products={products} />
@@ -180,12 +199,12 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
       </div>
 
       {/* Footer with Social Links */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
+      <footer className="border-t border-gray-200 mt-16" style={{ backgroundColor: primaryColor }}>
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-4 md:mb-0">
-              <h3 className="font-bold text-lg" style={{ color: primaryColor }}>{store.name}</h3>
-              <p className="text-gray-600">Powered by ShopZap</p>
+              <h3 className="font-bold text-lg" style={{ color: buttonTextColor }}>{store.name}</h3>
+              <p style={{ color: buttonTextColor, opacity: 0.8 }}>Powered by ShopZap</p>
             </div>
             
             {/* Social Media Links */}
@@ -196,7 +215,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition-colors"
-                  style={{ color: primaryColor }}
+                  style={{ color: buttonTextColor }}
                 >
                   <Instagram className="h-6 w-6" />
                 </a>
@@ -207,7 +226,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition-colors"
-                  style={{ color: primaryColor }}
+                  style={{ color: buttonTextColor }}
                 >
                   <Facebook className="h-6 w-6" />
                 </a>

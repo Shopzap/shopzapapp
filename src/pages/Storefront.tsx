@@ -65,7 +65,6 @@ const Storefront: React.FC = () => {
     enabled: !!storeName,
     retry: 2,
     retryDelay: 1000,
-    // Use longer stale time to reduce unnecessary refetches
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
@@ -105,7 +104,6 @@ const Storefront: React.FC = () => {
     enabled: !!store?.id,
     retry: 2,
     retryDelay: 1000,
-    // Use longer stale time for products as they don't change as frequently
     staleTime: 3 * 60 * 1000, // 3 minutes
     gcTime: 8 * 60 * 1000, // 8 minutes
   });
@@ -152,23 +150,28 @@ const Storefront: React.FC = () => {
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  // Process theme data and apply color palette
+  // Process theme data with new color system
   const themeData = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
   const colorPaletteId = themeData.color_palette || 'urban-modern';
   const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
   
-  // Enhanced store object with proper theme application
+  // Enhanced store object with clear color mapping
   const enhancedStore = {
     ...store,
-    primary_color: themeData.primary_color || selectedPalette.primary,
-    secondary_color: themeData.secondary_color || selectedPalette.accent,
-    theme_style: themeData.theme_style || themeData.theme_layout || 'card',
+    // Use new color system if available, fallback to old system, then to palette
+    primaryColor: themeData.primaryColor || themeData.primary_color || selectedPalette.primary,
+    textColor: themeData.textColor || '#F9FAFB',
+    buttonColor: themeData.buttonColor || themeData.cta_color || selectedPalette.cta,
+    buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
+    accentColor: themeData.accentColor || themeData.accent_color || selectedPalette.accent,
     font_style: store.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
-      primary_color: themeData.primary_color || selectedPalette.primary,
-      accent_color: themeData.accent_color || selectedPalette.accent,
-      cta_color: themeData.cta_color || selectedPalette.cta,
+      primaryColor: themeData.primaryColor || themeData.primary_color || selectedPalette.primary,
+      textColor: themeData.textColor || '#F9FAFB',
+      buttonColor: themeData.buttonColor || themeData.cta_color || selectedPalette.cta,
+      buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
+      accentColor: themeData.accentColor || themeData.accent_color || selectedPalette.accent,
       color_palette: colorPaletteId,
       instagram_url: themeData.instagram_url || '',
       facebook_url: themeData.facebook_url || '',
@@ -179,8 +182,10 @@ const Storefront: React.FC = () => {
   console.log('Storefront: Rendering modern storefront with enhanced store data:', {
     name: enhancedStore.name,
     font_style: enhancedStore.font_style,
-    primary_color: enhancedStore.primary_color,
-    theme: enhancedStore.theme
+    primaryColor: enhancedStore.primaryColor,
+    textColor: enhancedStore.textColor,
+    buttonColor: enhancedStore.buttonColor,
+    accentColor: enhancedStore.accentColor
   });
 
   return (
