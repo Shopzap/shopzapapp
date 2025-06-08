@@ -28,21 +28,38 @@ const handler = async (req: Request): Promise<Response> => {
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
     
-    console.log(`Razorpay Key ID present: ${!!razorpayKeyId}`);
-    console.log(`Razorpay Secret present: ${!!razorpaySecret}`);
+    console.log(`Razorpay Key ID: ${razorpayKeyId ? razorpayKeyId.substring(0, 10) + '...' : 'NOT SET'}`);
+    console.log(`Razorpay Secret: ${razorpaySecret ? razorpaySecret.substring(0, 10) + '...' : 'NOT SET'}`);
     
     if (!razorpayKeyId || !razorpaySecret) {
-      console.error('Missing Razorpay credentials:', { 
-        keyId: !!razorpayKeyId, 
-        secret: !!razorpaySecret 
-      });
-      throw new Error('Payment gateway credentials not configured');
+      console.error('Missing Razorpay credentials');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Payment gateway not configured. Please contact support.',
+          details: 'Missing API credentials'
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
-    // Validate amount (must be positive and in paise)
+    // Validate amount (must be positive)
     if (!amount || amount <= 0) {
       console.error('Invalid amount:', amount);
-      throw new Error('Invalid amount provided');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid payment amount',
+          details: 'Amount must be greater than 0'
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
     // Create Razorpay order payload
@@ -55,18 +72,19 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Razorpay order payload:', orderData);
 
-    // Create Basic Auth header
-    const authString = `${razorpayKeyId}:${razorpaySecret}`;
-    const encodedAuth = btoa(authString);
+    // Create Basic Auth header - key_id:key_secret encoded in base64
+    const credentials = `${razorpayKeyId}:${razorpaySecret}`;
+    const encodedCredentials = btoa(credentials);
     
     console.log('Making request to Razorpay API...');
+    console.log('Auth header preview:', `Basic ${encodedCredentials.substring(0, 20)}...`);
 
     // Make request to Razorpay Orders API
     const response = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${encodedAuth}`
+        'Authorization': `Basic ${encodedCredentials}`
       },
       body: JSON.stringify(orderData)
     });
@@ -81,17 +99,41 @@ const handler = async (req: Request): Promise<Response> => {
         body: errorText
       });
       
-      let errorMessage = 'Failed to create payment order';
+      let errorMessage = 'Payment initialization failed';
+      let userFriendlyMessage = 'Unable to process payment. Please try again or contact support.';
+      
       try {
         const errorData = JSON.parse(errorText);
-        if (errorData.error && errorData.error.description) {
-          errorMessage = errorData.error.description;
+        if (errorData.error) {
+          errorMessage = errorData.error.description || errorData.error.code || errorMessage;
+          
+          // Provide user-friendly messages for common errors
+          if (errorData.error.code === 'BAD_REQUEST_ERROR') {
+            if (errorMessage.includes('Authentication failed')) {
+              userFriendlyMessage = 'Payment gateway configuration error. Please contact support.';
+            } else if (errorMessage.includes('amount')) {
+              userFriendlyMessage = 'Invalid payment amount. Please try again.';
+            }
+          } else if (response.status === 401) {
+            userFriendlyMessage = 'Payment gateway authentication failed. Please contact support.';
+          }
         }
       } catch (parseError) {
         console.error('Failed to parse Razorpay error response:', parseError);
       }
       
-      throw new Error(errorMessage);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: userFriendlyMessage,
+          details: errorMessage,
+          code: response.status
+        }),
+        {
+          status: 400, // Return 400 instead of 500 to indicate client error
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
     const razorpayOrder = await response.json();
@@ -122,8 +164,8 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Internal server error',
-        details: error.toString()
+        error: 'Payment service temporarily unavailable. Please try again.',
+        details: error.message || 'Internal server error'
       }),
       {
         status: 500,
