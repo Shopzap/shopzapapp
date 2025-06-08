@@ -13,7 +13,7 @@ import StoreNotFound from '@/components/storefront/StoreNotFound';
 const Cart = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, getTotalPrice, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
   // Fetch store data
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
@@ -117,19 +117,19 @@ const Cart = () => {
                     <CardContent className="p-6">
                       <div className="flex items-center gap-4">
                         <img
-                          src={item.image}
-                          alt={item.name}
+                          src={item.product.image_url || 'https://placehold.co/80x80'}
+                          alt={item.product.name}
                           className="w-20 h-20 object-cover rounded-lg"
                         />
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{item.name}</h3>
-                          <p className="text-gray-600">{formatPrice(item.price)}</p>
+                          <h3 className="font-semibold text-lg">{item.product.name}</h3>
+                          <p className="text-gray-600">{formatPrice(Number(item.product.price))}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateQuantity(item.id, Math.max(0, item.quantity - 1))}
+                            onClick={() => updateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
                           >
                             <Minus className="w-4 h-4" />
                           </Button>
@@ -137,7 +137,7 @@ const Cart = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                           >
                             <Plus className="w-4 h-4" />
                           </Button>
@@ -145,7 +145,7 @@ const Cart = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeFromCart(item.product.id)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />

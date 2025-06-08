@@ -12,7 +12,7 @@ import { useCart } from '@/hooks/useCart';
 const ProductDetails = () => {
   const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
 
   // First, fetch the store to get store_id
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
@@ -64,24 +64,22 @@ const ProductDetails = () => {
   const hasError = storeError || productError;
 
   // Handle add to cart
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
     
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: Number(product.price),
-      quantity: 1,
-      image: product.image_url || 'https://placehold.co/80x80'
-    });
+    try {
+      await addToCart(product);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
 
   // Handle navigation to checkout
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!product) return;
     
     // Add to cart first
-    handleAddToCart();
+    await handleAddToCart();
     
     // Navigate to store-specific checkout
     if (storeName) {
