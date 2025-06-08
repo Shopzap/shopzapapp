@@ -29,8 +29,8 @@ const handler = async (req: Request): Promise<Response> => {
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
     
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay Key ID: ${razorpayKeyId ? razorpayKeyId.substring(0, 10) + '...' : 'NOT SET'}`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay Secret: ${razorpaySecret ? razorpaySecret.substring(0, 10) + '...' : 'NOT SET'}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Using Key ID: ${razorpayKeyId ? razorpayKeyId.substring(0, 15) + '...' : 'NOT SET'}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret available: ${razorpaySecret ? 'YES' : 'NO'}`);
     
     // Validate test mode keys
     if (isTestMode && razorpayKeyId && !razorpayKeyId.startsWith('rzp_test_')) {
@@ -84,11 +84,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay order payload:`, orderData);
 
-    // Create Basic Auth header using btoa (base64 encoding)
+    // Create Basic Auth header using Buffer for proper base64 encoding
     const credentials = `${razorpayKeyId}:${razorpaySecret}`;
+    // Use btoa which is available in Deno
     const encodedCredentials = btoa(credentials);
     
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Making request to Razorpay API...`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Auth header created with credentials length: ${credentials.length}`);
 
     // Make request to Razorpay Orders API
     const response = await fetch('https://api.razorpay.com/v1/orders', {
@@ -139,7 +141,8 @@ const handler = async (req: Request): Promise<Response> => {
           error: userFriendlyMessage,
           details: errorMessage,
           code: response.status,
-          testMode: isTestMode
+          testMode: isTestMode,
+          razorpayKeyId: razorpayKeyId ? `${razorpayKeyId.substring(0, 15)}...` : 'NOT SET'
         }),
         {
           status: 400,
@@ -164,7 +167,8 @@ const handler = async (req: Request): Promise<Response> => {
       currency: razorpayOrder.currency,
       receipt: razorpayOrder.receipt,
       testMode: isTestMode,
-      testMessage: isTestMode ? 'This is a test transaction. Use test card: 4111 1111 1111 1111' : undefined
+      testMessage: isTestMode ? 'This is a test transaction. Use test card: 4111 1111 1111 1111' : undefined,
+      keyId: razorpayKeyId // Return the key ID for frontend use
     }), {
       status: 200,
       headers: {

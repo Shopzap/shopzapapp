@@ -98,7 +98,7 @@ const Checkout = () => {
         
         // Handle specific authentication errors
         if (data?.details?.includes('Authentication failed') || data?.code === 401) {
-          throw new Error('Payment gateway configuration error. Please contact support for assistance.');
+          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. API keys may be incorrect. Please contact support.`);
         }
         
         throw new Error(errorMessage);
@@ -176,12 +176,15 @@ const Checkout = () => {
       // Create Razorpay order
       const razorpayOrderData = await createRazorpayOrder(getTotalPrice());
       
+      // Use the key ID returned from the edge function or fallback to config
+      const keyId = razorpayOrderData.keyId || paymentConfig.razorpay.keyId;
+      
       const options = {
-        key: paymentConfig.razorpay.keyId,
+        key: keyId,
         amount: razorpayOrderData.amount,
         currency: razorpayOrderData.currency,
         name: storeInfo?.name || 'ShopZap Store',
-        description: `Order from ${storeInfo?.name || 'ShopZap Store'}`,
+        description: `Order from ${storeInfo?.name || 'ShopZap Store'}${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}`,
         order_id: razorpayOrderData.razorpayOrderId,
         handler: async function (response: any) {
           try {
@@ -216,7 +219,8 @@ const Checkout = () => {
                     minute: '2-digit',
                     hour12: true
                   }),
-                  paymentStatus: 'Paid'
+                  paymentStatus: 'Paid',
+                  testMode: paymentConfig.isTestMode
                 },
                 estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
                   day: '2-digit',
@@ -251,7 +255,7 @@ const Checkout = () => {
             setIsProcessing(false);
             toast({
               title: "Payment Cancelled",
-              description: "Payment was cancelled. Your order has not been placed.",
+              description: `Payment was cancelled${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Your order has not been placed.`,
               variant: "destructive",
             });
           }
@@ -381,6 +385,13 @@ const Checkout = () => {
         </Button>
         <h1 className="text-3xl font-bold">Checkout</h1>
         <p className="text-muted-foreground">Review your order and complete your purchase</p>
+        {paymentConfig.isTestMode && (
+          <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <p className="text-orange-800 text-sm">
+              <strong>TEST MODE:</strong> Use test card 4111 1111 1111 1111, any future expiry, CVV 123
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
