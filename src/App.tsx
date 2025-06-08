@@ -50,13 +50,10 @@ const App = () => {
             <StoreProvider>
               <ErrorBoundary>
                 <Routes>
-                  {/* Public routes */}
+                  {/* Public routes - Legal pages first to avoid conflicts */}
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth-callback" element={<AuthCallback />} />
-                  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                  <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
-                  <Route path="/order-success" element={<OrderSuccess />} />
                   
                   {/* Legal pages */}
                   <Route path="/terms" element={<Terms />} />
@@ -64,6 +61,11 @@ const App = () => {
                   <Route path="/refund" element={<RefundPolicy />} />
                   <Route path="/shipping" element={<ShippingPolicy />} />
                   <Route path="/pricing-policy" element={<PricingPolicy />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+                  <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
+                  <Route path="/order-success" element={<OrderSuccess />} />
                   
                   {/* Order tracking routes - make these accessible without authentication */}
                   <Route path="/track-order" element={<OrderTracking />} />
@@ -141,7 +143,7 @@ const App = () => {
                     </ProtectedRoute>
                   } />
                   
-                  {/* Fallback - redirect invalid routes to home */}
+                  {/* Fallback - redirect invalid routes to 404 page */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </ErrorBoundary>
