@@ -17,6 +17,26 @@ interface StorefrontContentProps {
   isLoading?: boolean;
 }
 
+// Font mapping for Google Fonts
+const FONT_MAP: Record<string, string> = {
+  'Inter': 'Inter:wght@300;400;500;600;700',
+  'Poppins': 'Poppins:wght@300;400;500;600;700',
+  'Montserrat': 'Montserrat:wght@300;400;500;600;700',
+  'Lato': 'Lato:wght@300;400;700',
+  'Rubik': 'Rubik:wght@300;400;500;600;700',
+  'DM Sans': 'DM+Sans:wght@300;400;500;600;700',
+  'Manrope': 'Manrope:wght@300;400;500;600;700',
+  'Nunito': 'Nunito:wght@300;400;500;600;700',
+  'Mulish': 'Mulish:wght@300;400;500;600;700',
+  'Ubuntu': 'Ubuntu:wght@300;400;500;700',
+  'Playfair Display': 'Playfair+Display:wght@400;500;600;700',
+  'Merriweather': 'Merriweather:wght@300;400;700',
+  'EB Garamond': 'EB+Garamond:wght@400;500;600;700',
+  'Fredoka': 'Fredoka:wght@300;400;500;600;700',
+  'Pacifico': 'Pacifico',
+  'Baloo 2': 'Baloo+2:wght@400;500;600;700',
+};
+
 const StorefrontContent: React.FC<StorefrontContentProps> = ({
   store,
   products,
@@ -33,9 +53,23 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
     whatsapp: store.theme && typeof store.theme === 'object' ? (store.theme as any).whatsapp_url : ''
   };
 
-  // Apply store font style
+  // Apply store font style with fallback
   const fontStyle = store.font_style || 'Poppins';
-  const fontClass = `font-${fontStyle.toLowerCase().replace(/\s+/g, '')}`;
+  const fontFamily = `${fontStyle}, sans-serif`;
+
+  // Load Google Font dynamically
+  React.useEffect(() => {
+    const googleFontUrl = FONT_MAP[fontStyle];
+    if (googleFontUrl) {
+      const existingLink = document.querySelector(`link[href*="${googleFontUrl}"]`);
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.href = `https://fonts.googleapis.com/css2?family=${googleFontUrl}&display=swap`;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+    }
+  }, [fontStyle]);
 
   // Apply theme colors
   const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
@@ -44,9 +78,9 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
 
   return (
     <div 
-      className={`min-h-screen bg-gray-50 ${fontClass}`}
+      className="min-h-screen bg-gray-50"
       style={{
-        fontFamily: `${fontStyle}, sans-serif`,
+        fontFamily,
         '--primary-color': primaryColor,
         '--secondary-color': secondaryColor,
       } as React.CSSProperties}
@@ -74,20 +108,20 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                 ) : (
                   <div 
                     className="w-24 h-24 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg"
-                    style={{ backgroundColor: primaryColor }}
+                    style={{ backgroundColor: primaryColor, fontFamily }}
                   >
                     {store.name.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1">
-                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2" style={{ fontFamily }}>
                     {store.name}
                   </h1>
                   {store.tagline && (
-                    <p className="text-lg text-gray-600 mb-4">{store.tagline}</p>
+                    <p className="text-lg text-gray-600 mb-4" style={{ fontFamily }}>{store.tagline}</p>
                   )}
                   {store.description && (
-                    <p className="text-gray-700 max-w-2xl">{store.description}</p>
+                    <p className="text-gray-700 max-w-2xl" style={{ fontFamily }}>{store.description}</p>
                   )}
                 </div>
               </div>
@@ -106,7 +140,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
 
             {/* Products Section */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Products</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6" style={{ fontFamily }}>Products</h2>
               {isLoading ? (
                 <div className="flex justify-center items-center py-16">
                   <Loader className="h-8 w-8 animate-spin text-primary" />
@@ -131,8 +165,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-4 md:mb-0">
-              <h3 className="font-bold text-lg">{store.name}</h3>
-              <p className="text-gray-600">Powered by ShopZap</p>
+              <h3 className="font-bold text-lg" style={{ fontFamily }}>{store.name}</h3>
+              <p className="text-gray-600" style={{ fontFamily }}>Powered by ShopZap</p>
             </div>
             
             {/* Social Media Links */}

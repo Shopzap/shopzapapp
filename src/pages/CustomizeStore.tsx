@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Upload, Palette, FileText, Type, ExternalLink } from "lucide-react";
 import FontStyleSelector from "@/components/storefront/FontStyleSelector";
 import AboutPageManager from "@/components/storefront/AboutPageManager";
+
+// Font mapping for Google Fonts
+const FONT_MAP: Record<string, string> = {
+  'Inter': 'Inter:wght@300;400;500;600;700',
+  'Poppins': 'Poppins:wght@300;400;500;600;700',
+  'Montserrat': 'Montserrat:wght@300;400;500;600;700',
+  'Lato': 'Lato:wght@300;400;700',
+  'Rubik': 'Rubik:wght@300;400;500;600;700',
+  'DM Sans': 'DM+Sans:wght@300;400;500;600;700',
+  'Manrope': 'Manrope:wght@300;400;500;600;700',
+  'Nunito': 'Nunito:wght@300;400;500;600;700',
+  'Mulish': 'Mulish:wght@300;400;500;600;700',
+  'Ubuntu': 'Ubuntu:wght@300;400;500;700',
+  'Playfair Display': 'Playfair+Display:wght@400;500;600;700',
+  'Merriweather': 'Merriweather:wght@300;400;700',
+  'EB Garamond': 'EB+Garamond:wght@400;500;600;700',
+  'Fredoka': 'Fredoka:wght@300;400;500;600;700',
+  'Pacifico': 'Pacifico',
+  'Baloo 2': 'Baloo+2:wght@400;500;600;700',
+};
 
 const CustomizeStore = () => {
   const { user } = useAuth();
@@ -146,6 +165,20 @@ const CustomizeStore = () => {
     }
   };
 
+  // Load Google Font dynamically for preview
+  React.useEffect(() => {
+    const googleFontUrl = FONT_MAP[selectedFont];
+    if (googleFontUrl) {
+      const existingLink = document.querySelector(`link[href*="${googleFontUrl}"]`);
+      if (!existingLink) {
+        const link = document.createElement('link');
+        link.href = `https://fonts.googleapis.com/css2?family=${googleFontUrl}&display=swap`;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+    }
+  }, [selectedFont]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -166,19 +199,20 @@ const CustomizeStore = () => {
   }
 
   // Apply selected font for live preview
-  const fontClass = `font-${selectedFont.toLowerCase().replace(' ', '')}`;
+  const fontFamily = `${selectedFont}, sans-serif`;
 
   return (
-    <div className={`space-y-6 ${fontClass}`}>
+    <div className="space-y-6" style={{ fontFamily }}>
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customize Store</h1>
-          <p className="text-gray-600 mt-2">Personalize your store's appearance and content</p>
+          <h1 className="text-3xl font-bold text-gray-900" style={{ fontFamily }}>Customize Store</h1>
+          <p className="text-gray-600 mt-2" style={{ fontFamily }}>Personalize your store's appearance and content</p>
         </div>
         <Button 
           onClick={openLiveStore}
           variant="outline"
           className="flex items-center gap-2"
+          style={{ fontFamily }}
         >
           <ExternalLink className="w-4 h-4" />
           View Live Store
@@ -260,7 +294,7 @@ const CustomizeStore = () => {
         <TabsContent value="fonts">
           <Card>
             <CardHeader>
-              <CardTitle>Font Style</CardTitle>
+              <CardTitle style={{ fontFamily }}>Font Style</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -273,6 +307,7 @@ const CustomizeStore = () => {
                   onClick={handleFontSave}
                   disabled={updateStoreMutation.isPending}
                   className="w-full"
+                  style={{ fontFamily }}
                 >
                   {updateStoreMutation.isPending ? 'Saving...' : 'Save Font Style'}
                 </Button>
@@ -295,30 +330,38 @@ const CustomizeStore = () => {
         <TabsContent value="preview">
           <Card>
             <CardHeader>
-              <CardTitle>Store Preview</CardTitle>
+              <CardTitle style={{ fontFamily }}>Store Preview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`p-6 border rounded-lg bg-white ${fontClass}`}>
+              <div className="p-6 border rounded-lg bg-white" style={{ fontFamily }}>
                 <div className="space-y-4">
                   <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900">{formData.name || 'Your Store Name'}</h2>
+                    <h2 className="text-3xl font-bold text-gray-900" style={{ fontFamily }}>
+                      {formData.name || 'Your Store Name'}
+                    </h2>
                     {formData.tagline && (
-                      <p className="text-lg text-gray-600 mt-2">{formData.tagline}</p>
+                      <p className="text-lg text-gray-600 mt-2" style={{ fontFamily }}>{formData.tagline}</p>
                     )}
                   </div>
                   
                   {formData.description && (
                     <div className="mt-6">
-                      <p className="text-gray-700">{formData.description}</p>
+                      <p className="text-gray-700" style={{ fontFamily }}>{formData.description}</p>
                     </div>
                   )}
                   
                   <div className="mt-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Sample Product</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-4" style={{ fontFamily }}>Sample Product</h3>
                     <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900">Product Name</h4>
-                      <p className="text-gray-600 text-sm mt-1">This is how product descriptions will look.</p>
-                      <p className="text-lg font-bold text-gray-900 mt-2">$29.99</p>
+                      <h4 className="font-semibold text-gray-900" style={{ fontFamily }}>Product Name</h4>
+                      <p className="text-gray-600 text-sm mt-1" style={{ fontFamily }}>This is how product descriptions will look.</p>
+                      <p className="text-lg font-bold text-gray-900 mt-2" style={{ fontFamily }}>₹999</p>
+                      <button 
+                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm"
+                        style={{ fontFamily }}
+                      >
+                        Add to Cart
+                      </button>
                     </div>
                   </div>
                 </div>
