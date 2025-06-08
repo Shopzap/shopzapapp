@@ -1,239 +1,176 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useStore } from '@/contexts/StoreContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Upload, Image as ImageIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { Loader2, Save } from 'lucide-react';
 
-interface AboutPageManagerProps {
-  storeId: string;
-}
-
-const AboutPageManager: React.FC<AboutPageManagerProps> = ({ storeId }) => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
+const AboutPageManager = () => {
+  const { storeId, storeData } = useStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [aboutData, setAboutData] = useState({
     title: '',
     bio: '',
     profile_image_url: ''
   });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
 
-  // Fetch existing about page data
-  const { data: aboutPage, isLoading } = useQuery({
-    queryKey: ['aboutPage', storeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
+  // Load existing about page data
+  useEffect(() => {
+    const loadAboutData = async () => {
+      if (!storeId) return;
+      
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('about_pages')
+          .select('*')
+          .eq('store_id', storeId)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error loading about data:', error);
+          toast.error('Failed to load about page data');
+          return;
+        }
+
+        if (data) {
+          setAboutData({
+            title: data.title || '',
+            bio: data.bio || '',
+            profile_image_url: data.profile_image_url || ''
+          });
+        }
+      } catch (error) {
+        console.error('Exception loading about data:', error);
+        toast.error('Failed to load about page data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAboutData();
+  }, [storeId]);
+
+  // Save about page data
+  const handleSave = async () => {
+    if (!storeId) {
+      toast.error('No store selected');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // First check if about page exists
+      const { data: existingData } = await supabase
         .from('about_pages')
-        .select('*')
+        .select('id')
         .eq('store_id', storeId)
         .maybeSingle();
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      return data;
-    },
-  });
 
-  // Update form data when about page data is loaded
-  useEffect(() => {
-    if (aboutPage) {
-      setFormData({
-        title: aboutPage.title || '',
-        bio: aboutPage.bio || '',
-        profile_image_url: aboutPage.profile_image_url || ''
-      });
-      setImagePreview(aboutPage.profile_image_url || '');
-    }
-  }, [aboutPage]);
-
-  // Handle image file selection
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Upload image to storage
-  const uploadImage = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${storeId}-${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('store-assets')
-      .upload(`about-images/${fileName}`, file);
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from('store-assets')
-      .getPublicUrl(`about-images/${fileName}`);
-
-    return urlData.publicUrl;
-  };
-
-  // Save about page mutation
-  const saveAboutPageMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      let imageUrl = data.profile_image_url;
-      
-      // Upload new image if selected
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
-      }
-
-      const aboutData = {
-        store_id: storeId,
-        title: data.title,
-        bio: data.bio,
-        profile_image_url: imageUrl,
-        updated_at: new Date().toISOString()
-      };
-
-      if (aboutPage) {
-        // Update existing
-        const { data: result, error } = await supabase
+      let result;
+      if (existingData) {
+        // Update existing about page
+        result = await supabase
           .from('about_pages')
-          .update(aboutData)
-          .eq('id', aboutPage.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return result;
+          .update({
+            title: aboutData.title,
+            bio: aboutData.bio,
+            profile_image_url: aboutData.profile_image_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('store_id', storeId)
+          .eq('id', existingData.id);
       } else {
-        // Create new
-        const { data: result, error } = await supabase
+        // Create new about page
+        result = await supabase
           .from('about_pages')
-          .insert(aboutData)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return result;
+          .insert({
+            store_id: storeId,
+            title: aboutData.title,
+            bio: aboutData.bio,
+            profile_image_url: aboutData.profile_image_url
+          });
       }
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "About page saved successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ['aboutPage', storeId] });
-      setImageFile(null);
-    },
-    onError: (error) => {
-      console.error('Error saving about page:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save about page. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    saveAboutPageMutation.mutate(formData);
-  };
+      if (result.error) {
+        console.error('Database error:', result.error);
+        toast.error(`Failed to save: ${result.error.message}`);
+        return;
+      }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+      toast.success('About page saved successfully!');
+    } catch (error) {
+      console.error('Exception saving about data:', error);
+      toast.error('Failed to save about page');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
-    return <div>Loading about page data...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>About Page Content</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label htmlFor="title">Page Title</Label>
-            <Input
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="About Our Store"
-            />
-          </div>
+    <div className="space-y-6">
+      <div>
+        <Label htmlFor="title">Store Title</Label>
+        <Input
+          id="title"
+          value={aboutData.title}
+          onChange={(e) => setAboutData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder="Enter your store title"
+        />
+      </div>
 
-          <div>
-            <Label htmlFor="bio">Bio/Description</Label>
-            <Textarea
-              id="bio"
-              name="bio"
-              value={formData.bio}
-              onChange={handleInputChange}
-              rows={6}
-              placeholder="Tell your customers about your store, your story, and what makes you special..."
-            />
-          </div>
+      <div>
+        <Label htmlFor="bio">Bio/Description</Label>
+        <Textarea
+          id="bio"
+          value={aboutData.bio}
+          onChange={(e) => setAboutData(prev => ({ ...prev, bio: e.target.value }))}
+          placeholder="Tell customers about your store..."
+          rows={6}
+        />
+      </div>
 
-          <div>
-            <Label htmlFor="profile_image">Profile Image</Label>
-            <div className="mt-2 space-y-4">
-              {imagePreview && (
-                <div className="relative w-32 h-32">
-                  <img
-                    src={imagePreview}
-                    alt="Profile preview"
-                    className="w-full h-full object-cover rounded-lg border"
-                  />
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => document.getElementById('image-upload')?.click()}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload Image
-                </Button>
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </div>
-            </div>
-          </div>
+      <div>
+        <Label htmlFor="profile_image">Profile Image URL</Label>
+        <Input
+          id="profile_image"
+          value={aboutData.profile_image_url}
+          onChange={(e) => setAboutData(prev => ({ ...prev, profile_image_url: e.target.value }))}
+          placeholder="https://example.com/image.jpg"
+        />
+      </div>
 
-          <Button
-            type="submit"
-            disabled={saveAboutPageMutation.isPending}
-            className="w-full"
-          >
-            {saveAboutPageMutation.isPending ? 'Saving...' : 'Save About Page'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      <Button 
+        onClick={handleSave} 
+        disabled={isSaving}
+        className="w-full"
+      >
+        {isSaving ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <Save className="h-4 w-4 mr-2" />
+            Save About Page
+          </>
+        )}
+      </Button>
+    </div>
   );
 };
 

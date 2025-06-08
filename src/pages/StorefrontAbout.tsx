@@ -4,39 +4,39 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
-import NotFound from "./NotFound";
-import StorefrontAbout from "@/components/storefront/StorefrontAbout";
+import StoreNotFound from "@/components/storefront/StoreNotFound";
 import StorefrontNavbar from "@/components/storefront/StorefrontNavbar";
+import StorefrontAbout from "@/components/storefront/StorefrontAbout";
 
 const StorefrontAboutPage: React.FC = () => {
-  const { storeSlug } = useParams<{ storeSlug: string }>();
+  const { storeName } = useParams<{ storeName: string }>();
   
   // Fetch store data using the slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', storeSlug],
+    queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      if (!storeSlug) {
-        throw new Error('No store slug provided');
+      if (!storeName) {
+        throw new Error('No store name provided');
       }
       
-      console.log('StorefrontAbout: Fetching store with slug', storeSlug);
+      console.log('StorefrontAbout: Fetching store with name', storeName);
       
       // Try to find the store using the name field (case-insensitive)
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeSlug)
+        .ilike('name', storeName)
         .single();
         
       if (error && error.code === 'PGRST116') {
         // Try with URL decoded name (in case of spaces or special characters)
-        const decodedStoreSlug = decodeURIComponent(storeSlug);
-        console.log('StorefrontAbout: Trying with decoded store slug', decodedStoreSlug);
+        const decodedStoreName = decodeURIComponent(storeName);
+        console.log('StorefrontAbout: Trying with decoded store name', decodedStoreName);
         
         const secondAttempt = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', decodedStoreSlug)
+          .ilike('name', decodedStoreName)
           .single();
           
         if (!secondAttempt.error) {
@@ -51,22 +51,11 @@ const StorefrontAboutPage: React.FC = () => {
       
       return data;
     },
-    enabled: !!storeSlug,
+    enabled: !!storeName,
   });
   
   if (storeError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Return to Home
-        </button>
-      </div>
-    );
+    return <StoreNotFound storeName={storeName} />;
   }
   
   if (storeLoading) {
@@ -79,24 +68,24 @@ const StorefrontAboutPage: React.FC = () => {
   }
   
   if (!store) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Store Not Found</h1>
-        <p className="text-muted-foreground mb-6">The store "{storeSlug}" doesn't exist or is unavailable.</p>
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Return to Home
-        </button>
-      </div>
-    );
+    return <StoreNotFound storeName={storeName} />;
   }
 
+  const socialLinks = {
+    instagram: store.theme && typeof store.theme === 'object' ? (store.theme as any).instagram_url : '',
+    facebook: store.theme && typeof store.theme === 'object' ? (store.theme as any).facebook_url : '',
+    whatsapp: store.theme && typeof store.theme === 'object' ? (store.theme as any).whatsapp_url : ''
+  };
+
   return (
-    <div>
-      <StorefrontNavbar storeName={store.name} />
-      <StorefrontAbout store={store} />
+    <div className="min-h-screen bg-gray-50">
+      <StorefrontNavbar storeName={store.name} socialLinks={socialLinks} />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <StorefrontAbout store={store} />
+        </div>
+      </div>
     </div>
   );
 };
