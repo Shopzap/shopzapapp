@@ -4,7 +4,7 @@ import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from "lucide-react";
-import StorefrontContent from "@/components/storefront/StorefrontContent";
+import ModernStorefront from "@/components/storefront/ModernStorefront";
 import StoreNotFound from "@/components/storefront/StoreNotFound";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -141,23 +141,14 @@ const Storefront: React.FC = () => {
     return <StoreNotFound storeName={storeName} />;
   }
 
-  // Extract theme data from store.theme if it exists
-  const storeWithTheme = {
-    ...store,
-    primary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).primary_color || '#6c5ce7' : '#6c5ce7',
-    secondary_color: store.theme && typeof store.theme === 'object' ? (store.theme as any).secondary_color || '#a29bfe' : '#a29bfe',
-    theme_style: store.theme && typeof store.theme === 'object' ? (store.theme as any).theme_layout || 'card' : 'card',
-    font_style: store.font_style || 'Poppins'
-  };
-
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  console.log('Storefront: Rendering storefront with product count:', safeProducts.length);
+  console.log('Storefront: Rendering modern storefront with product count:', safeProducts.length);
 
   return (
-    <StorefrontContent 
-      store={storeWithTheme} 
+    <ModernStorefront 
+      store={store} 
       products={safeProducts} 
       isLoading={productsLoading}
     />

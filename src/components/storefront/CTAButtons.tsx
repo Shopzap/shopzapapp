@@ -9,6 +9,7 @@ interface CTAButtonsProps {
   price: number;
   disabled?: boolean;
   className?: string;
+  variant?: 'default' | 'compact';
 }
 
 const CTAButtons: React.FC<CTAButtonsProps> = ({
@@ -16,7 +17,8 @@ const CTAButtons: React.FC<CTAButtonsProps> = ({
   onBuyNow,
   price,
   disabled = false,
-  className = ""
+  className = "",
+  variant = 'default'
 }) => {
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -26,6 +28,35 @@ const CTAButtons: React.FC<CTAButtonsProps> = ({
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  if (variant === 'compact') {
+    return (
+      <div className={`flex gap-2 ${className}`}>
+        {onAddToCart && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddToCart}
+            disabled={disabled}
+            className="flex-1"
+          >
+            <ShoppingCart className="w-4 h-4" />
+          </Button>
+        )}
+        
+        {onBuyNow && (
+          <Button
+            size="sm"
+            onClick={onBuyNow}
+            disabled={disabled}
+            className="flex-1"
+          >
+            <Zap className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col sm:flex-row gap-3 ${className}`}>

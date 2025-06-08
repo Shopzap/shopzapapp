@@ -1,57 +1,51 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Loader, ArrowLeft } from 'lucide-react';
-import StoreNotFound from '@/components/storefront/StoreNotFound';
-import ProductDetailsContent from '@/components/product/ProductDetailsContent';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ArrowLeft, Heart, Share2, ShoppingBag, Truck, Shield, RotateCcw } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
+import { toast } from 'sonner';
+import ModernStorefrontHeader from '@/components/storefront/ModernStorefrontHeader';
+import NotFound from './NotFound';
 
 const ProductDetails = () => {
   const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
-  // First, fetch the store to get store_id
-  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
+  // Fetch store data
+  const { data: store } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      if (!storeName) {
-        throw new Error('No store name provided');
-      }
-      
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeName)
+        .ilike('name', storeName!)
         .single();
-        
       if (error) throw error;
       return data;
     },
     enabled: !!storeName,
   });
 
-  // Then fetch product data using the product slug and store_id
-  const { data: product, isLoading: productLoading, error: productError } = useQuery({
-    queryKey: ['product-by-slug', productSlug, store?.id],
+  // Fetch product data
+  const { data: product, isLoading, error } = useQuery({
+    queryKey: ['product', productSlug],
     queryFn: async () => {
-      if (!productSlug || !store?.id) {
-        throw new Error('Missing product slug or store ID');
-      }
-
-      // Convert slug back to product name for searching
-      const productName = productSlug.replace(/-/g, ' ');
+      if (!store?.id) return null;
       
       const { data, error } = await supabase
         .from('products')
-        .select('*, stores(*)')
+        .select('*')
+        .eq('id', productSlug)
         .eq('store_id', store.id)
-        .ilike('name', productName)
-        .eq('status', 'active')
-        .eq('is_published', true)
         .single();
         
       if (error) throw error;
@@ -60,92 +54,254 @@ const ProductDetails = () => {
     enabled: !!productSlug && !!store?.id,
   });
 
-  const isLoading = storeLoading || productLoading;
-  const hasError = storeError || productError;
-
-  // Handle add to cart
-  const handleAddToCart = async () => {
-    if (!product) return;
-    
-    try {
-      await addToCart(product);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    }
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(price);
   };
 
-  // Handle navigation to checkout
-  const handleBuyNow = async () => {
+  const handleAddToCart = () => {
     if (!product) return;
     
-    // Add to cart first
-    await handleAddToCart();
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image_url || '/placeholder.svg',
+      quantity: quantity
+    });
     
-    // Navigate to store-specific checkout
-    if (storeName) {
-      navigate(`/store/${storeName}/checkout`);
-    }
+    toast.success(`${product.name} added to cart!`);
   };
 
-  // Handle back button
-  const handleBack = () => {
-    if (storeName) {
-      navigate(`/store/${storeName}`);
+  const handleBuyNow = () => {
+    handleAddToCart();
+    navigate(`/store/${storeName}/cart`);
+  };
+
+  const handleShare = () => {
+    const productUrl = window.location.href;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: product?.name,
+        text: product?.description || `Check out ${product?.name}`,
+        url: productUrl,
+      });
     } else {
-      navigate('/');
+      navigator.clipboard.writeText(productUrl);
+      toast.success('Product link copied to clipboard!');
     }
   };
 
-  // Show error page if store not found
-  if (storeError) {
-    return <StoreNotFound storeName={storeName} />;
+  const handleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+    toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+  };
+
+  if (error || !product) {
+    return <NotFound />;
   }
 
-  // Show error page if product not found but store exists
-  if (productError && store) {
+  if (isLoading || !store) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-6">The product "{productSlug}" doesn't exist in this store.</p>
-        <Button onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Store
-        </Button>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
       </div>
     );
   }
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading product...</p>
-      </div>
-    );
-  }
-
-  // Product not found
-  if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-6">The product "{productSlug}" doesn't exist in this store.</p>
-        <Button onClick={handleBack}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Store
-        </Button>
-      </div>
-    );
-  }
+  const sizes = ['S', 'M', 'L', 'XL'];
 
   return (
-    <ProductDetailsContent
-      product={product}
-      handleBuyNow={handleBuyNow}
-      handleBack={handleBack}
-      onAddToCart={handleAddToCart}
-    />
+    <div className="min-h-screen bg-gray-50">
+      <ModernStorefrontHeader store={store} />
+      
+      {/* Breadcrumb */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/store/${storeName}`)}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Store
+          </Button>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+          {/* Product Images */}
+          <div className="space-y-4">
+            <div className="aspect-square rounded-lg overflow-hidden bg-white">
+              <img
+                src={product.image_url || '/placeholder.svg'}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            
+            {/* Thumbnail images would go here if available */}
+          </div>
+
+          {/* Product Info */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+                {product.name}
+              </h1>
+              <div className="flex items-center gap-4 mb-4">
+                <span className="text-3xl font-bold text-gray-900">
+                  {formatPrice(product.price)}
+                </span>
+                <Badge variant="outline">In Stock</Badge>
+              </div>
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div>
+                <h3 className="font-medium text-gray-900 mb-2">Description</h3>
+                <p className="text-gray-700 leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Size Selection */}
+            <div>
+              <h3 className="font-medium text-gray-900 mb-3">Size</h3>
+              <div className="flex gap-2">
+                {sizes.map((size) => (
+                  <Button
+                    key={size}
+                    variant={selectedSize === size ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedSize(size)}
+                    className="w-12 h-12"
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <h3 className="font-medium text-gray-900 mb-3">Quantity</h3>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                >
+                  -
+                </Button>
+                <span className="w-12 text-center font-medium">{quantity}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setQuantity(quantity + 1)}
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleBuyNow}
+              >
+                <ShoppingBag className="h-5 w-5 mr-2" />
+                Buy Now - {formatPrice(product.price * quantity)}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full"
+                onClick={handleAddToCart}
+              >
+                Add to Cart
+              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleWishlist}
+                >
+                  <Heart className={`h-5 w-5 mr-2 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} />
+                  Wishlist
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleShare}
+                >
+                  <Share2 className="h-5 w-5 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Product Features */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900">Product Features</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Truck className="h-5 w-5 text-green-600" />
+                  <span>Free delivery on orders above ₹500</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <RotateCcw className="h-5 w-5 text-blue-600" />
+                  <span>7-day return policy</span>
+                </div>
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Shield className="h-5 w-5 text-purple-600" />
+                  <span>Authentic & Quality Assured</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Store Info */}
+            <div className="bg-gray-100 rounded-lg p-4">
+              <h3 className="font-medium text-gray-900 mb-2">Sold by</h3>
+              <div className="flex items-center gap-3">
+                {store.logo_image ? (
+                  <img 
+                    src={store.logo_image} 
+                    alt={store.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-10 w-10 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                    {store.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium text-gray-900">{store.name}</p>
+                  <p className="text-sm text-gray-600">Trusted Seller</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
