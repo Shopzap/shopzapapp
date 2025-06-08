@@ -31,8 +31,9 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
+      // Use the correct domain for redirect
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `https://shopzap.io/reset-password`,
       });
 
       if (error) throw error;
