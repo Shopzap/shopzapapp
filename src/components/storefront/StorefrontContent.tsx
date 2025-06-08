@@ -1,10 +1,10 @@
-
 import React from "react";
 import { Loader, Instagram, Facebook } from "lucide-react";
 import StorefrontNavbar from "./StorefrontNavbar";
 import ProductGrid from "./ProductGrid";
 import StorefrontAbout from "./StorefrontAbout";
 import { Tables } from "@/integrations/supabase/types";
+import { COLOR_PALETTES } from "./ColorPaletteSelector";
 
 interface StorefrontContentProps {
   store: Tables<"stores"> & {
@@ -57,6 +57,16 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   const fontStyle = store.font_style || 'Inter';
   const fontFamily = `${fontStyle}, sans-serif`;
 
+  // Get color palette
+  const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
+  const colorPaletteId = themeColors.color_palette || 'urban-modern';
+  const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
+  
+  // Use colors from palette with fallbacks
+  const primaryColor = themeColors.primary_color || selectedPalette.primary;
+  const accentColor = themeColors.accent_color || selectedPalette.accent;
+  const ctaColor = themeColors.cta_color || selectedPalette.cta;
+
   // Load Google Font dynamically
   React.useEffect(() => {
     const googleFontUrl = FONT_MAP[fontStyle];
@@ -71,19 +81,16 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
     }
   }, [fontStyle]);
 
-  // Apply theme colors
-  const themeColors = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
-  const primaryColor = themeColors.primary_color || store.primary_color || '#6c5ce7';
-  const secondaryColor = themeColors.secondary_color || store.secondary_color || '#f1c40f';
-
   return (
-    // Apply font only to the store layout, not globally
+    // Apply font and color palette only to the store layout, not globally
     <div 
       className="min-h-screen bg-gray-50"
       style={{
         fontFamily,
         '--primary-color': primaryColor,
-        '--secondary-color': secondaryColor,
+        '--accent-color': accentColor,
+        '--cta-color': ctaColor,
+        color: primaryColor
       } as React.CSSProperties}
     >
       {/* Navigation Bar */}
@@ -115,14 +122,19 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   </div>
                 )}
                 <div className="flex-1">
-                  <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ color: primaryColor }}>
                     {store.name}
                   </h1>
                   {store.tagline && (
-                    <p className="text-lg text-gray-600 mb-4">{store.tagline}</p>
+                    <p className="text-lg mb-4" style={{ color: `${primaryColor}99` }}>{store.tagline}</p>
                   )}
                   {store.description && (
-                    <p className="text-gray-700 max-w-2xl">{store.description}</p>
+                    <div 
+                      className="p-4 rounded-lg max-w-2xl"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      <p style={{ color: primaryColor }}>{store.description}</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -141,10 +153,10 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
 
             {/* Products Section */}
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Products</h2>
+              <h2 className="text-2xl font-bold mb-6" style={{ color: primaryColor }}>Products</h2>
               {isLoading ? (
                 <div className="flex justify-center items-center py-16">
-                  <Loader className="h-8 w-8 animate-spin text-primary" />
+                  <Loader className="h-8 w-8 animate-spin" style={{ color: ctaColor }} />
                 </div>
               ) : (
                 <ProductGrid products={products} />
@@ -166,7 +178,7 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-center md:text-left mb-4 md:mb-0">
-              <h3 className="font-bold text-lg">{store.name}</h3>
+              <h3 className="font-bold text-lg" style={{ color: primaryColor }}>{store.name}</h3>
               <p className="text-gray-600">Powered by ShopZap</p>
             </div>
             
@@ -177,7 +189,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   href={socialLinks.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-pink-600 transition-colors"
+                  className="transition-colors"
+                  style={{ color: primaryColor }}
                 >
                   <Instagram className="h-6 w-6" />
                 </a>
@@ -187,7 +200,8 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
                   href={socialLinks.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                  className="transition-colors"
+                  style={{ color: primaryColor }}
                 >
                   <Facebook className="h-6 w-6" />
                 </a>

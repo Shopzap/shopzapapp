@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Upload, Palette, FileText, Type, ExternalLink } from "lucide-react";
 import FontStyleSelector from "@/components/storefront/FontStyleSelector";
 import AboutPageManager from "@/components/storefront/AboutPageManager";
+import ColorPaletteSelector, { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
 
 // Font mapping for Google Fonts
 const FONT_MAP: Record<string, string> = {
@@ -38,6 +39,7 @@ const CustomizeStore = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedFont, setSelectedFont] = useState('Poppins');
+  const [selectedColorPalette, setSelectedColorPalette] = useState('urban-modern');
 
   const { data: store, isLoading } = useQuery({
     queryKey: ['userStore', user?.id],
@@ -78,6 +80,12 @@ const CustomizeStore = () => {
         theme: store.theme || {}
       });
       setSelectedFont(store.font_style || 'Poppins');
+      
+      // Set selected color palette from theme
+      const theme = store.theme as any;
+      if (theme?.color_palette) {
+        setSelectedColorPalette(theme.color_palette);
+      }
     }
   }, [store]);
 
@@ -158,6 +166,30 @@ const CustomizeStore = () => {
     });
   };
 
+  const handleColorPaletteChange = (palette: any) => {
+    setSelectedColorPalette(palette.id);
+    
+    // Update the theme with the selected colors
+    const updatedTheme = {
+      ...formData.theme,
+      color_palette: palette.id,
+      primary_color: palette.primary,
+      accent_color: palette.accent,
+      cta_color: palette.cta
+    };
+    
+    setFormData({
+      ...formData,
+      theme: updatedTheme
+    });
+    
+    // Auto-save the color palette
+    console.log('Saving color palette:', palette.id);
+    updateStoreMutation.mutate({ 
+      theme: updatedTheme
+    });
+  };
+
   const openLiveStore = () => {
     if (store?.name) {
       const storeUrl = `/store/${encodeURIComponent(store.name)}`;
@@ -197,6 +229,9 @@ const CustomizeStore = () => {
       </div>
     );
   }
+
+  // Get current color palette
+  const currentPalette = COLOR_PALETTES.find(p => p.id === selectedColorPalette) || COLOR_PALETTES[0];
 
   // Apply selected font only to preview areas, not globally
   const previewFontFamily = `${selectedFont}, sans-serif`;
@@ -331,31 +366,47 @@ const CustomizeStore = () => {
               <CardTitle>Store Preview</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* Apply font only to the preview area */}
-              <div className="p-6 border rounded-lg bg-white" style={{ fontFamily: previewFontFamily }}>
+              {/* Apply both font and color palette to the preview area */}
+              <div 
+                className="p-6 border rounded-lg bg-white" 
+                style={{ 
+                  fontFamily: previewFontFamily,
+                  color: currentPalette.primary
+                }}
+              >
                 <div className="space-y-4">
                   <div className="text-center">
-                    <h2 className="text-3xl font-bold text-gray-900">
+                    <h2 className="text-3xl font-bold">
                       {formData.name || 'Your Store Name'}
                     </h2>
                     {formData.tagline && (
-                      <p className="text-lg text-gray-600 mt-2">{formData.tagline}</p>
+                      <p className="text-lg mt-2" style={{ color: `${currentPalette.primary}99` }}>
+                        {formData.tagline}
+                      </p>
                     )}
                   </div>
                   
                   {formData.description && (
-                    <div className="mt-6">
-                      <p className="text-gray-700">{formData.description}</p>
+                    <div 
+                      className="mt-6 p-4 rounded-lg"
+                      style={{ backgroundColor: currentPalette.accent }}
+                    >
+                      <p style={{ color: currentPalette.primary }}>{formData.description}</p>
                     </div>
                   )}
                   
                   <div className="mt-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Sample Product</h3>
+                    <h3 className="text-xl font-semibold mb-4">Sample Product</h3>
                     <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold text-gray-900">Product Name</h4>
-                      <p className="text-gray-600 text-sm mt-1">This is how product descriptions will look.</p>
-                      <p className="text-lg font-bold text-gray-900 mt-2">₹999</p>
-                      <button className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm">
+                      <h4 className="font-semibold">Product Name</h4>
+                      <p className="text-sm mt-1" style={{ color: `${currentPalette.primary}99` }}>
+                        This is how product descriptions will look.
+                      </p>
+                      <p className="text-lg font-bold mt-2">₹999</p>
+                      <button 
+                        className="mt-2 px-4 py-2 text-white rounded-md text-sm"
+                        style={{ backgroundColor: currentPalette.cta }}
+                      >
                         Add to Cart
                       </button>
                     </div>
@@ -366,6 +417,19 @@ const CustomizeStore = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Color Palette Selection */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Color Themes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ColorPaletteSelector
+            selectedPalette={selectedColorPalette}
+            onPaletteChange={handleColorPaletteChange}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
