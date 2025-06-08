@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -46,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate email content based on event type
     const emailContent = generateEmailContent(eventType, orderData, orderId);
     
-    // Log email attempt regardless of whether we can send it
+    // Log email attempt
     const { error: logError } = await supabaseClient
       .from('email_logs')
       .insert({
@@ -78,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Try to send email to buyer
+    // Send email to buyer
     const emailResult = await sendMailersendEmail({
       to: buyerEmail,
       subject: emailContent.buyerSubject,
@@ -88,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
       supabaseClient
     });
 
-    // Try to send email to seller for certain events (if provided)
+    // Send email to seller for certain events (if provided)
     if (sellerEmail && (eventType === 'order_placed' || eventType === 'order_cancelled')) {
       const sellerContent = generateSellerEmailContent(eventType, orderData, orderId);
       await sendMailersendEmail({
@@ -153,9 +154,15 @@ async function sendMailersendEmail({
       },
       body: JSON.stringify({
         from: {
-          email: 'orders@shopzap.io',
-          name: 'ShopZap Orders'
+          email: 'noreply@shopzap.io',
+          name: 'ShopZap'
         },
+        reply_to: [
+          {
+            email: 'support@shopzap.io',
+            name: 'ShopZap Support'
+          }
+        ],
         to: [{
           email: to
         }],
@@ -167,6 +174,8 @@ async function sendMailersendEmail({
     const result = await response.json();
 
     if (response.ok) {
+      console.log('Email sent successfully:', result);
+      
       // Update log as successful
       await supabaseClient
         .from('email_logs')
@@ -215,116 +224,159 @@ async function sendMailersendEmail({
 
 function generateEmailContent(eventType: string, orderData: any, orderId: string) {
   const baseUrl = Deno.env.get('SITE_URL') || 'https://shopzap.io';
-  const trackingUrl = `${baseUrl}/track/${orderId}`;
+  const trackingUrl = `${baseUrl}/track-order/${orderId}`;
+  const storeUrl = `${baseUrl}/store/${orderData.storeName}`;
   
   const itemsHtml = orderData.items.map((item: any) => `
-    <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.name}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">₹${(item.quantity * item.price).toFixed(2)}</td>
+    <tr style="border-bottom: 1px solid #eee;">
+      <td style="padding: 12px 8px; text-align: left;">
+        <div style="font-weight: 500; color: #333;">${item.name}</div>
+      </td>
+      <td style="padding: 12px 8px; text-align: center; color: #666;">${item.quantity}</td>
+      <td style="padding: 12px 8px; text-align: right; color: #333;">₹${item.price.toFixed(2)}</td>
+      <td style="padding: 12px 8px; text-align: right; font-weight: 500; color: #333;">₹${(item.quantity * item.price).toFixed(2)}</td>
     </tr>
   `).join('');
 
   const baseTemplate = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <h1 style="color: #333; margin: 0;">ShopZap</h1>
-        <h2 style="color: #666; margin: 10px 0 0 0;">${orderData.storeName}</h2>
-      </div>
-      
-      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #eee;">
-        {{CONTENT}}
-        
-        <h3 style="color: #333; margin-top: 30px;">Order Details</h3>
-        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
-          <thead>
-            <tr style="background: #f8f9fa;">
-              <th style="padding: 12px 8px; text-align: left; border-bottom: 2px solid #ddd;">Product</th>
-              <th style="padding: 12px 8px; text-align: center; border-bottom: 2px solid #ddd;">Qty</th>
-              <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Price</th>
-              <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" style="padding: 12px 8px; font-weight: bold; text-align: right; border-top: 2px solid #ddd;">Total:</td>
-              <td style="padding: 12px 8px; font-weight: bold; text-align: right; border-top: 2px solid #ddd;">₹${orderData.totalPrice.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-        
-        <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
-          <p style="margin: 0;"><strong>Track your order:</strong></p>
-          <a href="${trackingUrl}" style="color: #007bff; text-decoration: none;">${trackingUrl}</a>
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ShopZap Order Update</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">ShopZap</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">${orderData.storeName}</p>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 30px 20px;">
+            {{CONTENT}}
+            
+            <!-- Order Details -->
+            <div style="margin: 30px 0;">
+              <h3 style="color: #333; margin: 0 0 20px 0; font-size: 18px; font-weight: 600;">Order Details</h3>
+              <div style="background: #f8f9fa; border-radius: 8px; overflow: hidden; border: 1px solid #e9ecef;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #e9ecef;">
+                      <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #495057;">Product</th>
+                      <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #495057;">Qty</th>
+                      <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #495057;">Price</th>
+                      <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #495057;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsHtml}
+                    <tr style="background: #f8f9fa;">
+                      <td colspan="3" style="padding: 15px 8px; font-weight: 600; text-align: right; color: #333; border-top: 2px solid #dee2e6;">Order Total:</td>
+                      <td style="padding: 15px 8px; font-weight: 600; text-align: right; color: #333; font-size: 18px; border-top: 2px solid #dee2e6;">₹${orderData.totalPrice.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${trackingUrl}" style="display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">Track Your Order</a>
+              <a href="${storeUrl}" style="display: inline-block; background: #6c757d; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">Visit Store</a>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+            <p style="margin: 0; color: #6c757d; font-size: 14px;">Thank you for choosing ShopZap!</p>
+            <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 12px;">Need help? Contact us at <a href="mailto:support@shopzap.io" style="color: #667eea;">support@shopzap.io</a></p>
+          </div>
         </div>
-      </div>
-      
-      <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
-        <p>Thank you for choosing ShopZap!</p>
-      </div>
-    </div>
+      </body>
+    </html>
   `;
 
   switch (eventType) {
     case 'order_placed':
       return {
-        buyerSubject: `Order Confirmation - ${orderData.storeName}`,
+        buyerSubject: `✅ Order Confirmation - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3 style="color: #28a745;">Thank you for your order, ${orderData.buyerName}!</h3>
-          <p>We've received your order and it's being processed. You'll receive updates as your order moves through our system.</p>
-          ${orderData.estimatedDelivery ? `<p><strong>Estimated Delivery:</strong> ${orderData.estimatedDelivery}</p>` : ''}
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">🎉 Thank you for your order, ${orderData.buyerName}!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">We've received your order and it's being processed. You'll receive updates as your order moves through our system.</p>
+            ${orderData.estimatedDelivery ? `<p style="color: #333; margin: 15px 0 0 0; font-weight: 500;"><strong>📅 Estimated Delivery:</strong> ${orderData.estimatedDelivery}</p>` : ''}
+          </div>
         `)
       };
       
     case 'order_confirmed':
       return {
-        buyerSubject: `Order Confirmed - ${orderData.storeName}`,
+        buyerSubject: `✅ Order Confirmed - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3 style="color: #28a745;">Your order has been confirmed!</h3>
-          <p>Great news, ${orderData.buyerName}! Your order has been confirmed and is now being prepared for shipment.</p>
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">✅ Your order has been confirmed!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Great news, ${orderData.buyerName}! Your order has been confirmed and is now being prepared for shipment.</p>
+          </div>
         `)
       };
       
     case 'order_shipped':
       return {
-        buyerSubject: `Order Shipped - ${orderData.storeName}`,
+        buyerSubject: `🚚 Order Shipped - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3 style="color: #17a2b8;">Your order is on the way!</h3>
-          <p>Hi ${orderData.buyerName}, your order has been shipped and is on its way to you.</p>
-          ${orderData.trackingNumber ? `<p><strong>Tracking Number:</strong> ${orderData.trackingNumber}</p>` : ''}
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #cce5ff; color: #004085; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">🚚 Your order is on the way!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, your order has been shipped and is on its way to you.</p>
+            ${orderData.trackingNumber ? `<p style="color: #333; margin: 15px 0 0 0; font-weight: 500;"><strong>📦 Tracking Number:</strong> ${orderData.trackingNumber}</p>` : ''}
+          </div>
         `)
       };
       
     case 'order_delivered':
       return {
-        buyerSubject: `Order Delivered - ${orderData.storeName}`,
+        buyerSubject: `✅ Order Delivered - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3 style="color: #28a745;">Your order has been delivered!</h3>
-          <p>Hi ${orderData.buyerName}, your order has been successfully delivered. We hope you enjoy your purchase!</p>
-          <p>If you have any issues with your order, please don't hesitate to contact the seller.</p>
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">🎉 Your order has been delivered!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, your order has been successfully delivered. We hope you enjoy your purchase!</p>
+            <p style="color: #666; margin: 15px 0 0 0; font-size: 14px;">If you have any issues with your order, please don't hesitate to contact the seller.</p>
+          </div>
         `)
       };
       
     case 'order_cancelled':
       return {
-        buyerSubject: `Order Cancelled - ${orderData.storeName}`,
+        buyerSubject: `❌ Order Cancelled - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3 style="color: #dc3545;">Your order has been cancelled</h3>
-          <p>Hi ${orderData.buyerName}, unfortunately your order has been cancelled.</p>
-          <p>If you have any questions about this cancellation, please contact the seller directly.</p>
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">❌ Your order has been cancelled</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, unfortunately your order has been cancelled.</p>
+            <p style="color: #666; margin: 15px 0 0 0; font-size: 14px;">If you have any questions about this cancellation, please contact the seller directly.</p>
+          </div>
         `)
       };
       
     default:
       return {
-        buyerSubject: `Order Update - ${orderData.storeName}`,
+        buyerSubject: `📦 Order Update - ${orderData.storeName} (#${orderId.slice(-8)})`,
         buyerHtml: baseTemplate.replace('{{CONTENT}}', `
-          <h3>Order Update</h3>
-          <p>Hi ${orderData.buyerName}, there's been an update to your order.</p>
+          <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="color: #333; margin: 0 0 15px 0; font-size: 22px;">📦 Order Update</h2>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, there's been an update to your order.</p>
+          </div>
         `)
       };
   }
@@ -332,48 +384,85 @@ function generateEmailContent(eventType: string, orderData: any, orderId: string
 
 function generateSellerEmailContent(eventType: string, orderData: any, orderId: string) {
   const baseUrl = Deno.env.get('SITE_URL') || 'https://shopzap.io';
-  const dashboardUrl = `${baseUrl}/orders`;
+  const dashboardUrl = `${baseUrl}/dashboard/orders`;
   
   switch (eventType) {
     case 'order_placed':
       return {
-        subject: `New Order Received - ${orderData.buyerName}`,
+        subject: `🛒 New Order Received - ${orderData.buyerName} (#${orderId.slice(-8)})`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #28a745;">New Order Received!</h2>
-            <p>You have received a new order from <strong>${orderData.buyerName}</strong>.</p>
-            
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
-              <h3>Order Summary</h3>
-              <p><strong>Total:</strong> ₹${orderData.totalPrice.toFixed(2)}</p>
-              <p><strong>Items:</strong> ${orderData.items.length}</p>
-            </div>
-            
-            <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Order Details</a>
-          </div>
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>New Order - ShopZap</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background: #28a745; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">🛒 New Order Received!</h1>
+                </div>
+                <div style="padding: 30px 20px;">
+                  <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">You have received a new order from <strong>${orderData.buyerName}</strong>.</p>
+                  
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 15px 0; color: #333;">Order Summary</h3>
+                    <p style="margin: 5px 0; color: #666;"><strong>Order ID:</strong> #${orderId.slice(-8)}</p>
+                    <p style="margin: 5px 0; color: #666;"><strong>Total Amount:</strong> ₹${orderData.totalPrice.toFixed(2)}</p>
+                    <p style="margin: 5px 0; color: #666;"><strong>Items:</strong> ${orderData.items.length} item(s)</p>
+                  </div>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">View Order Details</a>
+                  </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; text-align: center; border-top: 1px solid #e9ecef;">
+                  <p style="margin: 0; color: #6c757d; font-size: 14px;">Manage your orders at ShopZap Dashboard</p>
+                </div>
+              </div>
+            </body>
+          </html>
         `
       };
       
     case 'order_cancelled':
       return {
-        subject: `Order Cancelled - ${orderData.buyerName}`,
+        subject: `❌ Order Cancelled - ${orderData.buyerName} (#${orderId.slice(-8)})`,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #dc3545;">Order Cancelled</h2>
-            <p>The order from <strong>${orderData.buyerName}</strong> has been cancelled.</p>
-            
-            <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Orders</a>
-          </div>
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Order Cancelled - ShopZap</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background: #dc3545; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">❌ Order Cancelled</h1>
+                </div>
+                <div style="padding: 30px 20px;">
+                  <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">The order from <strong>${orderData.buyerName}</strong> has been cancelled.</p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">View Orders</a>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
         `
       };
       
     default:
       return {
-        subject: `Order Update - ${orderData.buyerName}`,
+        subject: `📦 Order Update - ${orderData.buyerName} (#${orderId.slice(-8)})`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2>Order Update</h2>
+            <h2>📦 Order Update</h2>
             <p>There's been an update to the order from <strong>${orderData.buyerName}</strong>.</p>
+            <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Orders</a>
           </div>
         `
       };
