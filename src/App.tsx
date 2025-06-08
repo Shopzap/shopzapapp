@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,6 +30,13 @@ import CustomizeStore from "./pages/CustomizeStore";
 import Analytics from "./pages/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary";
 
+// Legal pages
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import RefundPolicy from "./pages/RefundPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import PricingPolicy from "./pages/PricingPolicy";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -49,6 +57,13 @@ const App = () => {
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
                   <Route path="/order-success" element={<OrderSuccess />} />
+                  
+                  {/* Legal pages */}
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/refund" element={<RefundPolicy />} />
+                  <Route path="/shipping" element={<ShippingPolicy />} />
+                  <Route path="/pricing-policy" element={<PricingPolicy />} />
                   
                   {/* Order tracking routes - make these accessible without authentication */}
                   <Route path="/track-order" element={<OrderTracking />} />
