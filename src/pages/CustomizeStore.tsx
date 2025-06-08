@@ -393,11 +393,11 @@ const CustomizeStore: React.FC = () => {
             <CardContent className="space-y-4">
               <ColorPaletteSelector
                 selectedPalette={selectedPalette}
-                onPaletteChange={(paletteId) => setSelectedPalette(paletteId)}
+                onPaletteChange={(palette) => setSelectedPalette(palette.id)}
               />
               <FontStyleSelector
-                fontStyle={fontStyle}
-                onFontChange={(font) => setFontStyle(font)}
+                value={fontStyle}
+                onChange={(font) => setFontStyle(font)}
               />
             </CardContent>
           </Card>
