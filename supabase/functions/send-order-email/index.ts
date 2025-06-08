@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -42,22 +41,54 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { orderId, eventType, buyerEmail, sellerEmail, orderData }: OrderEmailRequest = await req.json();
 
+    console.log(`Processing email request for order ${orderId}, event: ${eventType}`);
+
     // Generate email content based on event type
     const emailContent = generateEmailContent(eventType, orderData, orderId);
     
-    // Send email to buyer
-    if (buyerEmail) {
-      await sendMailersendEmail({
-        to: buyerEmail,
+    // Log email attempt regardless of whether we can send it
+    const { error: logError } = await supabaseClient
+      .from('email_logs')
+      .insert({
+        to_email: buyerEmail,
         subject: emailContent.buyerSubject,
-        html: emailContent.buyerHtml,
-        orderId,
-        eventType,
-        supabaseClient
+        status: 'attempted',
+        event_type: eventType,
+        order_id: orderId
+      });
+
+    if (logError) {
+      console.error('Error logging email attempt:', logError);
+    }
+
+    // Check if MailerSend API key is available
+    const mailersendApiKey = Deno.env.get('MAILERSEND_API_KEY');
+    
+    if (!mailersendApiKey) {
+      console.log('MailerSend API key not configured - email functionality disabled');
+      return new Response(JSON.stringify({ 
+        success: false, 
+        message: 'Email service not configured' 
+      }), {
+        status: 200, // Return 200 to not break the order flow
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
       });
     }
 
-    // Send email to seller for certain events
+    // Try to send email to buyer
+    const emailResult = await sendMailersendEmail({
+      to: buyerEmail,
+      subject: emailContent.buyerSubject,
+      html: emailContent.buyerHtml,
+      orderId,
+      eventType,
+      supabaseClient
+    });
+
+    // Try to send email to seller for certain events (if provided)
     if (sellerEmail && (eventType === 'order_placed' || eventType === 'order_cancelled')) {
       const sellerContent = generateSellerEmailContent(eventType, orderData, orderId);
       await sendMailersendEmail({
@@ -70,7 +101,10 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ 
+      success: emailResult.success,
+      message: emailResult.success ? 'Email sent successfully' : 'Email failed but order processed'
+    }), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -80,9 +114,13 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-order-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        message: 'Email service error - order still processed'
+      }),
       {
-        status: 500,
+        status: 200, // Return 200 to not break the order flow
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
@@ -106,27 +144,6 @@ async function sendMailersendEmail({
 }) {
   const mailersendApiKey = Deno.env.get('MAILERSEND_API_KEY');
   
-  if (!mailersendApiKey) {
-    throw new Error('MAILERSEND_API_KEY not configured');
-  }
-
-  // Log email attempt
-  const { data: logData, error: logError } = await supabaseClient
-    .from('email_logs')
-    .insert({
-      to_email: to,
-      subject: subject,
-      status: 'sending',
-      event_type: eventType,
-      order_id: orderId
-    })
-    .select()
-    .single();
-
-  if (logError) {
-    console.error('Error logging email:', logError);
-  }
-
   try {
     const response = await fetch('https://api.mailersend.com/v1/email', {
       method: 'POST',
@@ -151,32 +168,48 @@ async function sendMailersendEmail({
 
     if (response.ok) {
       // Update log as successful
-      if (logData) {
-        await supabaseClient
-          .from('email_logs')
-          .update({
-            status: 'sent',
-            mailersend_id: result.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', logData.id);
-      }
+      await supabaseClient
+        .from('email_logs')
+        .update({
+          status: 'sent',
+          mailersend_id: result.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_id', orderId)
+        .eq('event_type', eventType);
+
+      return { success: true, data: result };
     } else {
-      throw new Error(result.message || 'Failed to send email');
-    }
-  } catch (error: any) {
-    // Update log as failed
-    if (logData) {
+      console.error('MailerSend API error:', result);
+      
+      // Update log as failed
       await supabaseClient
         .from('email_logs')
         .update({
           status: 'failed',
-          error_message: error.message,
+          error_message: result.message || 'Unknown error',
           updated_at: new Date().toISOString()
         })
-        .eq('id', logData.id);
+        .eq('order_id', orderId)
+        .eq('event_type', eventType);
+
+      return { success: false, error: result.message || 'Email API error' };
     }
-    throw error;
+  } catch (error: any) {
+    console.error('Email sending error:', error);
+    
+    // Update log as failed
+    await supabaseClient
+      .from('email_logs')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId)
+      .eq('event_type', eventType);
+
+    return { success: false, error: error.message };
   }
 }
 

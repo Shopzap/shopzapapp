@@ -134,7 +134,7 @@ const OrderTracking = () => {
 
       setOrderDetails(orderData);
 
-      // Fetch status history
+      // Fetch status history if table exists
       const { data: historyData, error: historyError } = await supabase
         .from('order_status_history')
         .select('*')
