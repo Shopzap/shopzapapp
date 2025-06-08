@@ -73,7 +73,23 @@ const Checkout = () => {
     });
   };
 
-  const handleRazorpayPayment = async (orderData: any) => {
+  const createRazorpayOrder = async (amount: number) => {
+    const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
+      body: {
+        amount,
+        currency: 'INR',
+        receipt: `order_${Date.now()}`
+      }
+    });
+
+    if (error || !data?.success) {
+      throw new Error(data?.error || 'Failed to create payment order');
+    }
+
+    return data;
+  };
+
+  const handleRazorpayPayment = async () => {
     const scriptLoaded = await loadRazorpayScript();
     
     if (!scriptLoaded) {
@@ -85,95 +101,123 @@ const Checkout = () => {
       return;
     }
 
-    const options = {
-      key: paymentConfig.razorpay.keyId,
-      amount: Math.round(getTotalPrice() * 100), // Amount in paise
-      currency: 'INR',
-      name: storeInfo?.name || 'Store',
-      description: `Order from ${storeInfo?.name || 'Store'}`,
-      order_id: orderData.razorpayOrderId,
-      handler: async function (response: any) {
-        try {
-          // Verify payment with backend
-          const verifyResponse = await supabase.functions.invoke('verify-payment', {
-            body: {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              orderId: orderData.orderId
-            }
-          });
+    try {
+      // Create Razorpay order
+      const razorpayOrderData = await createRazorpayOrder(getTotalPrice());
+      
+      const options = {
+        key: paymentConfig.razorpay.keyId,
+        amount: razorpayOrderData.amount,
+        currency: razorpayOrderData.currency,
+        name: storeInfo?.name || 'Store',
+        description: `Order from ${storeInfo?.name || 'Store'}`,
+        order_id: razorpayOrderData.razorpayOrderId,
+        handler: async function (response: any) {
+          try {
+            // Prepare order data for verification
+            const orderData = {
+              storeId: cartItems[0].product.store_id,
+              buyerName: customerInfo.fullName,
+              buyerEmail: customerInfo.email,
+              buyerPhone: customerInfo.phone,
+              buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+              totalPrice: getTotalPrice(),
+              items: cartItems.map(item => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+                priceAtPurchase: Number(item.product.price)
+              }))
+            };
 
-          if (verifyResponse.data?.success) {
-            clearCart();
-            
-            // Navigate to success page with payment info
-            navigate('/order-success', {
-              state: {
-                orderId: orderData.orderId,
-                orderItems: cartItems.map(item => ({
-                  id: item.product.id,
-                  name: item.product.name,
-                  price: item.product.price,
-                  quantity: item.quantity,
-                  image: item.product.image_url
-                })),
-                total: getTotalPrice(),
-                customerInfo,
-                paymentInfo: {
-                  paymentId: response.razorpay_payment_id,
-                  paymentMethod: 'Razorpay',
-                  paymentTime: new Date().toLocaleString('en-IN', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }),
-                  paymentStatus: 'Paid'
-                },
-                estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric'
-                })
+            // Verify payment and create order
+            const verifyResponse = await supabase.functions.invoke('verify-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                orderData
               }
             });
-          } else {
-            throw new Error('Payment verification failed');
-          }
-        } catch (error) {
-          console.error('Payment verification error:', error);
-          toast({
-            title: "Payment Verification Failed",
-            description: "There was an issue verifying your payment. Please contact support.",
-            variant: "destructive",
-          });
-        }
-      },
-      prefill: {
-        name: customerInfo.fullName,
-        email: customerInfo.email,
-        contact: customerInfo.phone
-      },
-      theme: {
-        color: storeInfo?.theme?.primary_color || '#3B82F6'
-      },
-      modal: {
-        ondismiss: function() {
-          setIsProcessing(false);
-          toast({
-            title: "Payment Cancelled",
-            description: "Payment was cancelled. Your order has not been placed.",
-            variant: "destructive",
-          });
-        }
-      }
-    };
 
-    const rzp = new window.Razorpay(options);
-    rzp.open();
+            if (verifyResponse.data?.success) {
+              clearCart();
+              
+              // Navigate to success page with payment info
+              navigate('/order-success', {
+                state: {
+                  orderId: verifyResponse.data.orderId,
+                  orderItems: cartItems.map(item => ({
+                    id: item.product.id,
+                    name: item.product.name,
+                    price: item.product.price,
+                    quantity: item.quantity,
+                    image: item.product.image_url
+                  })),
+                  total: getTotalPrice(),
+                  customerInfo,
+                  paymentInfo: {
+                    paymentId: response.razorpay_payment_id,
+                    paymentMethod: 'Razorpay',
+                    paymentTime: new Date().toLocaleString('en-IN', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    }),
+                    paymentStatus: 'Paid'
+                  },
+                  estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })
+                }
+              });
+            } else {
+              throw new Error('Payment verification failed');
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            toast({
+              title: "Payment Verification Failed",
+              description: "There was an issue verifying your payment. Please contact support.",
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          name: customerInfo.fullName,
+          email: customerInfo.email,
+          contact: customerInfo.phone
+        },
+        theme: {
+          color: storeInfo?.theme?.primary_color || '#3B82F6'
+        },
+        modal: {
+          ondismiss: function() {
+            setIsProcessing(false);
+            toast({
+              title: "Payment Cancelled",
+              description: "Payment was cancelled. Your order has not been placed.",
+              variant: "destructive",
+            });
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Error creating Razorpay order:', error);
+      toast({
+        title: "Payment Error",
+        description: "Failed to initialize payment. Please try again.",
+        variant: "destructive",
+      });
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,31 +225,27 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Create order using the API
-      const orderResult = await ordersApi.createOrder({
-        storeId: cartItems[0].product.store_id,
-        buyerName: customerInfo.fullName,
-        buyerEmail: customerInfo.email,
-        buyerPhone: customerInfo.phone,
-        buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-        totalPrice: getTotalPrice(),
-        paymentMethod: customerInfo.paymentMethod,
-        paymentStatus: customerInfo.paymentMethod === 'online' ? 'pending' : 'pending',
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          priceAtPurchase: Number(item.product.price)
-        }))
-      });
-
       if (customerInfo.paymentMethod === 'online') {
-        // For online payment, trigger Razorpay
-        await handleRazorpayPayment({
-          orderId: orderResult.orderId,
-          razorpayOrderId: `order_${orderResult.orderId.slice(-10)}`
-        });
+        // For online payment, trigger Razorpay without creating order first
+        await handleRazorpayPayment();
       } else {
-        // For COD, redirect to success page
+        // For COD, create order directly
+        const orderResult = await ordersApi.createOrder({
+          storeId: cartItems[0].product.store_id,
+          buyerName: customerInfo.fullName,
+          buyerEmail: customerInfo.email,
+          buyerPhone: customerInfo.phone,
+          buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+          totalPrice: getTotalPrice(),
+          paymentMethod: customerInfo.paymentMethod,
+          paymentStatus: 'pending',
+          items: cartItems.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            priceAtPurchase: Number(item.product.price)
+          }))
+        });
+
         clearCart();
         navigate('/order-success', {
           state: {
