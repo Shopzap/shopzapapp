@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Heart, Share2, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,13 +40,7 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: product.image_url,
-      quantity: 1
-    });
+    addToCart(product as any, 1);
     
     toast.success(`${product.name} added to cart!`);
   };

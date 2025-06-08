@@ -65,13 +65,7 @@ const ProductDetails = () => {
   const handleAddToCart = () => {
     if (!product) return;
     
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: product.image_url,
-      quantity: quantity
-    });
+    addToCart(product, quantity);
     
     toast.success(`${product.name} added to cart!`);
   };
