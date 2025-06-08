@@ -106,8 +106,8 @@ export const storeSettingsApi = {
       throw new Error(fetchError.message);
     }
     
-    // Prepare theme object
-    const currentTheme = storeData.theme || {};
+    // Prepare theme object - ensure we have an object to spread
+    const currentTheme = (storeData.theme && typeof storeData.theme === 'object') ? storeData.theme : {};
     const updatedTheme = {
       ...currentTheme,
       primary_color: data.brandColor,
@@ -150,8 +150,8 @@ export const storeSettingsApi = {
       throw new Error(fetchError.message);
     }
     
-    // Prepare theme object with social links
-    const currentTheme = storeData.theme || {};
+    // Prepare theme object with social links - ensure we have an object to spread
+    const currentTheme = (storeData.theme && typeof storeData.theme === 'object') ? storeData.theme : {};
     const updatedTheme = {
       ...currentTheme,
       social_links: data.socialLinks
