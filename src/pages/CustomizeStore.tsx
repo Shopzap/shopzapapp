@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Palette, FileText, Type, ExternalLink } from "lucide-react";
+import { Upload, Palette, FileText, Type, ExternalLink, Paintbrush } from "lucide-react";
 import FontStyleSelector from "@/components/storefront/FontStyleSelector";
 import AboutPageManager from "@/components/storefront/AboutPageManager";
 import ColorPaletteSelector, { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
@@ -254,10 +254,14 @@ const CustomizeStore = () => {
       </div>
 
       <Tabs defaultValue="basic" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="basic" className="flex items-center space-x-2">
             <Palette className="w-4 h-4" />
             <span>Basic Info</span>
+          </TabsTrigger>
+          <TabsTrigger value="colors" className="flex items-center space-x-2">
+            <Paintbrush className="w-4 h-4" />
+            <span>Colors</span>
           </TabsTrigger>
           <TabsTrigger value="fonts" className="flex items-center space-x-2">
             <Type className="w-4 h-4" />
@@ -321,6 +325,20 @@ const CustomizeStore = () => {
                   {updateStoreMutation.isPending ? 'Saving...' : 'Save Basic Info'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="colors">
+          <Card>
+            <CardHeader>
+              <CardTitle>Color Themes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ColorPaletteSelector
+                selectedPalette={selectedColorPalette}
+                onPaletteChange={handleColorPaletteChange}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -417,19 +435,6 @@ const CustomizeStore = () => {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Add Color Palette Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Color Themes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ColorPaletteSelector
-            selectedPalette={selectedColorPalette}
-            onPaletteChange={handleColorPaletteChange}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 };

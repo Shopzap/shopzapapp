@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -12,14 +11,21 @@ import { Loader } from 'lucide-react';
 import ProductVisibilityToggle from './ProductVisibilityToggle';
 import MultiImageUploader from './MultiImageUploader';
 import { Product } from './types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface EditProductFormProps {
   product: Product;
   onSuccess: () => void;
   onCancel: () => void;
+  open: boolean;
 }
 
-const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, onCancel }) => {
+const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, onCancel, open }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublished, setIsPublished] = useState(product.is_published ?? true);
@@ -192,119 +198,127 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
   };
 
   return (
-    <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <Label htmlFor="name">Product Name</Label>
-          <Input
-            id="name"
-            {...register('name', { required: 'Product name is required' })}
-            placeholder="Enter product name"
-          />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+    <Dialog open={open} onOpenChange={onCancel}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit Product</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Product Name</Label>
+              <Input
+                id="name"
+                {...register('name', { required: 'Product name is required' })}
+                placeholder="Enter product name"
+              />
+              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                {...register('description')}
+                placeholder="Enter product description"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="price">Price (₹)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                {...register('price', { 
+                  required: 'Price is required',
+                  min: { value: 0, message: 'Price must be positive' }
+                })}
+                placeholder="0.00"
+              />
+              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
+            </div>
+
+            <MultiImageUploader
+              images={images}
+              onImagesChange={setImages}
+              onFilesChange={setNewFiles}
+              disabled={isSubmitting}
+            />
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select 
+                value={watch('status') || 'active'} 
+                onValueChange={(value: string) => setValue('status', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="payment_method">Payment Method</Label>
+              <Select 
+                value={watch('payment_method') || 'online'} 
+                onValueChange={(value: string) => setValue('payment_method', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash on Delivery</SelectItem>
+                  <SelectItem value="online">Online Payment</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <ProductVisibilityToggle
+              isPublished={isPublished}
+              onToggle={setIsPublished}
+              disabled={isSubmitting}
+            />
+            <p className="text-sm text-gray-600">
+              {isPublished 
+                ? "This product is visible to customers in your store" 
+                : "This product is hidden from customers and won't appear in your store"}
+            </p>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={onCancel}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Product'
+                )}
+              </Button>
+            </div>
+          </form>
         </div>
-
-        <div>
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            {...register('description')}
-            placeholder="Enter product description"
-            rows={3}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="price">Price (₹)</Label>
-          <Input
-            id="price"
-            type="number"
-            step="0.01"
-            {...register('price', { 
-              required: 'Price is required',
-              min: { value: 0, message: 'Price must be positive' }
-            })}
-            placeholder="0.00"
-          />
-          {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
-        </div>
-
-        <MultiImageUploader
-          images={images}
-          onImagesChange={setImages}
-          onFilesChange={setNewFiles}
-          disabled={isSubmitting}
-        />
-
-        <div>
-          <Label htmlFor="status">Status</Label>
-          <Select 
-            value={watch('status') || 'active'} 
-            onValueChange={(value: string) => setValue('status', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="payment_method">Payment Method</Label>
-          <Select 
-            value={watch('payment_method') || 'online'} 
-            onValueChange={(value: string) => setValue('payment_method', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select payment method" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cash">Cash on Delivery</SelectItem>
-              <SelectItem value="online">Online Payment</SelectItem>
-              <SelectItem value="both">Both</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <ProductVisibilityToggle
-          isPublished={isPublished}
-          onToggle={setIsPublished}
-          disabled={isSubmitting}
-        />
-        <p className="text-sm text-gray-600">
-          {isPublished 
-            ? "This product is visible to customers in your store" 
-            : "This product is hidden from customers and won't appear in your store"}
-        </p>
-
-        <div className="flex justify-end gap-3 pt-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={onCancel}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              'Update Product'
-            )}
-          </Button>
-        </div>
-      </form>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 

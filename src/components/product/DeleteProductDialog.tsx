@@ -33,7 +33,7 @@ const DeleteProductDialog: React.FC<DeleteProductDialogProps> = ({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>Delete Product</AlertDialogTitle>
           <AlertDialogDescription>
             This will permanently delete the product "{productName}".
             This action cannot be undone.
