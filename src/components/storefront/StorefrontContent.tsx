@@ -72,10 +72,10 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   const buttonTextColor = store.buttonTextColor || '#FFFFFF';
   const accentColor = store.accentColor || selectedPalette.accent;
 
-  // Social links
+  // Social links with ShopZap default fallbacks
   const socialLinks = {
-    instagram: themeColors.instagram_url || '',
-    facebook: themeColors.facebook_url || '',
+    instagram: themeColors.instagram_url || 'https://www.instagram.com/shopzap.io?igsh=bGRnN3UyNXFqZ2hw',
+    facebook: themeColors.facebook_url || 'https://www.facebook.com/profile.php?id=61576632031395&sk=',
     whatsapp: themeColors.whatsapp_url || ''
   };
 
@@ -212,24 +212,46 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
             
             {/* Social Media Links */}
             <div className="flex items-center space-x-4">
-              {socialLinks.instagram && (
+              <a 
+                href="https://www.instagram.com/shopzap.io?igsh=bGRnN3UyNXFqZ2hw"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors"
+                style={{ color: buttonTextColor }}
+                title="Follow ShopZap on Instagram"
+              >
+                <Instagram className="h-6 w-6" />
+              </a>
+              <a 
+                href="https://www.facebook.com/profile.php?id=61576632031395&sk="
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors"
+                style={{ color: buttonTextColor }}
+                title="Follow ShopZap on Facebook"
+              >
+                <Facebook className="h-6 w-6" />
+              </a>
+              {socialLinks.instagram && socialLinks.instagram !== 'https://www.instagram.com/shopzap.io?igsh=bGRnN3UyNXFqZ2hw' && (
                 <a 
                   href={socialLinks.instagram}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition-colors"
                   style={{ color: buttonTextColor }}
+                  title={`Follow ${store.name} on Instagram`}
                 >
                   <Instagram className="h-6 w-6" />
                 </a>
               )}
-              {socialLinks.facebook && (
+              {socialLinks.facebook && socialLinks.facebook !== 'https://www.facebook.com/profile.php?id=61576632031395&sk=' && (
                 <a 
                   href={socialLinks.facebook}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="transition-colors"
                   style={{ color: buttonTextColor }}
+                  title={`Follow ${store.name} on Facebook`}
                 >
                   <Facebook className="h-6 w-6" />
                 </a>

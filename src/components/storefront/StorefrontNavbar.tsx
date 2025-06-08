@@ -73,6 +73,26 @@ const StorefrontNavbar: React.FC<StorefrontNavbarProps> = ({
               </a>
             )}
 
+            {/* ShopZap Social Links - Always visible */}
+            <a 
+              href="https://www.instagram.com/shopzap.io?igsh=bGRnN3UyNXFqZ2hw"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-pink-600"
+              title="Follow ShopZap on Instagram"
+            >
+              <Instagram className="h-4 w-4" />
+            </a>
+            <a 
+              href="https://www.facebook.com/profile.php?id=61576632031395&sk="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-600 hover:text-blue-600"
+              title="Follow ShopZap on Facebook"
+            >
+              <Facebook className="h-4 w-4" />
+            </a>
+
             {/* Wishlist Button */}
             <Button variant="ghost" size="sm">
               <Heart className="h-5 w-5" />
