@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -42,6 +41,7 @@ const Checkout = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [storeInfo, setStoreInfo] = useState<any>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (cartItems.length === 0) {
@@ -74,34 +74,55 @@ const Checkout = () => {
   };
 
   const createRazorpayOrder = async (amount: number) => {
-    const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-      body: {
-        amount,
-        currency: 'INR',
-        receipt: `order_${Date.now()}`
+    try {
+      console.log('Creating Razorpay order for amount:', amount);
+      
+      const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
+        body: {
+          amount,
+          currency: 'INR',
+          receipt: `order_${Date.now()}`
+        }
+      });
+
+      console.log('Razorpay order response:', { data, error });
+
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error('Failed to connect to payment service');
       }
-    });
 
-    if (error || !data?.success) {
-      throw new Error(data?.error || 'Failed to create payment order');
+      if (!data?.success) {
+        console.error('Razorpay order creation failed:', data);
+        throw new Error(data?.error || 'Failed to create payment order');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in createRazorpayOrder:', error);
+      throw error;
     }
-
-    return data;
   };
 
   const handleRazorpayPayment = async () => {
+    setPaymentError(null);
+    
     const scriptLoaded = await loadRazorpayScript();
     
     if (!scriptLoaded) {
+      const error = "Payment gateway failed to load. Please check your internet connection and try again.";
+      setPaymentError(error);
       toast({
         title: "Error",
-        description: "Payment gateway failed to load. Please try again.",
+        description: error,
         variant: "destructive",
       });
       return;
     }
 
     try {
+      setIsProcessing(true);
+      
       // Create Razorpay order
       const razorpayOrderData = await createRazorpayOrder(getTotalPrice());
       
@@ -114,6 +135,8 @@ const Checkout = () => {
         order_id: razorpayOrderData.razorpayOrderId,
         handler: async function (response: any) {
           try {
+            setIsProcessing(true);
+            
             // Prepare order data for verification
             const orderData = {
               storeId: cartItems[0].product.store_id,
@@ -129,6 +152,12 @@ const Checkout = () => {
               }))
             };
 
+            console.log('Verifying payment with data:', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              orderData
+            });
+
             // Verify payment and create order
             const verifyResponse = await supabase.functions.invoke('verify-payment', {
               body: {
@@ -138,6 +167,8 @@ const Checkout = () => {
                 orderData
               }
             });
+
+            console.log('Payment verification response:', verifyResponse);
 
             if (verifyResponse.data?.success) {
               clearCart();
@@ -176,15 +207,19 @@ const Checkout = () => {
                 }
               });
             } else {
-              throw new Error('Payment verification failed');
+              throw new Error(verifyResponse.data?.error || 'Payment verification failed');
             }
           } catch (error) {
             console.error('Payment verification error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Payment verification failed';
+            setPaymentError(errorMessage);
             toast({
               title: "Payment Verification Failed",
-              description: "There was an issue verifying your payment. Please contact support.",
+              description: errorMessage + " Please contact support if the amount was deducted.",
               variant: "destructive",
             });
+          } finally {
+            setIsProcessing(false);
           }
         },
         prefill: {
@@ -211,13 +246,20 @@ const Checkout = () => {
       rzp.open();
     } catch (error) {
       console.error('Error creating Razorpay order:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment';
+      setPaymentError(errorMessage);
       toast({
         title: "Payment Error",
-        description: "Failed to initialize payment. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       setIsProcessing(false);
     }
+  };
+
+  const retryPayment = () => {
+    setPaymentError(null);
+    handleRazorpayPayment();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -404,6 +446,35 @@ const Checkout = () => {
                     </RadioGroup>
                   </CardContent>
                 </Card>
+
+                {/* Payment Error Display */}
+                {paymentError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-red-800 font-medium">Payment Error</h4>
+                        <p className="text-red-600 text-sm mt-1">{paymentError}</p>
+                      </div>
+                      {customerInfo.paymentMethod === 'online' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={retryPayment}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                              Retrying...
+                            </>
+                          ) : (
+                            'Retry Payment'
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <Button 
                   type="submit" 
