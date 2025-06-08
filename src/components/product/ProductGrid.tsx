@@ -88,23 +88,17 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       </div>
 
       {/* Edit Product Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="sm:max-w-[425px] md:max-w-[600px] lg:max-w-[800px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Edit Product</DialogTitle>
-          </DialogHeader>
-          {editingProduct && (
-            <EditProductForm 
-              product={editingProduct} 
-              onSuccess={() => {
-                setShowEditDialog(false);
-                onUpdate();
-              }}
-              onCancel={() => setShowEditDialog(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {editingProduct && (
+        <EditProductForm 
+          product={editingProduct} 
+          open={showEditDialog}
+          onSuccess={() => {
+            setShowEditDialog(false);
+            onUpdate();
+          }}
+          onCancel={() => setShowEditDialog(false)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <DeleteProductDialog
