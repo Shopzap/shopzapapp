@@ -1,486 +1,413 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Package, Truck, CheckCircle, Clock, ArrowLeft, Search, ExternalLink } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, Truck, CheckCircle, Clock, MapPin, Phone, Mail, CreditCard, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-interface OrderDetails {
+interface OrderItem {
   id: string;
-  buyer_name: string;
-  buyer_email: string | null;
-  buyer_phone: string | null;
-  buyer_address: string | null;
-  status: string;
-  total_price: number;
-  payment_status: string;
-  payment_method: string;
-  payment_gateway: string | null;
-  razorpay_payment_id: string | null;
-  paid_at: string | null;
-  tracking_number: string | null;
-  shipping_carrier: string | null;
-  estimated_delivery_date: string | null;
-  created_at: string;
-  shipped_at: string | null;
-  delivered_at: string | null;
-  order_items: {
-    id: string;
-    quantity: number;
-    price_at_purchase: number;
-    products: {
-      name: string;
-      image_url: string | null;
-    };
-  }[];
+  product_id: string;
+  quantity: number;
+  price_at_purchase: number;
+  products: {
+    name: string;
+    image_url: string;
+  };
 }
 
-interface StatusHistory {
+interface Order {
   id: string;
+  buyer_name: string;
+  buyer_email: string;
+  buyer_phone: string;
+  buyer_address: string;
+  total_price: number;
   status: string;
-  notes: string | null;
+  payment_status: string;
+  payment_method: string;
+  tracking_number: string;
+  shipping_carrier: string;
+  estimated_delivery_date: string;
   created_at: string;
+  shipped_at: string;
+  delivered_at: string;
+  order_items: OrderItem[];
+  stores: {
+    name: string;
+    username: string;
+    logo_image: string;
+  };
 }
 
 const OrderTracking = () => {
-  const [searchParams] = useSearchParams();
-  const { orderId: urlOrderId } = useParams();
+  const { orderId } = useParams();
   const { toast } = useToast();
-  
-  // Get order ID from URL params or search params
-  const initialOrderId = urlOrderId || searchParams.get('orderId') || '';
-  const [orderId, setOrderId] = useState(initialOrderId);
-  const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
-  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchOrderId, setSearchOrderId] = useState('');
 
-  // Auto-search if order ID is provided in URL
   useEffect(() => {
-    if (initialOrderId && !orderDetails) {
-      searchOrder();
+    if (orderId) {
+      fetchOrder(orderId);
+    } else {
+      setLoading(false);
     }
-  }, [initialOrderId]);
+  }, [orderId]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'confirmed':
-        return <Clock className="h-5 w-5" />;
-      case 'processing':
-        return <Package className="h-5 w-5" />;
-      case 'shipped':
-        return <Truck className="h-5 w-5" />;
-      case 'delivered':
-        return <CheckCircle className="h-5 w-5" />;
-      default:
-        return <Clock className="h-5 w-5" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800';
-      case 'processing':
-        return 'bg-orange-100 text-orange-800';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800';
-      case 'delivered':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'paid':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${label} copied to clipboard`,
-    });
-  };
-
-  const searchOrder = async () => {
-    if (!orderId.trim()) {
-      toast({
-        title: "Order ID Required",
-        description: "Please enter an order ID to search.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setNotFound(false);
-    setOrderDetails(null);
-    setStatusHistory([]);
-
+  const fetchOrder = async (id: string) => {
     try {
-      // Fetch order details with items
-      const { data: orderData, error: orderError } = await supabase
+      setLoading(true);
+      const { data, error } = await supabase
         .from('orders')
         .select(`
           *,
           order_items (
-            id,
-            quantity,
-            price_at_purchase,
-            products (
-              name,
-              image_url
-            )
-          )
+            *,
+            products (name, image_url)
+          ),
+          stores (name, username, logo_image)
         `)
-        .eq('id', orderId)
+        .eq('id', id)
         .single();
 
-      if (orderError || !orderData) {
-        setNotFound(true);
+      if (error) {
+        console.error('Error fetching order:', error);
         toast({
           title: "Order Not Found",
-          description: "No order found with the provided ID. Please check and try again.",
-          variant: "destructive"
+          description: "We couldn't find an order with that ID.",
+          variant: "destructive",
         });
         return;
       }
 
-      setOrderDetails(orderData);
-
-      // Fetch status history if table exists
-      const { data: historyData, error: historyError } = await supabase
-        .from('order_status_history')
-        .select('*')
-        .eq('order_id', orderId)
-        .order('created_at', { ascending: false });
-
-      if (!historyError && historyData) {
-        setStatusHistory(historyData);
-      }
-
+      setOrder(data);
     } catch (error) {
-      console.error('Error fetching order:', error);
+      console.error('Error:', error);
       toast({
-        title: "Search Failed",
-        description: "An error occurred while searching for the order.",
-        variant: "destructive"
+        title: "Error",
+        description: "There was an error fetching your order details.",
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      searchOrder();
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchOrderId.trim()) {
+      window.location.href = `/track-order/${searchOrderId.trim()}`;
     }
   };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        return 'default';
+      case 'shipped':
+        return 'secondary';
+      case 'processing':
+        return 'secondary';
+      case 'pending':
+        return 'outline';
+      case 'cancelled':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getPaymentStatusBadgeVariant = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'paid':
+        return 'default';
+      case 'pending':
+        return 'secondary';
+      case 'failed':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getOrderProgress = () => {
+    if (!order) return [];
+    
+    const steps = [
+      {
+        title: 'Order Placed',
+        description: 'Your order has been confirmed',
+        icon: CheckCircle,
+        completed: true,
+        date: new Date(order.created_at).toLocaleDateString()
+      },
+      {
+        title: 'Processing',
+        description: 'We are preparing your items',
+        icon: Package,
+        completed: ['processing', 'shipped', 'delivered'].includes(order.status.toLowerCase()),
+        date: order.status === 'processing' ? new Date().toLocaleDateString() : null
+      },
+      {
+        title: 'Shipped',
+        description: 'Your order is on the way',
+        icon: Truck,
+        completed: ['shipped', 'delivered'].includes(order.status.toLowerCase()),
+        date: order.shipped_at ? new Date(order.shipped_at).toLocaleDateString() : null
+      },
+      {
+        title: 'Delivered',
+        description: 'Your order has been delivered',
+        icon: CheckCircle,
+        completed: order.status.toLowerCase() === 'delivered',
+        date: order.delivered_at ? new Date(order.delivered_at).toLocaleDateString() : null
+      }
+    ];
+
+    return steps;
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!orderId || !order) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>Track Your Order</CardTitle>
+            <CardDescription>Enter your order ID to track your shipment</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="space-y-4 max-w-md mx-auto">
+              <div>
+                <Label htmlFor="orderId">Order ID</Label>
+                <Input
+                  id="orderId"
+                  placeholder="Enter your order ID"
+                  value={searchOrderId}
+                  onChange={(e) => setSearchOrderId(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full">
+                <Search className="mr-2 h-4 w-4" />
+                Track Order
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const progress = getOrderProgress();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Track Your Order</h1>
-        <p className="text-muted-foreground">
-          Enter your order ID to get real-time updates on your package
-        </p>
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => window.history.back()} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="text-3xl font-bold">Order Tracking</h1>
+        <p className="text-muted-foreground">Track your order status and delivery progress</p>
       </div>
 
-      {/* Search Section */}
-      <Card className="mb-8">
+      {/* Order Header */}
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Order Lookup
-          </CardTitle>
-          <CardDescription>
-            Enter your order ID to track your package
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-xl">Order #{order.id.slice(-8)}</CardTitle>
+              <CardDescription>
+                Placed on {new Date(order.created_at).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </CardDescription>
+            </div>
+            <div className="text-right space-y-2">
+              <Badge variant={getStatusBadgeVariant(order.status)}>
+                {order.status.toUpperCase()}
+              </Badge>
+              <Badge variant={getPaymentStatusBadgeVariant(order.payment_status)}>
+                {order.payment_status?.toUpperCase() || 'PENDING'}
+              </Badge>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="orderId">Order ID</Label>
-              <Input
-                id="orderId"
-                placeholder="e.g., ORD-1234567890"
-                value={orderId}
-                onChange={(e) => setOrderId(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="mt-1"
-              />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p className="font-medium text-muted-foreground">Order Amount</p>
+              <p className="font-semibold text-lg">₹{order.total_price.toLocaleString()}</p>
             </div>
-            <div className="flex items-end">
-              <Button 
-                onClick={searchOrder} 
-                disabled={isLoading}
-                className="h-10"
-              >
-                {isLoading ? 'Searching...' : 'Track Order'}
-              </Button>
+            {order.tracking_number && (
+              <div>
+                <p className="font-medium text-muted-foreground">Tracking Number</p>
+                <p className="font-mono">{order.tracking_number}</p>
+              </div>
+            )}
+            {order.estimated_delivery_date && (
+              <div>
+                <p className="font-medium text-muted-foreground">Expected Delivery</p>
+                <p>{new Date(order.estimated_delivery_date).toLocaleDateString()}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Order Progress */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Order Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {progress.map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <div key={index} className="flex items-center space-x-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    step.completed 
+                      ? 'bg-green-100 text-green-600' 
+                      : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className={`font-medium ${step.completed ? 'text-green-600' : 'text-gray-500'}`}>
+                          {step.title}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{step.description}</p>
+                      </div>
+                      {step.date && (
+                        <p className="text-sm text-muted-foreground">{step.date}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Order Items */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Order Items</CardTitle>
+          <CardDescription>{order.order_items.length} items</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {order.order_items.map((item) => (
+              <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <img 
+                    src={item.products.image_url || 'https://placehold.co/50x50'} 
+                    alt={item.products.name}
+                    className="w-12 h-12 rounded object-cover"
+                  />
+                  <div>
+                    <p className="font-medium">{item.products.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      ₹{item.price_at_purchase.toLocaleString()} × {item.quantity}
+                    </p>
+                  </div>
+                </div>
+                <p className="font-semibold">₹{(item.price_at_purchase * item.quantity).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Shipping Information */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Shipping Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold mb-2">Delivery Address</h4>
+              <div className="text-sm space-y-1">
+                <p>{order.buyer_name}</p>
+                <p>{order.buyer_address}</p>
+                <p>Phone: {order.buyer_phone}</p>
+                {order.buyer_email && <p>Email: {order.buyer_email}</p>}
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-2">Payment Information</h4>
+              <div className="text-sm space-y-1">
+                <p>Method: {order.payment_method?.toUpperCase() || 'COD'}</p>
+                <p>Status: 
+                  <Badge 
+                    variant={getPaymentStatusBadgeVariant(order.payment_status)} 
+                    className="ml-2"
+                  >
+                    {order.payment_status?.toUpperCase() || 'PENDING'}
+                  </Badge>
+                </p>
+                <p>Total: ₹{order.total_price.toLocaleString()}</p>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Order Not Found */}
-      {notFound && (
-        <Card className="text-center">
-          <CardContent className="pt-6">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Order Not Found</h3>
-            <p className="text-muted-foreground">
-              We couldn't find an order with that ID. Please check your order confirmation email and try again.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Order Details */}
-      {orderDetails && (
-        <div className="space-y-6">
-          {/* Order Summary */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>Order #{orderDetails.id.slice(-8)}</CardTitle>
-                  <CardDescription>
-                    Placed on {new Date(orderDetails.created_at).toLocaleDateString()}
-                  </CardDescription>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Badge className={getStatusColor(orderDetails.status)}>
-                    {orderDetails.status.toUpperCase()}
-                  </Badge>
-                  <Badge className={getPaymentStatusColor(orderDetails.payment_status)}>
-                    {orderDetails.payment_status.toUpperCase()}
-                  </Badge>
-                </div>
+      {/* Store Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Store Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {order.stores.logo_image && (
+                <img 
+                  src={order.stores.logo_image} 
+                  alt={order.stores.name}
+                  className="w-12 h-12 rounded object-cover"
+                />
+              )}
+              <div>
+                <h3 className="font-semibold">{order.stores.name}</h3>
+                <p className="text-sm text-muted-foreground">@{order.stores.username}</p>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Customer Info */}
-                <div>
-                  <h4 className="font-semibold mb-3">Customer Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{orderDetails.buyer_name}</span>
-                    </div>
-                    {orderDetails.buyer_email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span>{orderDetails.buyer_email}</span>
-                      </div>
-                    )}
-                    {orderDetails.buyer_phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{orderDetails.buyer_phone}</span>
-                      </div>
-                    )}
-                    {orderDetails.buyer_address && (
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <span>{orderDetails.buyer_address}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Payment & Shipping Info */}
-                <div>
-                  <h4 className="font-semibold mb-3">Payment & Shipping</h4>
-                  <div className="space-y-3 text-sm">
-                    {/* Payment Information */}
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CreditCard className="h-4 w-4" />
-                        <span className="font-medium">Payment Details</span>
-                      </div>
-                      <div className="space-y-1">
-                        <div>
-                          <span className="font-medium">Method: </span>
-                          <span className="capitalize">{orderDetails.payment_method}</span>
-                        </div>
-                        <div>
-                          <span className="font-medium">Status: </span>
-                          <Badge size="sm" className={getPaymentStatusColor(orderDetails.payment_status)}>
-                            {orderDetails.payment_status}
-                          </Badge>
-                        </div>
-                        {orderDetails.razorpay_payment_id && (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Payment ID: </span>
-                            <code className="text-xs bg-white px-2 py-1 rounded border">
-                              {orderDetails.razorpay_payment_id}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(orderDetails.razorpay_payment_id!, 'Payment ID')}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                        {orderDetails.paid_at && (
-                          <div>
-                            <span className="font-medium">Paid at: </span>
-                            <span>{new Date(orderDetails.paid_at).toLocaleString()}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Shipping Information */}
-                    {orderDetails.tracking_number && (
-                      <div>
-                        <span className="font-medium">Tracking Number: </span>
-                        <span className="font-mono">{orderDetails.tracking_number}</span>
-                      </div>
-                    )}
-                    {orderDetails.shipping_carrier && (
-                      <div>
-                        <span className="font-medium">Carrier: </span>
-                        <span>{orderDetails.shipping_carrier}</span>
-                      </div>
-                    )}
-                    {orderDetails.estimated_delivery_date && (
-                      <div>
-                        <span className="font-medium">Estimated Delivery: </span>
-                        <span>{new Date(orderDetails.estimated_delivery_date).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Order Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {orderDetails.order_items.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-4 border rounded-lg">
-                    <img 
-                      src={item.products.image_url || 'https://placehold.co/80x80'} 
-                      alt={item.products.name}
-                      className="w-16 h-16 object-cover rounded-md"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-semibold">{item.products.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Quantity: {item.quantity}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold">
-                        ₹{(item.price_at_purchase * item.quantity).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        ₹{item.price_at_purchase.toLocaleString()} each
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <Separator />
-                <div className="flex justify-between items-center font-semibold text-lg">
-                  <span>Total</span>
-                  <span>₹{orderDetails.total_price.toLocaleString()}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Status Timeline */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Timeline</CardTitle>
-              <CardDescription>
-                Track the progress of your order
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Current Status */}
-                <div className="flex items-center gap-3 p-3 border-l-4 border-primary bg-primary/5">
-                  {getStatusIcon(orderDetails.status)}
-                  <div>
-                    <p className="font-semibold capitalize">{orderDetails.status}</p>
-                    <p className="text-sm text-muted-foreground">Current Status</p>
-                  </div>
-                </div>
-
-                {/* Status History */}
-                {statusHistory.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Status History</h4>
-                    {statusHistory.map((history) => (
-                      <div key={history.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                        {getStatusIcon(history.status)}
-                        <div className="flex-1">
-                          <p className="font-medium capitalize">{history.status}</p>
-                          {history.notes && (
-                            <p className="text-sm text-muted-foreground">{history.notes}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(history.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Default Timeline for orders without history */}
-                {statusHistory.length === 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3 p-3 border rounded-lg">
-                      <Clock className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Order Placed</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(orderDetails.created_at).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/store/${order.stores.username}`}>
+                <ExternalLink className="mr-2 h-3 w-3" />
+                Visit Store
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
