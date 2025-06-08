@@ -25,42 +25,51 @@ const Storefront: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
-  // Fetch store data with optimized caching
+  // Fetch store data with proper error handling
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
       console.log('Storefront: Fetching store data for', storeName);
       
-      // Try to find the store using the name field (case-insensitive)
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .ilike('name', storeName)
-        .single();
-        
-      if (error && error.code === 'PGRST116') {
-        // Try with URL decoded name (in case of spaces or special characters)
-        const decodedStoreName = decodeURIComponent(storeName);
-        console.log('Storefront: Trying with decoded store name', decodedStoreName);
-        
-        const secondAttempt = await supabase
+      try {
+        // Try to find the store using the name field (case-insensitive)
+        const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', decodedStoreName)
+          .ilike('name', storeName)
           .single();
           
-        if (!secondAttempt.error) {
-          return secondAttempt.data;
+        if (error && error.code === 'PGRST116') {
+          // Try with URL decoded name (in case of spaces or special characters)
+          const decodedStoreName = decodeURIComponent(storeName);
+          console.log('Storefront: Trying with decoded store name', decodedStoreName);
+          
+          const { data: decodedData, error: decodedError } = await supabase
+            .from('stores')
+            .select('*')
+            .ilike('name', decodedStoreName)
+            .single();
+            
+          if (decodedError) {
+            console.error('Storefront: Store not found after decode attempt', decodedError);
+            throw new Error(`Store "${storeName}" not found`);
+          }
+          
+          console.log('Storefront: Store found with decoded name', decodedData);
+          return decodedData;
         }
-      }
+          
+        if (error) {
+          console.error('Storefront: Error fetching store', error);
+          throw new Error(`Store "${storeName}" not found`);
+        }
         
-      if (error) {
-        console.error('Storefront: Error fetching store', error);
-        throw error;
+        console.log('Storefront: Store data received', data);
+        return data;
+      } catch (err) {
+        console.error('Storefront: Exception in store fetch', err);
+        throw err;
       }
-      
-      console.log('Storefront: Store data received', data);
-      return data;
     },
     enabled: !!storeName,
     retry: 2,
@@ -69,7 +78,7 @@ const Storefront: React.FC = () => {
     gcTime: 10 * 60 * 1000, // 10 minutes
   });
   
-  // Fetch products for the store with optimized caching
+  // Fetch products for the store with proper filtering
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -81,11 +90,11 @@ const Storefront: React.FC = () => {
       }
       
       try {
+        // Fetch products with proper filtering
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
-          .eq('is_published', true)
           .eq('status', 'active')
           .order('created_at', { ascending: false });
           
@@ -94,8 +103,11 @@ const Storefront: React.FC = () => {
           throw error;
         }
         
-        console.log('Storefront: Products data received', data?.length || 0, 'products');
-        return data || [];
+        // Filter published products on the client side for additional safety
+        const publishedProducts = data?.filter(product => product.is_published !== false) || [];
+        
+        console.log('Storefront: Products data received', publishedProducts.length, 'published products');
+        return publishedProducts;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
         return [];
@@ -118,9 +130,8 @@ const Storefront: React.FC = () => {
       console.error('Storefront: Products error detected', productsError);
     }
     
-    if (!productsLoading) {
-      const productCount = products?.length || 0;
-      console.log(`Storefront: Final product count for display: ${productCount}`);
+    if (!productsLoading && products) {
+      console.log(`Storefront: Final product count for display: ${products.length}`);
     }
   }, [storeError, productsError, productsLoading, products]);
   
@@ -150,7 +161,7 @@ const Storefront: React.FC = () => {
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  // Process theme data with new color system
+  // Process theme data with color system
   const themeData = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
   const colorPaletteId = themeData.color_palette || 'urban-modern';
   const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
@@ -158,20 +169,19 @@ const Storefront: React.FC = () => {
   // Enhanced store object with clear color mapping
   const enhancedStore = {
     ...store,
-    // Use new color system if available, fallback to old system, then to palette
-    primaryColor: themeData.primaryColor || themeData.primary_color || selectedPalette.primary,
+    primaryColor: themeData.primaryColor || selectedPalette.primary,
     textColor: themeData.textColor || '#F9FAFB',
-    buttonColor: themeData.buttonColor || themeData.cta_color || selectedPalette.cta,
+    buttonColor: themeData.buttonColor || selectedPalette.cta,
     buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
-    accentColor: themeData.accentColor || themeData.accent_color || selectedPalette.accent,
+    accentColor: themeData.accentColor || selectedPalette.accent,
     font_style: store.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
-      primaryColor: themeData.primaryColor || themeData.primary_color || selectedPalette.primary,
+      primaryColor: themeData.primaryColor || selectedPalette.primary,
       textColor: themeData.textColor || '#F9FAFB',
-      buttonColor: themeData.buttonColor || themeData.cta_color || selectedPalette.cta,
+      buttonColor: themeData.buttonColor || selectedPalette.cta,
       buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
-      accentColor: themeData.accentColor || themeData.accent_color || selectedPalette.accent,
+      accentColor: themeData.accentColor || selectedPalette.accent,
       color_palette: colorPaletteId,
       instagram_url: themeData.instagram_url || '',
       facebook_url: themeData.facebook_url || '',
@@ -179,13 +189,16 @@ const Storefront: React.FC = () => {
     }
   };
   
-  console.log('Storefront: Rendering modern storefront with enhanced store data:', {
+  console.log('Storefront: Rendering modern storefront with store data:', {
     name: enhancedStore.name,
-    font_style: enhancedStore.font_style,
-    primaryColor: enhancedStore.primaryColor,
-    textColor: enhancedStore.textColor,
-    buttonColor: enhancedStore.buttonColor,
-    accentColor: enhancedStore.accentColor
+    productCount: safeProducts.length,
+    storeId: enhancedStore.id,
+    colorsApplied: {
+      primary: enhancedStore.primaryColor,
+      text: enhancedStore.textColor,
+      button: enhancedStore.buttonColor,
+      accent: enhancedStore.accentColor
+    }
   });
 
   return (
