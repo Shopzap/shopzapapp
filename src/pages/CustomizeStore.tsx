@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Loader, Save } from 'lucide-react';
 import ColorPaletteSelector from '@/components/storefront/ColorPaletteSelector';
 import FontStyleSelector from '@/components/storefront/FontStyleSelector';
+
+interface ThemeData {
+  color_palette?: string;
+  primary_color?: string;
+  accent_color?: string;
+  cta_color?: string;
+  font_style?: string;
+  instagram_url?: string;
+  facebook_url?: string;
+  whatsapp_url?: string;
+}
 
 const CustomizeStore: React.FC = () => {
   const { toast } = useToast();
@@ -63,18 +73,19 @@ const CustomizeStore: React.FC = () => {
       setBannerImage(store.banner_image || null);
       setFontStyle(store.font_style || 'Poppins');
 
-      // Theme settings
-      if (store.theme) {
-        setSelectedPalette(store.theme.color_palette || 'urban-modern');
+      // Theme settings with proper type casting
+      if (store.theme && typeof store.theme === 'object') {
+        const themeData = store.theme as ThemeData;
+        setSelectedPalette(themeData.color_palette || 'urban-modern');
         setCustomColors({
-          primary: store.theme.primary_color || '',
-          accent: store.theme.accent_color || '',
-          cta: store.theme.cta_color || '',
+          primary: themeData.primary_color || '',
+          accent: themeData.accent_color || '',
+          cta: themeData.cta_color || '',
         });
         setSocialLinks({
-          instagram: store.theme.instagram_url || '',
-          facebook: store.theme.facebook_url || '',
-          whatsapp: store.theme.whatsapp_url || '',
+          instagram: themeData.instagram_url || '',
+          facebook: themeData.facebook_url || '',
+          whatsapp: themeData.whatsapp_url || '',
         });
       }
     }
@@ -382,13 +393,13 @@ const CustomizeStore: React.FC = () => {
             <CardContent className="space-y-4">
               <ColorPaletteSelector
                 selectedPalette={selectedPalette}
-                onPaletteSelect={(palette) => setSelectedPalette(palette)}
+                onPaletteChange={(palette) => setSelectedPalette(palette)}
                 customColors={customColors}
                 onCustomColorChange={setCustomColors}
               />
               <FontStyleSelector
-                selectedFont={fontStyle}
-                onFontSelect={(font) => setFontStyle(font)}
+                fontStyle={fontStyle}
+                onFontChange={(font) => setFontStyle(font)}
               />
             </CardContent>
           </Card>
