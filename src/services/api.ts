@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { paymentConfig } from '@/config/payment';
@@ -487,11 +488,12 @@ export const ordersApi = {
       throw new Error(error.message);
     }
 
-    // Calculate analytics
-    const totalOrders = orders?.length || 0;
-    const paidOrders = orders?.filter(order => order.payment_status === 'paid') || [];
-    const testOrders = orders?.filter(order => order.notes?.includes('TEST MODE')) || [];
-    const totalRevenue = paidOrders.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0;
+    // Calculate analytics - safely handle null/undefined orders
+    const ordersList = orders || [];
+    const totalOrders = ordersList.length;
+    const paidOrders = ordersList.filter(order => order.payment_status === 'paid');
+    const testOrders = ordersList.filter(order => order.notes?.includes('TEST MODE'));
+    const totalRevenue = paidOrders.reduce((sum, order) => sum + (Number(order.total_price) || 0), 0);
     
     return {
       totalOrders,

@@ -220,6 +220,7 @@ export type Database = {
           delivered_at: string | null
           estimated_delivery_date: string | null
           id: string
+          notes: string | null
           paid_at: string | null
           payment_gateway: string | null
           payment_method: string | null
@@ -244,6 +245,7 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery_date?: string | null
           id?: string
+          notes?: string | null
           paid_at?: string | null
           payment_gateway?: string | null
           payment_method?: string | null
@@ -268,6 +270,7 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery_date?: string | null
           id?: string
+          notes?: string | null
           paid_at?: string | null
           payment_gateway?: string | null
           payment_method?: string | null
