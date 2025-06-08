@@ -220,6 +220,13 @@ export type Database = {
           delivered_at: string | null
           estimated_delivery_date: string | null
           id: string
+          paid_at: string | null
+          payment_gateway: string | null
+          payment_method: string | null
+          payment_status: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
           shipped_at: string | null
           shipping_carrier: string | null
           status: string
@@ -237,6 +244,13 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery_date?: string | null
           id?: string
+          paid_at?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           shipped_at?: string | null
           shipping_carrier?: string | null
           status?: string
@@ -254,6 +268,13 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery_date?: string | null
           id?: string
+          paid_at?: string | null
+          payment_gateway?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           shipped_at?: string | null
           shipping_carrier?: string | null
           status?: string

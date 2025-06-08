@@ -254,7 +254,7 @@ export const fileUploadApi = {
 
 // Orders API - Updated to use Supabase directly
 export const ordersApi = {
-  // Create a new order
+  // Create a new order with payment support
   createOrder: async (orderData: {
     storeId: string;
     buyerName: string;
@@ -262,6 +262,8 @@ export const ordersApi = {
     buyerPhone?: string;
     buyerAddress?: string;
     totalPrice: number;
+    paymentMethod?: string;
+    paymentStatus?: string;
     items: {
       productId: string;
       quantity: number;
@@ -278,6 +280,8 @@ export const ordersApi = {
         buyer_phone: orderData.buyerPhone,
         buyer_address: orderData.buyerAddress,
         total_price: orderData.totalPrice,
+        payment_method: orderData.paymentMethod || 'cod',
+        payment_status: orderData.paymentStatus || 'pending',
         status: 'pending'
       })
       .select()
@@ -309,6 +313,47 @@ export const ordersApi = {
       message: 'Order created successfully', 
       orderId: orderInsertData.id,
       order: orderInsertData 
+    };
+  },
+
+  // Update order with payment information
+  updateOrderPayment: async (orderId: string, paymentData: {
+    paymentStatus: string;
+    paymentMethod?: string;
+    paymentGateway?: string;
+    razorpayPaymentId?: string;
+    razorpayOrderId?: string;
+    razorpaySignature?: string;
+  }) => {
+    const updateData: any = { 
+      payment_status: paymentData.paymentStatus,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (paymentData.paymentMethod) updateData.payment_method = paymentData.paymentMethod;
+    if (paymentData.paymentGateway) updateData.payment_gateway = paymentData.paymentGateway;
+    if (paymentData.razorpayPaymentId) updateData.razorpay_payment_id = paymentData.razorpayPaymentId;
+    if (paymentData.razorpayOrderId) updateData.razorpay_order_id = paymentData.razorpayOrderId;
+    if (paymentData.razorpaySignature) updateData.razorpay_signature = paymentData.razorpaySignature;
+    
+    if (paymentData.paymentStatus === 'paid') {
+      updateData.paid_at = new Date().toISOString();
+    }
+    
+    const { data: updatedOrder, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    return { 
+      message: 'Payment updated successfully', 
+      order: updatedOrder 
     };
   },
 
@@ -350,7 +395,7 @@ export const ordersApi = {
   getAnalytics: async (storeId: string) => {
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('id, total_price, created_at, order_items(product_id, quantity, products(name))')
+      .select('id, total_price, payment_status, created_at, order_items(product_id, quantity, products(name))')
       .eq('store_id', storeId);
 
     if (error) {
@@ -359,10 +404,12 @@ export const ordersApi = {
 
     // Calculate analytics
     const totalOrders = orders?.length || 0;
-    const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0;
+    const paidOrders = orders?.filter(order => order.payment_status === 'paid') || [];
+    const totalRevenue = paidOrders.reduce((sum, order) => sum + (order.total_price || 0), 0) || 0;
     
     return {
       totalOrders,
+      paidOrders: paidOrders.length,
       uniqueCustomers: 0, // Would need user tracking for this
       totalRevenue,
       conversionRate: 0, // Would need visit tracking for this

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Package, Truck, CheckCircle, Clock, MapPin, Phone, Mail } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle, Clock, MapPin, Phone, Mail, CreditCard, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OrderDetails {
@@ -18,6 +19,11 @@ interface OrderDetails {
   buyer_address: string | null;
   status: string;
   total_price: number;
+  payment_status: string;
+  payment_method: string;
+  payment_gateway: string | null;
+  razorpay_payment_id: string | null;
+  paid_at: string | null;
   tracking_number: string | null;
   shipping_carrier: string | null;
   estimated_delivery_date: string | null;
@@ -95,6 +101,29 @@ const OrderTracking = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      case 'refunded':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard`,
+    });
   };
 
   const searchOrder = async () => {
@@ -244,9 +273,14 @@ const OrderTracking = () => {
                     Placed on {new Date(orderDetails.created_at).toLocaleDateString()}
                   </CardDescription>
                 </div>
-                <Badge className={getStatusColor(orderDetails.status)}>
-                  {orderDetails.status.toUpperCase()}
-                </Badge>
+                <div className="flex flex-col gap-2">
+                  <Badge className={getStatusColor(orderDetails.status)}>
+                    {orderDetails.status.toUpperCase()}
+                  </Badge>
+                  <Badge className={getPaymentStatusColor(orderDetails.payment_status)}>
+                    {orderDetails.payment_status.toUpperCase()}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -279,10 +313,52 @@ const OrderTracking = () => {
                   </div>
                 </div>
 
-                {/* Shipping Info */}
+                {/* Payment & Shipping Info */}
                 <div>
-                  <h4 className="font-semibold mb-3">Shipping Information</h4>
-                  <div className="space-y-2 text-sm">
+                  <h4 className="font-semibold mb-3">Payment & Shipping</h4>
+                  <div className="space-y-3 text-sm">
+                    {/* Payment Information */}
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CreditCard className="h-4 w-4" />
+                        <span className="font-medium">Payment Details</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div>
+                          <span className="font-medium">Method: </span>
+                          <span className="capitalize">{orderDetails.payment_method}</span>
+                        </div>
+                        <div>
+                          <span className="font-medium">Status: </span>
+                          <Badge size="sm" className={getPaymentStatusColor(orderDetails.payment_status)}>
+                            {orderDetails.payment_status}
+                          </Badge>
+                        </div>
+                        {orderDetails.razorpay_payment_id && (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Payment ID: </span>
+                            <code className="text-xs bg-white px-2 py-1 rounded border">
+                              {orderDetails.razorpay_payment_id}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(orderDetails.razorpay_payment_id!, 'Payment ID')}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        {orderDetails.paid_at && (
+                          <div>
+                            <span className="font-medium">Paid at: </span>
+                            <span>{new Date(orderDetails.paid_at).toLocaleString()}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Shipping Information */}
                     {orderDetails.tracking_number && (
                       <div>
                         <span className="font-medium">Tracking Number: </span>
