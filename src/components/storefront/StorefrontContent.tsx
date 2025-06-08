@@ -47,11 +47,13 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   isLoading = false
 }) => {
   console.log('StorefrontContent: Rendering with store:', store?.name);
-  console.log('StorefrontContent: Store theme colors:', {
+  console.log('StorefrontContent: Applied customization colors:', {
     primaryColor: store?.primaryColor,
     textColor: store?.textColor,
     buttonColor: store?.buttonColor,
-    accentColor: store?.accentColor
+    buttonTextColor: store?.buttonTextColor,
+    accentColor: store?.accentColor,
+    fontStyle: store?.font_style
   });
 
   // Get theme data with proper fallbacks
@@ -63,12 +65,12 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
   const fontStyle = store.font_style || themeColors.font_style || 'Poppins';
   const fontFamily = `${fontStyle}, sans-serif`;
   
-  // Use new color system with fallbacks
-  const primaryColor = store.primaryColor || themeColors.primaryColor || selectedPalette.primary;
-  const textColor = store.textColor || themeColors.textColor || '#F9FAFB';
-  const buttonColor = store.buttonColor || themeColors.buttonColor || selectedPalette.cta;
-  const buttonTextColor = store.buttonTextColor || themeColors.buttonTextColor || '#FFFFFF';
-  const accentColor = store.accentColor || themeColors.accentColor || selectedPalette.accent;
+  // Use the enhanced color system from store props (already processed in Storefront.tsx)
+  const primaryColor = store.primaryColor || selectedPalette.primary;
+  const textColor = store.textColor || '#F9FAFB';
+  const buttonColor = store.buttonColor || selectedPalette.cta;
+  const buttonTextColor = store.buttonTextColor || '#FFFFFF';
+  const accentColor = store.accentColor || selectedPalette.accent;
 
   // Social links
   const socialLinks = {
@@ -93,12 +95,13 @@ const StorefrontContent: React.FC<StorefrontContentProps> = ({
     }
   }, [fontStyle]);
 
-  console.log('StorefrontContent: Applied colors:', { 
+  console.log('StorefrontContent: Final applied colors:', { 
     primaryColor, 
     textColor, 
     buttonColor, 
     buttonTextColor, 
-    accentColor 
+    accentColor,
+    fontFamily 
   });
 
   return (

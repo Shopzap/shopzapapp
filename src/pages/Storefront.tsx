@@ -25,7 +25,7 @@ const Storefront: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
-  // Fetch store data with proper error handling
+  // Fetch store data with proper error handling and customization data
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
@@ -64,7 +64,7 @@ const Storefront: React.FC = () => {
           throw new Error(`Store "${storeName}" not found`);
         }
         
-        console.log('Storefront: Store data received', data);
+        console.log('Storefront: Store data received with theme:', data?.theme);
         return data;
       } catch (err) {
         console.error('Storefront: Exception in store fetch', err);
@@ -74,8 +74,8 @@ const Storefront: React.FC = () => {
     enabled: !!storeName,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 30 * 1000, // Reduced from 5 minutes to 30 seconds for faster updates
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
   
   // Fetch products for the store with proper filtering
@@ -90,12 +90,13 @@ const Storefront: React.FC = () => {
       }
       
       try {
-        // Fetch products with proper filtering
+        // Fetch active and published products
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
           .eq('status', 'active')
+          .eq('is_published', true)
           .order('created_at', { ascending: false });
           
         if (error) {
@@ -103,11 +104,8 @@ const Storefront: React.FC = () => {
           throw error;
         }
         
-        // Filter published products on the client side for additional safety
-        const publishedProducts = data?.filter(product => product.is_published !== false) || [];
-        
-        console.log('Storefront: Products data received', publishedProducts.length, 'published products');
-        return publishedProducts;
+        console.log('Storefront: Products data received', data?.length || 0, 'published products');
+        return data || [];
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
         return [];
@@ -116,8 +114,8 @@ const Storefront: React.FC = () => {
     enabled: !!store?.id,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    gcTime: 8 * 60 * 1000, // 8 minutes
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes
   });
   
   // Handle errors and loading states
@@ -134,6 +132,17 @@ const Storefront: React.FC = () => {
       console.log(`Storefront: Final product count for display: ${products.length}`);
     }
   }, [storeError, productsError, productsLoading, products]);
+
+  // Invalidate cache when returning from customization
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Storefront: Window focused, invalidating store cache for fresh data');
+      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [queryClient, storeName]);
   
   // Show error page if store not found
   if (storeError) {
@@ -161,14 +170,18 @@ const Storefront: React.FC = () => {
   // Ensure products is always an array
   const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
   
-  // Process theme data with color system
+  // Process theme data with enhanced color system
   const themeData = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
+  console.log('Storefront: Processing theme data:', themeData);
+
+  // Get color palette for fallbacks
   const colorPaletteId = themeData.color_palette || 'urban-modern';
   const selectedPalette = COLOR_PALETTES.find(p => p.id === colorPaletteId) || COLOR_PALETTES[0];
   
-  // Enhanced store object with clear color mapping
+  // Enhanced store object with properly mapped colors
   const enhancedStore = {
     ...store,
+    // Use the new clear color system with proper fallbacks
     primaryColor: themeData.primaryColor || selectedPalette.primary,
     textColor: themeData.textColor || '#F9FAFB',
     buttonColor: themeData.buttonColor || selectedPalette.cta,
@@ -177,27 +190,31 @@ const Storefront: React.FC = () => {
     font_style: store.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
+      // Ensure theme object has the mapped colors too
       primaryColor: themeData.primaryColor || selectedPalette.primary,
       textColor: themeData.textColor || '#F9FAFB',
       buttonColor: themeData.buttonColor || selectedPalette.cta,
       buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
       accentColor: themeData.accentColor || selectedPalette.accent,
       color_palette: colorPaletteId,
+      font_style: store.font_style || themeData.font_style || 'Poppins',
       instagram_url: themeData.instagram_url || '',
       facebook_url: themeData.facebook_url || '',
       whatsapp_url: themeData.whatsapp_url || ''
     }
   };
   
-  console.log('Storefront: Rendering modern storefront with store data:', {
+  console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
-    colorsApplied: {
+    customizationApplied: {
       primary: enhancedStore.primaryColor,
       text: enhancedStore.textColor,
       button: enhancedStore.buttonColor,
-      accent: enhancedStore.accentColor
+      buttonText: enhancedStore.buttonTextColor,
+      accent: enhancedStore.accentColor,
+      font: enhancedStore.font_style
     }
   });
 
