@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { createHmac } from "https://deno.land/std@0.190.0/node/crypto.ts";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,19 +32,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Verifying payment for order ${orderId}`);
 
-    // Get Razorpay secret key - you need to add this to Supabase secrets
-    const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY') || 'YOUR_RAZORPAY_SECRET_KEY';
+    // Get Razorpay secret key from environment variables
+    const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
     
-    if (!razorpaySecret || razorpaySecret === 'YOUR_RAZORPAY_SECRET_KEY') {
-      console.error('Razorpay secret key not configured properly');
+    if (!razorpaySecret) {
+      console.error('Razorpay secret key not configured');
       // For development, we'll skip signature verification
       console.log('Development mode: Skipping signature verification');
     } else {
       // Verify signature in production
       const body = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSignature = createHmac('sha256', razorpaySecret)
-        .update(body)
-        .digest('hex');
+      
+      // Create HMAC using Web Crypto API
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(razorpaySecret);
+      const messageData = encoder.encode(body);
+      
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+      const expectedSignature = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 
       const isSignatureValid = expectedSignature === razorpay_signature;
 
@@ -96,21 +111,6 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('Payment verified and order updated successfully:', updatedOrder);
-
-    // Optionally trigger email notification here
-    // await supabaseClient.functions.invoke('send-order-email', {
-    //   body: {
-    //     orderId,
-    //     eventType: 'order_confirmed',
-    //     buyerEmail: updatedOrder.buyer_email,
-    //     orderData: {
-    //       buyerName: updatedOrder.buyer_name,
-    //       storeName: 'Your Store',
-    //       totalPrice: updatedOrder.total_price,
-    //       items: []
-    //     }
-    //   }
-    // });
 
     return new Response(JSON.stringify({ 
       success: true,
