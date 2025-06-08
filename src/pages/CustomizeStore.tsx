@@ -220,7 +220,14 @@ const CustomizeStore = () => {
         </TabsContent>
 
         <TabsContent value="about">
-          <AboutPageManager storeId={store.id} />
+          <Card>
+            <CardHeader>
+              <CardTitle>About Page</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AboutPageManager />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="preview">

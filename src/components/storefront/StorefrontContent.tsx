@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Loader } from "lucide-react";
+import { Loader, Instagram, Facebook } from "lucide-react";
 import StorefrontNavbar from "./StorefrontNavbar";
 import ProductGrid from "./ProductGrid";
 import StorefrontAbout from "./StorefrontAbout";
