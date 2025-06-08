@@ -15,7 +15,7 @@ import NotFound from './NotFound';
 const ProductDetails = () => {
   const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('');
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -65,11 +65,11 @@ const ProductDetails = () => {
   const handleAddToCart = () => {
     if (!product) return;
     
-    addItem({
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image_url || '/placeholder.svg',
+      image_url: product.image_url,
       quantity: quantity
     });
     

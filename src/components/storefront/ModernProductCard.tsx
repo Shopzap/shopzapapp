@@ -26,7 +26,7 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
   viewMode = 'grid' 
 }) => {
   const { storeName } = useParams();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   const formatPrice = (price: number) => {
@@ -41,11 +41,11 @@ const ModernProductCard: React.FC<ModernProductCardProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    addItem({
+    addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image_url || '/placeholder.svg',
+      image_url: product.image_url,
       quantity: 1
     });
     
