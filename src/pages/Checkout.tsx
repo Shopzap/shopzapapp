@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -81,7 +80,8 @@ const Checkout = () => {
         body: {
           amount,
           currency: 'INR',
-          receipt: `order_${Date.now()}`
+          receipt: `order_${Date.now()}`,
+          isTestMode: paymentConfig.isTestMode
         }
       });
 
@@ -89,12 +89,19 @@ const Checkout = () => {
 
       if (error) {
         console.error('Supabase function error:', error);
-        throw new Error('Failed to connect to payment service');
+        throw new Error(error.message || 'Failed to connect to payment service');
       }
 
       if (!data?.success) {
         console.error('Razorpay order creation failed:', data);
-        throw new Error(data?.error || 'Failed to create payment order');
+        const errorMessage = data?.error || 'Failed to create payment order';
+        
+        // Handle specific authentication errors
+        if (data?.details?.includes('Authentication failed') || data?.code === 401) {
+          throw new Error('Payment gateway configuration error. Please contact support for assistance.');
+        }
+        
+        throw new Error(errorMessage);
       }
 
       return data;
@@ -314,6 +321,7 @@ const Checkout = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPaymentError(null);
     setIsProcessing(true);
 
     try {
@@ -347,11 +355,15 @@ const Checkout = () => {
       }
     } catch (error) {
       console.error('Order creation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'There was an error creating your order. Please try again.';
+      
+      setPaymentError(errorMessage);
       toast({
         title: "Order Failed",
-        description: "There was an error creating your order. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -490,6 +502,11 @@ const Checkout = () => {
                       <div>
                         <h4 className="text-red-800 font-medium">Payment Error</h4>
                         <p className="text-red-600 text-sm mt-1">{paymentError}</p>
+                        {paymentConfig.isTestMode && (
+                          <p className="text-orange-600 text-xs mt-2">
+                            <strong>Note:</strong> You are in TEST MODE. Make sure your Razorpay test API keys are correctly configured.
+                          </p>
+                        )}
                       </div>
                       {customerInfo.paymentMethod === 'online' && (
                         <Button 

@@ -84,11 +84,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Razorpay order payload:`, orderData);
 
-    // Create Basic Auth header - key_id:key_secret encoded in base64
+    // Create Basic Auth header using btoa (base64 encoding)
     const credentials = `${razorpayKeyId}:${razorpaySecret}`;
-    const encoder = new TextEncoder();
-    const data = encoder.encode(credentials);
-    const encodedCredentials = btoa(String.fromCharCode(...Array.from(data)));
+    const encodedCredentials = btoa(credentials);
     
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Making request to Razorpay API...`);
 
