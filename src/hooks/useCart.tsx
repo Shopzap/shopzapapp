@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { safeParsePrice, isValidProduct } from '@/utils/priceUtils';
+import { useParams } from 'react-router-dom';
 
 interface CartItem {
   id: string;
@@ -20,6 +21,7 @@ interface CartContextType {
   getTotalPrice: () => number;
   getItemCount: () => number;
   isLoading: boolean;
+  currentStore?: string;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -36,14 +38,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { storeName } = useParams<{ storeName: string }>();
 
-  // Generate or get session ID
+  // Track current store context
+  useEffect(() => {
+    if (storeName) {
+      localStorage.setItem('currentStore', storeName);
+      localStorage.setItem('lastVisitedStore', storeName);
+    }
+  }, [storeName]);
+
+  // Generate or get session ID with store context
   const getSessionId = () => {
     let sessionId = localStorage.getItem('cart_session_id');
     if (!sessionId) {
       sessionId = crypto.randomUUID();
       localStorage.setItem('cart_session_id', sessionId);
     }
+    
+    // Create backup cart data with store context
+    if (storeName) {
+      const cartBackup = {
+        sessionId,
+        storeName,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('shopzap_cart_backup', JSON.stringify(cartBackup));
+    }
+    
     return sessionId;
   };
 
@@ -87,7 +109,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadCartItems();
-  }, []);
+  }, [storeName]); // Reload cart when store changes
 
   const addToCart = async (product: Tables<'products'>, quantity = 1) => {
     try {
@@ -203,6 +225,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       
       setItems([]);
       localStorage.removeItem('cart_session_id');
+      localStorage.removeItem('shopzap_cart_backup');
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
@@ -231,7 +254,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     clearCart,
     getTotalPrice,
     getItemCount,
-    isLoading
+    isLoading,
+    currentStore: storeName
   };
 
   return (

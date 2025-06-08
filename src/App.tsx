@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -36,13 +35,7 @@ import DashboardLayout from "./components/layouts/DashboardLayout";
 import CustomizeStore from "./pages/CustomizeStore";
 import Analytics from "./pages/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary";
-
-// Legal pages
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import RefundPolicy from "./pages/RefundPolicy";
-import ShippingPolicy from "./pages/ShippingPolicy";
-import PricingPolicy from "./pages/PricingPolicy";
+import LegacyCartRedirect from "./components/cart/LegacyCartRedirect";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +70,9 @@ const App = () => {
                   <Route path="/refund" element={<RefundPolicy />} />
                   <Route path="/shipping" element={<ShippingPolicy />} />
                   <Route path="/pricing-policy" element={<PricingPolicy />} />
+                  
+                  {/* Legacy cart route - redirect to store-specific cart */}
+                  <Route path="/cart" element={<LegacyCartRedirect />} />
                   
                   {/* Protected routes */}
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
