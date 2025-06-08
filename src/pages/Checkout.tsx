@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -11,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { ordersApi } from '@/services/api';
 import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2 } from 'lucide-react';
 import { paymentConfig } from '@/config/payment';
 
@@ -104,6 +104,49 @@ const Checkout = () => {
     }
   };
 
+  const createOrderAfterPayment = async (paymentData: any) => {
+    try {
+      // Create order after successful payment
+      const orderData = {
+        storeId: cartItems[0].product.store_id,
+        buyerName: customerInfo.fullName,
+        buyerEmail: customerInfo.email,
+        buyerPhone: customerInfo.phone,
+        buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+        totalPrice: getTotalPrice(),
+        paymentMethod: 'online',
+        paymentStatus: 'paid',
+        paymentGateway: 'razorpay',
+        razorpayPaymentId: paymentData.razorpay_payment_id,
+        razorpayOrderId: paymentData.razorpay_order_id,
+        razorpaySignature: paymentData.razorpay_signature,
+        items: cartItems.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          priceAtPurchase: Number(item.product.price)
+        }))
+      };
+
+      const { data, error } = await supabase.functions.invoke('verify-payment', {
+        body: {
+          razorpay_order_id: paymentData.razorpay_order_id,
+          razorpay_payment_id: paymentData.razorpay_payment_id,
+          razorpay_signature: paymentData.razorpay_signature,
+          orderData
+        }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || 'Failed to verify payment');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error creating order after payment:', error);
+      throw error;
+    }
+  };
+
   const handleRazorpayPayment = async () => {
     setPaymentError(null);
     
@@ -130,85 +173,51 @@ const Checkout = () => {
         key: paymentConfig.razorpay.keyId,
         amount: razorpayOrderData.amount,
         currency: razorpayOrderData.currency,
-        name: storeInfo?.name || 'Store',
-        description: `Order from ${storeInfo?.name || 'Store'}`,
+        name: storeInfo?.name || 'ShopZap Store',
+        description: `Order from ${storeInfo?.name || 'ShopZap Store'}`,
         order_id: razorpayOrderData.razorpayOrderId,
         handler: async function (response: any) {
           try {
-            setIsProcessing(true);
+            console.log('Payment successful:', response);
             
-            // Prepare order data for verification
-            const orderData = {
-              storeId: cartItems[0].product.store_id,
-              buyerName: customerInfo.fullName,
-              buyerEmail: customerInfo.email,
-              buyerPhone: customerInfo.phone,
-              buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-              totalPrice: getTotalPrice(),
-              items: cartItems.map(item => ({
-                productId: item.product.id,
-                quantity: item.quantity,
-                priceAtPurchase: Number(item.product.price)
-              }))
-            };
-
-            console.log('Verifying payment with data:', {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              orderData
-            });
-
             // Verify payment and create order
-            const verifyResponse = await supabase.functions.invoke('verify-payment', {
-              body: {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderData
-              }
-            });
-
-            console.log('Payment verification response:', verifyResponse);
-
-            if (verifyResponse.data?.success) {
-              clearCart();
-              
-              // Navigate to success page with payment info
-              navigate('/order-success', {
-                state: {
-                  orderId: verifyResponse.data.orderId,
-                  orderItems: cartItems.map(item => ({
-                    id: item.product.id,
-                    name: item.product.name,
-                    price: item.product.price,
-                    quantity: item.quantity,
-                    image: item.product.image_url
-                  })),
-                  total: getTotalPrice(),
-                  customerInfo,
-                  paymentInfo: {
-                    paymentId: response.razorpay_payment_id,
-                    paymentMethod: 'Razorpay',
-                    paymentTime: new Date().toLocaleString('en-IN', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    }),
-                    paymentStatus: 'Paid'
-                  },
-                  estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+            const orderResult = await createOrderAfterPayment(response);
+            
+            // Clear cart and navigate to success page
+            clearCart();
+            
+            navigate('/order-success', {
+              state: {
+                orderId: orderResult.orderId,
+                orderItems: cartItems.map(item => ({
+                  id: item.product.id,
+                  name: item.product.name,
+                  price: item.product.price,
+                  quantity: item.quantity,
+                  image: item.product.image_url
+                })),
+                total: getTotalPrice(),
+                customerInfo,
+                paymentInfo: {
+                  paymentId: response.razorpay_payment_id,
+                  paymentMethod: 'Razorpay',
+                  paymentTime: new Date().toLocaleString('en-IN', {
                     day: '2-digit',
                     month: 'long',
-                    year: 'numeric'
-                  })
-                }
-              });
-            } else {
-              throw new Error(verifyResponse.data?.error || 'Payment verification failed');
-            }
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  }),
+                  paymentStatus: 'Paid'
+                },
+                estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })
+              }
+            });
           } catch (error) {
             console.error('Payment verification error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Payment verification failed';
@@ -257,6 +266,47 @@ const Checkout = () => {
     }
   };
 
+  const createCODOrder = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert({
+          store_id: cartItems[0].product.store_id,
+          buyer_name: customerInfo.fullName,
+          buyer_email: customerInfo.email,
+          buyer_phone: customerInfo.phone,
+          buyer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+          total_price: getTotalPrice(),
+          payment_method: 'cod',
+          payment_status: 'pending',
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: data.id,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price_at_purchase: Number(item.product.price)
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      return { orderId: data.id };
+    } catch (error) {
+      console.error('Error creating COD order:', error);
+      throw error;
+    }
+  };
+
   const retryPayment = () => {
     setPaymentError(null);
     handleRazorpayPayment();
@@ -268,25 +318,11 @@ const Checkout = () => {
 
     try {
       if (customerInfo.paymentMethod === 'online') {
-        // For online payment, trigger Razorpay without creating order first
+        // For online payment, trigger Razorpay
         await handleRazorpayPayment();
       } else {
         // For COD, create order directly
-        const orderResult = await ordersApi.createOrder({
-          storeId: cartItems[0].product.store_id,
-          buyerName: customerInfo.fullName,
-          buyerEmail: customerInfo.email,
-          buyerPhone: customerInfo.phone,
-          buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-          totalPrice: getTotalPrice(),
-          paymentMethod: customerInfo.paymentMethod,
-          paymentStatus: 'pending',
-          items: cartItems.map(item => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-            priceAtPurchase: Number(item.product.price)
-          }))
-        });
+        const orderResult = await createCODOrder();
 
         clearCart();
         navigate('/order-success', {
