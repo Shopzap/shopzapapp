@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,30 +51,34 @@ const CustomizeStore: React.FC = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      setStoreName(data.name);
-      setStoreTagline(data.tagline || '');
-      setStoreDescription(data.description || '');
-      setLogoImage(data.logo_image || null);
-      setBannerImage(data.banner_image || null);
-      setFontStyle(data.font_style || 'Poppins');
+  });
+
+  // Set form data when store data is loaded
+  useEffect(() => {
+    if (store) {
+      setStoreName(store.name);
+      setStoreTagline(store.tagline || '');
+      setStoreDescription(store.description || '');
+      setLogoImage(store.logo_image || null);
+      setBannerImage(store.banner_image || null);
+      setFontStyle(store.font_style || 'Poppins');
 
       // Theme settings
-      if (data.theme) {
-        setSelectedPalette(data.theme.color_palette || 'urban-modern');
+      if (store.theme) {
+        setSelectedPalette(store.theme.color_palette || 'urban-modern');
         setCustomColors({
-          primary: data.theme.primary_color || '',
-          accent: data.theme.accent_color || '',
-          cta: data.theme.cta_color || '',
+          primary: store.theme.primary_color || '',
+          accent: store.theme.accent_color || '',
+          cta: store.theme.cta_color || '',
         });
         setSocialLinks({
-          instagram: data.theme.instagram_url || '',
-          facebook: data.theme.facebook_url || '',
-          whatsapp: data.theme.whatsapp_url || '',
+          instagram: store.theme.instagram_url || '',
+          facebook: store.theme.facebook_url || '',
+          whatsapp: store.theme.whatsapp_url || '',
         });
       }
-    },
-  });
+    }
+  }, [store]);
 
   const publishMutation = useMutation({
     mutationFn: async (storeData: any) => {
@@ -242,33 +247,15 @@ const CustomizeStore: React.FC = () => {
           <h1 className="text-3xl font-bold">Customize Your Store</h1>
           <p className="text-muted-foreground mt-2">Personalize your store's appearance and content</p>
         </div>
-        
-        <Button 
-          onClick={handlePublish}
-          disabled={isPublishing}
-          className="bg-green-600 hover:bg-green-700 text-white"
-          size="lg"
-        >
-          {isPublishing ? (
-            <>
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-              Publishing...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Publish Changes
-            </>
-          )}
-        </Button>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>
           <TabsTrigger value="colors">Colors</TabsTrigger>
           <TabsTrigger value="social">Social</TabsTrigger>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -394,14 +381,14 @@ const CustomizeStore: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <ColorPaletteSelector
-                selected={selectedPalette}
-                onSelect={(palette) => setSelectedPalette(palette)}
+                selectedPalette={selectedPalette}
+                onPaletteSelect={(palette) => setSelectedPalette(palette)}
                 customColors={customColors}
                 onCustomColorChange={setCustomColors}
               />
               <FontStyleSelector
-                selected={fontStyle}
-                onSelect={(font) => setFontStyle(font)}
+                selectedFont={fontStyle}
+                onFontSelect={(font) => setFontStyle(font)}
               />
             </CardContent>
           </Card>
@@ -442,6 +429,142 @@ const CustomizeStore: React.FC = () => {
                   value={socialLinks.whatsapp}
                   onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp: e.target.value })}
                 />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Store Preview</span>
+                <Button 
+                  onClick={handlePublish}
+                  disabled={isPublishing}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Publish Changes
+                    </>
+                  )}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-hidden bg-gray-50 min-h-[500px]">
+                {/* Store Preview */}
+                <div className="bg-white">
+                  {/* Banner Section */}
+                  <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600 overflow-hidden">
+                    {bannerImage && (
+                      <img 
+                        src={bannerImage} 
+                        alt="Store Banner" 
+                        className="w-full h-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-black bg-opacity-20"></div>
+                    
+                    {/* Store Info Overlay */}
+                    <div className="absolute bottom-4 left-4 right-4 text-white">
+                      <div className="flex items-center gap-4">
+                        {logoImage ? (
+                          <img 
+                            src={logoImage} 
+                            alt="Store Logo" 
+                            className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-lg"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-gray-600 text-xl font-bold shadow-lg">
+                            {storeName ? storeName.charAt(0).toUpperCase() : 'S'}
+                          </div>
+                        )}
+                        <div>
+                          <h1 className="text-2xl font-bold" style={{ fontFamily: fontStyle }}>
+                            {storeName || 'Your Store Name'}
+                          </h1>
+                          {storeTagline && (
+                            <p className="text-sm opacity-90">{storeTagline}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Store Content */}
+                  <div className="p-6">
+                    {storeDescription && (
+                      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-gray-700">{storeDescription}</p>
+                      </div>
+                    )}
+
+                    {/* Sample Products */}
+                    <div className="mb-6">
+                      <h2 className="text-xl font-semibold mb-4" style={{ fontFamily: fontStyle }}>
+                        Products
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+                            <div className="h-32 bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-400">Product Image</span>
+                            </div>
+                            <div className="p-3">
+                              <h3 className="font-medium mb-1" style={{ fontFamily: fontStyle }}>
+                                Sample Product {i}
+                              </h3>
+                              <p className="text-lg font-bold" style={{ color: customColors.primary || '#6366f1' }}>
+                                $99.99
+                              </p>
+                              <button 
+                                className="w-full mt-2 px-3 py-1 rounded text-white text-sm font-medium"
+                                style={{ backgroundColor: customColors.cta || '#10b981' }}
+                              >
+                                Add to Cart
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Social Links Preview */}
+                    {(socialLinks.instagram || socialLinks.facebook || socialLinks.whatsapp) && (
+                      <div className="border-t pt-4">
+                        <h3 className="text-lg font-medium mb-3" style={{ fontFamily: fontStyle }}>
+                          Follow Us
+                        </h3>
+                        <div className="flex gap-3">
+                          {socialLinks.instagram && (
+                            <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white text-sm">
+                              IG
+                            </div>
+                          )}
+                          {socialLinks.facebook && (
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm">
+                              FB
+                            </div>
+                          )}
+                          {socialLinks.whatsapp && (
+                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                              WA
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
