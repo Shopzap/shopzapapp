@@ -17,12 +17,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
     console.log('Storefront: storeName from params', storeName);
-    
-    // Force refresh store data when route changes
-    if (storeName) {
-      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
-    }
-  }, [location, storeName, queryClient]);
+  }, [location, storeName]);
 
   // Redirect to home if no store name provided
   if (!storeName || storeName.trim() === '') {
@@ -30,11 +25,11 @@ const Storefront: React.FC = () => {
     return <Navigate to="/" replace />;
   }
   
-  // Fetch store data using the store name with forced refresh
+  // Fetch store data with optimized caching
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching fresh store data for', storeName);
+      console.log('Storefront: Fetching store data for', storeName);
       
       // Try to find the store using the name field (case-insensitive)
       const { data, error } = await supabase
@@ -64,18 +59,18 @@ const Storefront: React.FC = () => {
         throw error;
       }
       
-      console.log('Storefront: Fresh store data received', data);
+      console.log('Storefront: Store data received', data);
       return data;
     },
     enabled: !!storeName,
     retry: 2,
     retryDelay: 1000,
-    // Ensure fresh data on every mount
-    staleTime: 0,
-    gcTime: 0,
+    // Use longer stale time to reduce unnecessary refetches
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
   
-  // Fetch products for the store - only published and active products
+  // Fetch products for the store with optimized caching
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -110,8 +105,9 @@ const Storefront: React.FC = () => {
     enabled: !!store?.id,
     retry: 2,
     retryDelay: 1000,
-    // Ensure fresh data
-    staleTime: 0,
+    // Use longer stale time for products as they don't change as frequently
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    gcTime: 8 * 60 * 1000, // 8 minutes
   });
   
   // Handle errors and loading states

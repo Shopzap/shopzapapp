@@ -1,435 +1,447 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Upload, Palette, FileText, Type, ExternalLink, Paintbrush } from "lucide-react";
-import FontStyleSelector from "@/components/storefront/FontStyleSelector";
-import AboutPageManager from "@/components/storefront/AboutPageManager";
-import ColorPaletteSelector, { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Upload, Loader, Save } from 'lucide-react';
+import ColorPaletteSelector from '@/components/storefront/ColorPaletteSelector';
+import FontStyleSelector from '@/components/storefront/FontStyleSelector';
 
-// Font mapping for Google Fonts
-const FONT_MAP: Record<string, string> = {
-  'Inter': 'Inter:wght@300;400;500;600;700',
-  'Poppins': 'Poppins:wght@300;400;500;600;700',
-  'Montserrat': 'Montserrat:wght@300;400;500;600;700',
-  'Lato': 'Lato:wght@300;400;700',
-  'Rubik': 'Rubik:wght@300;400;500;600;700',
-  'DM Sans': 'DM+Sans:wght@300;400;500;600;700',
-  'Manrope': 'Manrope:wght@300;400;500;600;700',
-  'Nunito': 'Nunito:wght@300;400;500;600;700',
-  'Mulish': 'Mulish:wght@300;400;500;600;700',
-  'Ubuntu': 'Ubuntu:wght@300;400;500;700',
-  'Playfair Display': 'Playfair+Display:wght@400;500;600;700',
-  'Merriweather': 'Merriweather:wght@300;400;700',
-  'EB Garamond': 'EB+Garamond:wght@400;500;600;700',
-  'Fredoka': 'Fredoka:wght@300;400;500;600;700',
-  'Pacifico': 'Pacifico',
-  'Baloo 2': 'Baloo+2:wght@400;500;600;700',
-};
-
-const CustomizeStore = () => {
-  const { user } = useAuth();
+const CustomizeStore: React.FC = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedFont, setSelectedFont] = useState('Poppins');
-  const [selectedColorPalette, setSelectedColorPalette] = useState('urban-modern');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [storeName, setStoreName] = useState('');
+  const [storeTagline, setStoreTagline] = useState('');
+  const [storeDescription, setStoreDescription] = useState('');
+  const [logoImage, setLogoImage] = useState<string | null>(null);
+  const [bannerImage, setBannerImage] = useState<string | null>(null);
+  const [selectedPalette, setSelectedPalette] = useState('urban-modern');
+  const [fontStyle, setFontStyle] = useState('Poppins');
+  const [customColors, setCustomColors] = useState({
+    primary: '',
+    accent: '',
+    cta: '',
+  });
+  const [socialLinks, setSocialLinks] = useState({
+    instagram: '',
+    facebook: '',
+    whatsapp: '',
+  });
 
-  const { data: store, isLoading } = useQuery({
-    queryKey: ['userStore', user?.id],
+  // Fetch store data
+  const { data: store, isLoading, error } = useQuery({
+    queryKey: ['store'],
     queryFn: async () => {
-      if (!user?.id) return null;
-      
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error('No session found');
+
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', session.session.user.id)
         .single();
-      
+
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id,
-  });
+    onSuccess: (data) => {
+      setStoreName(data.name);
+      setStoreTagline(data.tagline || '');
+      setStoreDescription(data.description || '');
+      setLogoImage(data.logo_image || null);
+      setBannerImage(data.banner_image || null);
+      setFontStyle(data.font_style || 'Poppins');
 
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    tagline: '',
-    logo_image: '',
-    banner_image: '',
-    font_style: 'Poppins',
-    theme: {}
-  });
-
-  useEffect(() => {
-    if (store) {
-      setFormData({
-        name: store.name || '',
-        description: store.description || '',
-        tagline: store.tagline || '',
-        logo_image: store.logo_image || '',
-        banner_image: store.banner_image || '',
-        font_style: store.font_style || 'Poppins',
-        theme: store.theme || {}
-      });
-      setSelectedFont(store.font_style || 'Poppins');
-      
-      // Set selected color palette from theme
-      const theme = store.theme as any;
-      if (theme?.color_palette) {
-        setSelectedColorPalette(theme.color_palette);
+      // Theme settings
+      if (data.theme) {
+        setSelectedPalette(data.theme.color_palette || 'urban-modern');
+        setCustomColors({
+          primary: data.theme.primary_color || '',
+          accent: data.theme.accent_color || '',
+          cta: data.theme.cta_color || '',
+        });
+        setSocialLinks({
+          instagram: data.theme.instagram_url || '',
+          facebook: data.theme.facebook_url || '',
+          whatsapp: data.theme.whatsapp_url || '',
+        });
       }
-    }
-  }, [store]);
+    },
+  });
 
-  const updateStoreMutation = useMutation({
-    mutationFn: async (updates: Partial<typeof formData>) => {
-      if (!store?.id) throw new Error('No store found');
+  const publishMutation = useMutation({
+    mutationFn: async (storeData: any) => {
+      console.log('Publishing store customization...', storeData);
       
-      console.log('Saving store updates:', updates);
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('stores')
         .update({
-          ...updates,
+          name: storeData.name,
+          tagline: storeData.tagline,
+          description: storeData.description,
+          logo_image: storeData.logo_image,
+          banner_image: storeData.banner_image,
+          font_style: storeData.font_style,
+          theme: storeData.theme,
           updated_at: new Date().toISOString()
         })
-        .eq('id', store.id)
-        .select()
-        .single();
+        .eq('id', store?.id);
+
+      if (error) throw error;
       
-      if (error) {
-        console.error('Error updating store:', error);
-        throw error;
-      }
-      
-      console.log('Store updated successfully:', data);
-      return data;
+      return storeData;
     },
     onSuccess: (data) => {
+      console.log('Store customization published successfully');
+      
+      // Invalidate and refetch store data to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['store'] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-name', data.name] });
+      
       toast({
-        title: "Store Updated Successfully!",
-        description: "Your changes have been saved and will appear on your live store.",
+        title: "Store Published!",
+        description: "Your store customization has been saved and published successfully.",
       });
-      
-      // Invalidate queries to refresh cached data
-      queryClient.invalidateQueries({ queryKey: ['userStore', user?.id] });
-      queryClient.invalidateQueries({ queryKey: ['store-by-name'] });
-      
-      // Force refresh any cached store data
-      if (store?.name) {
-        queryClient.invalidateQueries({ queryKey: ['store-by-name', store.name] });
-      }
     },
     onError: (error) => {
-      console.error('Error updating store:', error);
+      console.error('Error publishing store:', error);
       toast({
-        title: "Error",
-        description: "Failed to update store. Please try again.",
+        title: "Publishing Failed",
+        description: "Failed to publish store customization. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const updatedData = {
-      ...formData,
-      font_style: selectedFont
-    };
-    console.log('Submitting form data:', updatedData);
-    updateStoreMutation.mutate(updatedData);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleFontSave = () => {
-    console.log('Saving font style:', selectedFont);
-    updateStoreMutation.mutate({ 
-      font_style: selectedFont,
-      theme: {
-        ...formData.theme,
-        font_style: selectedFont
-      }
-    });
-  };
-
-  const handleColorPaletteChange = (palette: any) => {
-    setSelectedColorPalette(palette.id);
+  const handlePublish = async () => {
+    if (!store) return;
     
-    // Update the theme with the selected colors
-    const updatedTheme = {
-      ...formData.theme,
-      color_palette: palette.id,
-      primary_color: palette.primary,
-      accent_color: palette.accent,
-      cta_color: palette.cta
-    };
-    
-    setFormData({
-      ...formData,
-      theme: updatedTheme
-    });
-    
-    // Auto-save the color palette
-    console.log('Saving color palette:', palette.id);
-    updateStoreMutation.mutate({ 
-      theme: updatedTheme
-    });
-  };
-
-  const openLiveStore = () => {
-    if (store?.name) {
-      const storeUrl = `/store/${encodeURIComponent(store.name)}`;
-      window.open(storeUrl, '_blank');
+    setIsPublishing(true);
+    try {
+      await publishMutation.mutateAsync({
+        name: storeName,
+        tagline: storeTagline,
+        description: storeDescription,
+        logo_image: logoImage,
+        banner_image: bannerImage,
+        font_style: fontStyle,
+        theme: {
+          color_palette: selectedPalette,
+          primary_color: customColors.primary,
+          accent_color: customColors.accent,
+          cta_color: customColors.cta,
+          font_style: fontStyle,
+          instagram_url: socialLinks.instagram,
+          facebook_url: socialLinks.facebook,
+          whatsapp_url: socialLinks.whatsapp
+        }
+      });
+    } catch (error) {
+      console.error('Publish error:', error);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
-  // Load Google Font dynamically for preview only
-  React.useEffect(() => {
-    const googleFontUrl = FONT_MAP[selectedFont];
-    if (googleFontUrl) {
-      const existingLink = document.querySelector(`link[href*="${googleFontUrl}"]`);
-      if (!existingLink) {
-        const link = document.createElement('link');
-        link.href = `https://fonts.googleapis.com/css2?family=${googleFontUrl}&display=swap`;
-        link.rel = 'stylesheet';
-        document.head.appendChild(link);
-      }
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `logos/${store?.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('store-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('store-images')
+        .getPublicUrl(filePath);
+
+      setLogoImage(data.publicUrl);
+    } catch (error: any) {
+      toast({
+        title: "Error uploading logo",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  }, [selectedFont]);
+  };
+
+  const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `banners/${store?.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('store-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('store-images')
+        .getPublicUrl(filePath);
+
+      setBannerImage(data.publicUrl);
+    } catch (error: any) {
+      toast({
+        title: "Error uploading banner",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoImage(null);
+  };
+
+  const handleRemoveBanner = () => {
+    setBannerImage(null);
+  };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading store settings...</p>
+        </div>
       </div>
     );
   }
 
   if (!store) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Store Found</h2>
-          <p className="text-gray-600">Please create a store first to customize it.</p>
+          <h2 className="text-2xl font-bold mb-4">Store Not Found</h2>
+          <p className="text-muted-foreground">Please complete the onboarding process first.</p>
         </div>
       </div>
     );
   }
 
-  // Get current color palette
-  const currentPalette = COLOR_PALETTES.find(p => p.id === selectedColorPalette) || COLOR_PALETTES[0];
-
-  // Apply selected font only to preview areas, not globally
-  const previewFontFamily = `${selectedFont}, sans-serif`;
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Customize Store</h1>
-          <p className="text-gray-600 mt-2">Personalize your store's appearance and content</p>
+          <h1 className="text-3xl font-bold">Customize Your Store</h1>
+          <p className="text-muted-foreground mt-2">Personalize your store's appearance and content</p>
         </div>
+        
         <Button 
-          onClick={openLiveStore}
-          variant="outline"
-          className="flex items-center gap-2"
+          onClick={handlePublish}
+          disabled={isPublishing}
+          className="bg-green-600 hover:bg-green-700 text-white"
+          size="lg"
         >
-          <ExternalLink className="w-4 h-4" />
-          View Live Store
+          {isPublishing ? (
+            <>
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+              Publishing...
+            </>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Publish Changes
+            </>
+          )}
         </Button>
       </div>
 
-      <Tabs defaultValue="basic" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="basic" className="flex items-center space-x-2">
-            <Palette className="w-4 h-4" />
-            <span>Basic Info</span>
-          </TabsTrigger>
-          <TabsTrigger value="colors" className="flex items-center space-x-2">
-            <Paintbrush className="w-4 h-4" />
-            <span>Colors</span>
-          </TabsTrigger>
-          <TabsTrigger value="fonts" className="flex items-center space-x-2">
-            <Type className="w-4 h-4" />
-            <span>Fonts</span>
-          </TabsTrigger>
-          <TabsTrigger value="about" className="flex items-center space-x-2">
-            <FileText className="w-4 h-4" />
-            <span>About Page</span>
-          </TabsTrigger>
-          <TabsTrigger value="preview" className="flex items-center space-x-2">
-            <span>Preview</span>
-          </TabsTrigger>
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="images">Images</TabsTrigger>
+          <TabsTrigger value="colors">Colors</TabsTrigger>
+          <TabsTrigger value="social">Social</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="basic">
+        <TabsContent value="general" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Basic Store Information</CardTitle>
+              <CardTitle>General Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label htmlFor="name">Store Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="Your Store Name"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="tagline">Tagline</Label>
-                  <Input
-                    id="tagline"
-                    name="tagline"
-                    value={formData.tagline}
-                    onChange={handleInputChange}
-                    placeholder="A catchy tagline for your store"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    placeholder="Describe what your store is about..."
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={updateStoreMutation.isPending}
-                  className="w-full"
-                >
-                  {updateStoreMutation.isPending ? 'Saving...' : 'Save Basic Info'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="colors">
-          <Card>
-            <CardHeader>
-              <CardTitle>Color Themes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ColorPaletteSelector
-                selectedPalette={selectedColorPalette}
-                onPaletteChange={handleColorPaletteChange}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="fonts">
-          <Card>
-            <CardHeader>
-              <CardTitle>Font Style</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <FontStyleSelector 
-                  value={selectedFont}
-                  onChange={setSelectedFont}
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="store-name">Store Name</Label>
+                <Input
+                  id="store-name"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
                 />
-                
-                <Button
-                  onClick={handleFontSave}
-                  disabled={updateStoreMutation.isPending}
-                  className="w-full"
-                >
-                  {updateStoreMutation.isPending ? 'Saving...' : 'Save Font Style'}
-                </Button>
+              </div>
+              <div>
+                <Label htmlFor="store-tagline">Tagline</Label>
+                <Input
+                  id="store-tagline"
+                  value={storeTagline}
+                  onChange={(e) => setStoreTagline(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="store-description">Description</Label>
+                <Textarea
+                  id="store-description"
+                  value={storeDescription}
+                  onChange={(e) => setStoreDescription(e.target.value)}
+                  rows={4}
+                />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="about">
+        <TabsContent value="images" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>About Page</CardTitle>
+              <CardTitle>Images</CardTitle>
             </CardHeader>
-            <CardContent>
-              <AboutPageManager />
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="logo-upload">Logo Image</Label>
+                <div className="flex items-center space-x-4">
+                  {logoImage ? (
+                    <div className="relative">
+                      <img
+                        src={logoImage}
+                        alt="Logo Preview"
+                        className="h-20 w-20 rounded-full object-cover"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 bg-background text-muted-foreground hover:bg-secondary"
+                        onClick={handleRemoveLogo}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center text-muted-foreground">
+                      No Logo
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    id="logo-upload"
+                    className="hidden"
+                    onChange={handleLogoUpload}
+                  />
+                  <Label htmlFor="logo-upload" className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-md px-4 py-2 cursor-pointer">
+                    Upload Logo
+                  </Label>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="banner-upload">Banner Image</Label>
+                <div className="flex items-center space-x-4">
+                  {bannerImage ? (
+                    <div className="relative">
+                      <img
+                        src={bannerImage}
+                        alt="Banner Preview"
+                        className="h-20 w-40 object-cover rounded-md"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 bg-background text-muted-foreground hover:bg-secondary"
+                        onClick={handleRemoveBanner}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-20 w-40 rounded-md bg-secondary flex items-center justify-center text-muted-foreground">
+                      No Banner
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    id="banner-upload"
+                    className="hidden"
+                    onChange={handleBannerUpload}
+                  />
+                  <Label htmlFor="banner-upload" className="bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium rounded-md px-4 py-2 cursor-pointer">
+                    Upload Banner
+                  </Label>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="preview">
+        <TabsContent value="colors" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Store Preview</CardTitle>
+              <CardTitle>Theme</CardTitle>
             </CardHeader>
-            <CardContent>
-              {/* Apply both font and color palette to the preview area */}
-              <div 
-                className="p-6 border rounded-lg bg-white" 
-                style={{ 
-                  fontFamily: previewFontFamily,
-                  color: currentPalette.primary
-                }}
-              >
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <h2 className="text-3xl font-bold">
-                      {formData.name || 'Your Store Name'}
-                    </h2>
-                    {formData.tagline && (
-                      <p className="text-lg mt-2" style={{ color: `${currentPalette.primary}99` }}>
-                        {formData.tagline}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {formData.description && (
-                    <div 
-                      className="mt-6 p-4 rounded-lg"
-                      style={{ backgroundColor: currentPalette.accent }}
-                    >
-                      <p style={{ color: currentPalette.primary }}>{formData.description}</p>
-                    </div>
-                  )}
-                  
-                  <div className="mt-8">
-                    <h3 className="text-xl font-semibold mb-4">Sample Product</h3>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold">Product Name</h4>
-                      <p className="text-sm mt-1" style={{ color: `${currentPalette.primary}99` }}>
-                        This is how product descriptions will look.
-                      </p>
-                      <p className="text-lg font-bold mt-2">₹999</p>
-                      <button 
-                        className="mt-2 px-4 py-2 text-white rounded-md text-sm"
-                        style={{ backgroundColor: currentPalette.cta }}
-                      >
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
-                </div>
+            <CardContent className="space-y-4">
+              <ColorPaletteSelector
+                selected={selectedPalette}
+                onSelect={(palette) => setSelectedPalette(palette)}
+                customColors={customColors}
+                onCustomColorChange={setCustomColors}
+              />
+              <FontStyleSelector
+                selected={fontStyle}
+                onSelect={(font) => setFontStyle(font)}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="social" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Social Links</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="instagram-link">Instagram</Label>
+                <Input
+                  id="instagram-link"
+                  type="url"
+                  placeholder="https://instagram.com/yourstore"
+                  value={socialLinks.instagram}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="facebook-link">Facebook</Label>
+                <Input
+                  id="facebook-link"
+                  type="url"
+                  placeholder="https://facebook.com/yourstore"
+                  value={socialLinks.facebook}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="whatsapp-link">WhatsApp</Label>
+                <Input
+                  id="whatsapp-link"
+                  type="url"
+                  placeholder="https://wa.me/yournumber"
+                  value={socialLinks.whatsapp}
+                  onChange={(e) => setSocialLinks({ ...socialLinks, whatsapp: e.target.value })}
+                />
               </div>
             </CardContent>
           </Card>
