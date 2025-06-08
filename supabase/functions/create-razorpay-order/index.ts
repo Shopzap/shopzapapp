@@ -74,7 +74,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Create Basic Auth header - key_id:key_secret encoded in base64
     const credentials = `${razorpayKeyId}:${razorpaySecret}`;
-    const encodedCredentials = btoa(credentials);
+    const encoder = new TextEncoder();
+    const data = encoder.encode(credentials);
+    const encodedCredentials = btoa(String.fromCharCode(...Array.from(data)));
     
     console.log('Making request to Razorpay API...');
     console.log('Auth header preview:', `Basic ${encodedCredentials.substring(0, 20)}...`);
