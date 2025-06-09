@@ -52,9 +52,8 @@ const Cart = () => {
   };
 
   const handleContinueShopping = () => {
-    if (store && store.username) {
-      navigate(`/store/${store.username}`);
-    } else if (storeName) {
+    // Always use storeName (which is the username from the URL) for navigation
+    if (storeName) {
       navigate(`/store/${storeName}`);
     } else {
       navigate('/');
