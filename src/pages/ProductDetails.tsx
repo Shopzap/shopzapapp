@@ -14,6 +14,7 @@ import ProductInfo from '@/components/product/ProductInfo';
 import ProductFeatures from '@/components/product/ProductFeatures';
 import StoreInfo from '@/components/product/StoreInfo';
 import NotFound from './NotFound';
+import StorefrontLoader from '@/components/storefront/StorefrontLoader';
 
 const ProductDetails = () => {
   const { storeName, productSlug } = useParams<{ storeName: string; productSlug: string }>();
@@ -23,13 +24,17 @@ const ProductDetails = () => {
   const [isWishlisted, setIsWishlisted] = useState(false);
 
   // Fetch store data
-  const { data: store } = useQuery({
+  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
+      if (!storeName) {
+        throw new Error('No store name provided');
+      }
+      
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeName!)
+        .ilike('name', storeName)
         .single();
       if (error) throw error;
       return data;
@@ -38,10 +43,10 @@ const ProductDetails = () => {
   });
 
   // Fetch product data
-  const { data: product, isLoading, error } = useQuery({
+  const { data: product, isLoading: productLoading, error: productError } = useQuery({
     queryKey: ['product', productSlug],
     queryFn: async () => {
-      if (!store?.id) return null;
+      if (!store?.id || !productSlug) return null;
       
       const { data, error } = await supabase
         .from('products')
@@ -95,16 +100,24 @@ const ProductDetails = () => {
     toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
-  if (error || !product) {
+  // Show loading state while store or product is being fetched
+  if (storeLoading || productLoading) {
+    return <StorefrontLoader storeName={storeName} message="Loading product..." />;
+  }
+
+  // Show error page if store not found ONLY after loading is complete
+  if (storeError || (!store && !storeLoading)) {
     return <NotFound />;
   }
 
-  if (isLoading || !store) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
-      </div>
-    );
+  // Show error page if product not found ONLY after loading is complete
+  if (productError || (!product && !productLoading && store)) {
+    return <NotFound />;
+  }
+
+  // Don't render content until both store and product data are available
+  if (!store || !product) {
+    return <StorefrontLoader storeName={storeName} message="Loading product..." />;
   }
 
   return (

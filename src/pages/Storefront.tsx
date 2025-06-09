@@ -3,9 +3,9 @@ import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader } from "lucide-react";
 import ModernStorefront from "@/components/storefront/ModernStorefront";
 import StoreNotFound from "@/components/storefront/StoreNotFound";
+import StorefrontLoader from "@/components/storefront/StorefrontLoader";
 import { Tables } from "@/integrations/supabase/types";
 import { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
 
@@ -74,8 +74,8 @@ const Storefront: React.FC = () => {
     enabled: !!storeName,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 30 * 1000, // Reduced from 5 minutes to 30 seconds for faster updates
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
   
   // Fetch products for the store with proper filtering
@@ -90,7 +90,6 @@ const Storefront: React.FC = () => {
       }
       
       try {
-        // Fetch active and published products
         const { data, error } = await supabase
           .from('products')
           .select('*')
@@ -114,8 +113,8 @@ const Storefront: React.FC = () => {
     enabled: !!store?.id,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
   
   // Handle errors and loading states
@@ -144,27 +143,20 @@ const Storefront: React.FC = () => {
     return () => window.removeEventListener('focus', handleFocus);
   }, [queryClient, storeName]);
   
-  // Show error page if store not found
-  if (storeError) {
+  // Show loading state while store is being fetched
+  if (storeLoading) {
+    return <StorefrontLoader storeName={storeName} />;
+  }
+  
+  // Show error page if store not found ONLY after loading is complete
+  if (storeError || (!store && !storeLoading)) {
     console.error('Storefront: Rendering error page due to store error');
     return <StoreNotFound storeName={storeName} />;
   }
   
-  // Loading state
-  if (storeLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <Loader className="h-8 w-8 animate-spin text-blue-600 mb-4" />
-        <p className="text-gray-600 text-lg">Loading store...</p>
-        <p className="text-gray-500 text-sm mt-2">Store: {storeName}</p>
-      </div>
-    );
-  }
-  
-  // Store not found (should be caught by error above, but just in case)
+  // Don't render content until store data is available
   if (!store) {
-    console.error('Storefront: No store data available');
-    return <StoreNotFound storeName={storeName} />;
+    return <StorefrontLoader storeName={storeName} />;
   }
 
   // Ensure products is always an array
@@ -181,7 +173,6 @@ const Storefront: React.FC = () => {
   // Enhanced store object with properly mapped colors
   const enhancedStore = {
     ...store,
-    // Use the new clear color system with proper fallbacks
     primaryColor: themeData.primaryColor || selectedPalette.primary,
     textColor: themeData.textColor || '#F9FAFB',
     buttonColor: themeData.buttonColor || selectedPalette.cta,
@@ -190,7 +181,6 @@ const Storefront: React.FC = () => {
     font_style: store.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
-      // Ensure theme object has the mapped colors too
       primaryColor: themeData.primaryColor || selectedPalette.primary,
       textColor: themeData.textColor || '#F9FAFB',
       buttonColor: themeData.buttonColor || selectedPalette.cta,

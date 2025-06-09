@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react';
 import StoreHeader from '@/components/storefront/StoreHeader';
 import StoreNotFound from '@/components/storefront/StoreNotFound';
+import StorefrontLoader from '@/components/storefront/StorefrontLoader';
 
 const Cart = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -58,20 +59,19 @@ const Cart = () => {
     }
   };
 
-  if (storeError) {
-    return <StoreNotFound storeName={storeName} />;
-  }
-
+  // Show loading state while store is being fetched
   if (storeLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
+    return <StorefrontLoader storeName={storeName} message="Loading cart..." />;
   }
 
-  if (!store) {
+  // Show error page if store not found ONLY after loading is complete
+  if (storeError || (!store && !storeLoading)) {
     return <StoreNotFound storeName={storeName} />;
+  }
+
+  // Don't render content until store data is available
+  if (!store) {
+    return <StorefrontLoader storeName={storeName} message="Loading cart..." />;
   }
 
   const storeWithTheme = {

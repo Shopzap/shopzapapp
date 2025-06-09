@@ -3,10 +3,10 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader } from "lucide-react";
 import StoreNotFound from "@/components/storefront/StoreNotFound";
 import StorefrontNavbar from "@/components/storefront/StorefrontNavbar";
 import StorefrontAbout from "@/components/storefront/StorefrontAbout";
+import StorefrontLoader from "@/components/storefront/StorefrontLoader";
 
 const StorefrontAboutPage: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
@@ -54,21 +54,19 @@ const StorefrontAboutPage: React.FC = () => {
     enabled: !!storeName,
   });
   
-  if (storeError) {
-    return <StoreNotFound storeName={storeName} />;
-  }
-  
+  // Show loading state while store is being fetched
   if (storeLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading store...</p>
-      </div>
-    );
+    return <StorefrontLoader storeName={storeName} message="Loading about page..." />;
   }
   
-  if (!store) {
+  // Show error page if store not found ONLY after loading is complete
+  if (storeError || (!store && !storeLoading)) {
     return <StoreNotFound storeName={storeName} />;
+  }
+  
+  // Don't render content until store data is available
+  if (!store) {
+    return <StorefrontLoader storeName={storeName} message="Loading about page..." />;
   }
 
   const socialLinks = {
