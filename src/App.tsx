@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,46 +7,74 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { CartProvider } from "@/hooks/useCart";
+import React, { Suspense, lazy } from 'react';
+
+// Eager load critical pages
 import Index from "./pages/Index";
 import Features from "./pages/Features";
 import Pricing from "./pages/Pricing";
-import StoreThemes from "./pages/StoreThemes";
-import EmbedButton from "./pages/EmbedButton";
-import Help from "./pages/Help";
-import Blog from "./pages/Blog";
-import Tutorials from "./pages/Tutorials";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import RefundPolicy from "./pages/RefundPolicy";
-import ShippingPolicy from "./pages/ShippingPolicy";
-import PricingPolicy from "./pages/PricingPolicy";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
-import ProductManager from "./pages/ProductManager";
-import Orders from "./pages/Orders";
-import Settings from "./pages/Settings";
-import Onboarding from "./pages/Onboarding";
-import StoreBuilder from "./pages/StoreBuilder";
-import Storefront from "./pages/Storefront";
-import StorefrontAbout from "./pages/StorefrontAbout";
-import ProductDetails from "./pages/ProductDetails";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import OrderTracking from "./pages/OrderTracking";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import DashboardLayout from "./components/layouts/DashboardLayout";
-import CustomizeStore from "./pages/CustomizeStore";
-import Analytics from "./pages/Analytics";
-import ErrorBoundary from "./components/ErrorBoundary";
-import LegacyCartRedirect from "./components/cart/LegacyCartRedirect";
 import Contact from "./pages/Contact";
 
-const queryClient = new QueryClient();
+// Lazy load non-critical pages
+const StoreThemes = lazy(() => import("./pages/StoreThemes"));
+const EmbedButton = lazy(() => import("./pages/EmbedButton"));
+const Help = lazy(() => import("./pages/Help"));
+const Blog = lazy(() => import("./pages/Blog"));
+const Tutorials = lazy(() => import("./pages/Tutorials"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
+const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
+const PricingPolicy = lazy(() => import("./pages/PricingPolicy"));
+
+// Lazy load dashboard pages
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ProductManager = lazy(() => import("./pages/ProductManager"));
+const Orders = lazy(() => import("./pages/Orders"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const StoreBuilder = lazy(() => import("./pages/StoreBuilder"));
+const CustomizeStore = lazy(() => import("./pages/CustomizeStore"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+
+// Lazy load storefront pages (critical but can be optimized)
+const Storefront = lazy(() => import("./pages/Storefront"));
+const StorefrontAbout = lazy(() => import("./pages/StorefrontAbout"));
+const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import DashboardLayout from "./components/layouts/DashboardLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
+import LegacyCartRedirect from "./components/cart/LegacyCartRedirect";
+import LazyComponentWrapper from "./components/LazyComponentWrapper";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+// Optimized loading fallback for storefront
+const StorefrontFallback = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+    <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mb-4"></div>
+    <p className="text-muted-foreground">Loading store...</p>
+  </div>
+);
 
 const App = () => {
   return (
@@ -65,29 +94,82 @@ const App = () => {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   
-                  {/* New public pages */}
+                  {/* New public pages - lazy loaded */}
                   <Route path="/features" element={<Features />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/store-themes" element={<StoreThemes />} />
-                  <Route path="/embed-button" element={<EmbedButton />} />
-                  <Route path="/help" element={<Help />} />
-                  <Route path="/blog" element={<Blog />} />
-                  <Route path="/tutorials" element={<Tutorials />} />
                   <Route path="/contact" element={<Contact />} />
                   
-                  {/* Legal pages */}
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/refund" element={<RefundPolicy />} />
-                  <Route path="/shipping" element={<ShippingPolicy />} />
-                  <Route path="/pricing-policy" element={<PricingPolicy />} />
+                  <Route path="/store-themes" element={
+                    <LazyComponentWrapper>
+                      <StoreThemes />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/embed-button" element={
+                    <LazyComponentWrapper>
+                      <EmbedButton />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/help" element={
+                    <LazyComponentWrapper>
+                      <Help />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/blog" element={
+                    <LazyComponentWrapper>
+                      <Blog />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/tutorials" element={
+                    <LazyComponentWrapper>
+                      <Tutorials />
+                    </LazyComponentWrapper>
+                  } />
+                  
+                  {/* Legal pages - lazy loaded */}
+                  <Route path="/terms" element={
+                    <LazyComponentWrapper>
+                      <Terms />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/privacy" element={
+                    <LazyComponentWrapper>
+                      <Privacy />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/refund" element={
+                    <LazyComponentWrapper>
+                      <RefundPolicy />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/shipping" element={
+                    <LazyComponentWrapper>
+                      <ShippingPolicy />
+                    </LazyComponentWrapper>
+                  } />
+                  <Route path="/pricing-policy" element={
+                    <LazyComponentWrapper>
+                      <PricingPolicy />
+                    </LazyComponentWrapper>
+                  } />
                   
                   {/* Legacy cart route - redirect to store-specific cart */}
                   <Route path="/cart" element={<LegacyCartRedirect />} />
                   
-                  {/* Protected routes */}
-                  <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                  <Route path="/store-builder" element={<ProtectedRoute><StoreBuilder /></ProtectedRoute>} />
+                  {/* Protected routes - lazy loaded */}
+                  <Route path="/onboarding" element={
+                    <ProtectedRoute>
+                      <LazyComponentWrapper>
+                        <Onboarding />
+                      </LazyComponentWrapper>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/store-builder" element={
+                    <ProtectedRoute>
+                      <LazyComponentWrapper>
+                        <StoreBuilder />
+                      </LazyComponentWrapper>
+                    </ProtectedRoute>
+                  } />
                   <Route path="/order-success" element={<OrderSuccess />} />
                   
                   {/* Order tracking routes - make these accessible without authentication */}
@@ -98,70 +180,92 @@ const App = () => {
                   {/* Store routes with proper CartProvider scoping */}
                   <Route path="/store/:storeName" element={
                     <CartProvider>
-                      <Storefront />
+                      <Suspense fallback={<StorefrontFallback />}>
+                        <Storefront />
+                      </Suspense>
                     </CartProvider>
                   } />
                   <Route path="/store/:storeName/about" element={
                     <CartProvider>
-                      <StorefrontAbout />
+                      <Suspense fallback={<StorefrontFallback />}>
+                        <StorefrontAbout />
+                      </Suspense>
                     </CartProvider>
                   } />
                   <Route path="/store/:storeName/cart" element={
                     <CartProvider>
-                      <Cart />
+                      <Suspense fallback={<StorefrontFallback />}>
+                        <Cart />
+                      </Suspense>
                     </CartProvider>
                   } />
                   <Route path="/store/:storeName/checkout" element={
                     <CartProvider>
-                      <Checkout />
+                      <Suspense fallback={<StorefrontFallback />}>
+                        <Checkout />
+                      </Suspense>
                     </CartProvider>
                   } />
                   <Route path="/store/:storeName/product/:productSlug" element={
                     <CartProvider>
-                      <ProductDetails />
+                      <Suspense fallback={<StorefrontFallback />}>
+                        <ProductDetails />
+                      </Suspense>
                     </CartProvider>
                   } />
                   
-                  {/* Dashboard routes with sidebar layout */}
+                  {/* Dashboard routes with sidebar layout - lazy loaded */}
                   <Route path="/dashboard" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <Dashboard />
+                        <LazyComponentWrapper>
+                          <Dashboard />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/products" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <ProductManager />
+                        <LazyComponentWrapper>
+                          <ProductManager />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/orders" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <Orders />
+                        <LazyComponentWrapper>
+                          <Orders />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/customize-store" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <CustomizeStore />
+                        <LazyComponentWrapper>
+                          <CustomizeStore />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/analytics" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <Analytics />
+                        <LazyComponentWrapper>
+                          <Analytics />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/dashboard/settings" element={
                     <ProtectedRoute>
                       <DashboardLayout>
-                        <Settings />
+                        <LazyComponentWrapper>
+                          <Settings />
+                        </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>
                   } />

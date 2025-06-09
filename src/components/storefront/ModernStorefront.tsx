@@ -1,165 +1,193 @@
 
 import React, { useState, useMemo } from 'react';
-import { Grid, List, Filter, SlidersHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingCart, Search, Filter, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import ModernStorefrontHeader from './ModernStorefrontHeader';
-import ModernProductGrid from './ModernProductGrid';
+import ModernProductCard from './ModernProductCard';
+import ProductGridSkeleton from './ProductGridSkeleton';
+import OptimizedImage from './StoreImageOptimizer';
+import { useCart } from '@/hooks/useCart';
 import { Tables } from '@/integrations/supabase/types';
 
 interface ModernStorefrontProps {
-  store: Tables<'stores'>;
+  store: any;
   products: Tables<'products'>[];
   isLoading?: boolean;
 }
 
-const ModernStorefront: React.FC<ModernStorefrontProps> = ({
-  store,
-  products,
-  isLoading = false
+const ModernStorefront: React.FC<ModernStorefrontProps> = ({ 
+  store, 
+  products, 
+  isLoading = false 
 }) => {
+  const navigate = useNavigate();
+  const { getTotalItems } = useCart();
+  const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter and sort products
-  const sortedProducts = useMemo(() => {
-    const filtered = [...products];
+  // Memoized filtered products for better performance
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) return products;
     
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'price-asc':
-          return a.price - b.price;
-        case 'price-desc':
-          return b.price - a.price;
-        case 'oldest':
-          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-        case 'newest':
-        default:
-          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-      }
-    });
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [products, searchTerm]);
 
-    return filtered;
-  }, [products, sortBy]);
+  const handleCartClick = () => {
+    navigate(`/store/${store.name}/cart`);
+  };
+
+  const totalItems = getTotalItems();
+  
+  // Extract colors from theme with fallbacks
+  const theme = store.theme || {};
+  const primaryColor = theme.primaryColor || store.primaryColor || '#6c5ce7';
+  const buttonColor = theme.buttonColor || store.buttonColor || '#6c5ce7';
+  const buttonTextColor = theme.buttonTextColor || store.buttonTextColor || '#FFFFFF';
+  const fontFamily = store.font_style || theme.font_style || 'Poppins';
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ModernStorefrontHeader store={store} />
+        <div className="container mx-auto px-4 py-8">
+          <ProductGridSkeleton count={8} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div 
+      className="min-h-screen bg-gray-50"
+      style={{ fontFamily }}
+    >
       <ModernStorefrontHeader store={store} />
       
-      {/* Hero Section */}
-      <section className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-8 sm:py-12">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-4">
-              {store.name}
-            </h1>
-            {store.tagline && (
-              <p className="text-lg text-gray-600 mb-6">
-                {store.tagline}
-              </p>
-            )}
-            {store.description && (
-              <p className="text-gray-700 max-w-2xl mx-auto">
-                {store.description}
-              </p>
-            )}
+      {/* Hero Banner */}
+      {store.banner_image && (
+        <div className="relative h-48 md:h-64 overflow-hidden">
+          <OptimizedImage
+            src={store.banner_image}
+            alt={`${store.name} banner`}
+            className="w-full h-full object-cover"
+            loading="eager"
+            width={1200}
+            height={400}
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+            <div className="text-center text-white">
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">{store.name}</h1>
+              {store.tagline && (
+                <p className="text-lg md:text-xl opacity-90">{store.tagline}</p>
+              )}
+            </div>
           </div>
         </div>
-      </section>
+      )}
 
-      {/* Filters & Controls */}
-      <section className="bg-white border-b border-gray-200 sticky top-16 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 hidden sm:block">
-                {sortedProducts.length} products
-              </span>
-              
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+            </Button>
+            
+            <div className="flex border rounded-md">
               <Button
-                variant="outline"
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
                 size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-                className="hidden sm:flex"
+                onClick={() => setViewMode('grid')}
+                className="rounded-r-none"
               >
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-l-none"
+              >
+                <List className="h-4 w-4" />
               </Button>
             </div>
-
-            <div className="flex items-center gap-3">
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                  <SelectItem value="name-asc">Name: A to Z</SelectItem>
-                  <SelectItem value="name-desc">Name: Z to A</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="hidden sm:flex border border-gray-200 rounded-md">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-r-none"
-                >
-                  <Grid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="rounded-l-none"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            
+            <Button
+              onClick={handleCartClick}
+              className="relative flex items-center gap-2"
+              style={{
+                backgroundColor: buttonColor,
+                color: buttonTextColor,
+              }}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              Cart
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
+            </Button>
           </div>
         </div>
-      </section>
 
-      {/* Products Section */}
-      <main className="container mx-auto px-4 py-8">
-        {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
-                <div className="aspect-square bg-gray-200"></div>
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded"></div>
-                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-                  <div className="h-5 bg-gray-200 rounded w-1/3"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <ModernProductGrid products={sortedProducts} viewMode={viewMode} />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              © {new Date().getFullYear()} {store.name}. Powered by ShopZap.
+        {/* Products Grid */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-gray-400 mb-4">
+              <Search className="h-16 w-16 mx-auto" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              {searchTerm ? 'No products found' : 'No products available'}
+            </h3>
+            <p className="text-gray-500">
+              {searchTerm 
+                ? 'Try adjusting your search terms'
+                : 'Check back later for new products'
+              }
             </p>
           </div>
-        </div>
-      </footer>
+        ) : (
+          <div className={
+            viewMode === 'grid' 
+              ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
+              : "space-y-4"
+          }>
+            {filteredProducts.map((product) => (
+              <ModernProductCard
+                key={product.id}
+                product={product}
+                storeName={store.name}
+                buttonColor={buttonColor}
+                buttonTextColor={buttonTextColor}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

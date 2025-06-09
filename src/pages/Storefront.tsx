@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import ModernStorefront from "@/components/storefront/ModernStorefront";
 import StoreNotFound from "@/components/storefront/StoreNotFound";
 import StorefrontLoader from "@/components/storefront/StorefrontLoader";
+import ProductGridSkeleton from "@/components/storefront/ProductGridSkeleton";
+import { useStoreCache, preloadCriticalResources } from "@/components/storefront/StoreCacheManager";
 import { Tables } from "@/integrations/supabase/types";
 import { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
 
@@ -13,7 +15,13 @@ const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { getCachedData, setCachedData } = useStoreCache(storeName || '');
   
+  // Preload critical resources on component mount
+  useEffect(() => {
+    preloadCriticalResources();
+  }, []);
+
   useEffect(() => {
     console.log('Storefront: Current path', location.pathname);
     console.log('Storefront: storeName from params', storeName);
@@ -24,15 +32,17 @@ const Storefront: React.FC = () => {
     console.error('Storefront: No store name provided in URL');
     return <Navigate to="/" replace />;
   }
+
+  // Check cache first
+  const cachedData = getCachedData(storeName);
   
-  // Fetch store data with proper error handling and customization data
+  // Fetch store data with caching optimization
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-name', storeName],
     queryFn: async () => {
       console.log('Storefront: Fetching store data for', storeName);
       
       try {
-        // Try to find the store using the name field (case-insensitive)
         const { data, error } = await supabase
           .from('stores')
           .select('*')
@@ -40,7 +50,6 @@ const Storefront: React.FC = () => {
           .single();
           
         if (error && error.code === 'PGRST116') {
-          // Try with URL decoded name (in case of spaces or special characters)
           const decodedStoreName = decodeURIComponent(storeName);
           console.log('Storefront: Trying with decoded store name', decodedStoreName);
           
@@ -71,14 +80,15 @@ const Storefront: React.FC = () => {
         throw err;
       }
     },
-    enabled: !!storeName,
+    enabled: !!storeName && !cachedData,
     retry: 2,
     retryDelay: 1000,
-    staleTime: 30 * 1000,
-    gcTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    initialData: cachedData?.store,
   });
   
-  // Fetch products for the store with proper filtering
+  // Fetch products with caching
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -110,12 +120,20 @@ const Storefront: React.FC = () => {
         return [];
       }
     },
-    enabled: !!store?.id,
-    retry: 2,
-    retryDelay: 1000,
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    enabled: !!store?.id && !cachedData,
+    retry: 1,
+    retryDelay: 500,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    initialData: cachedData?.products,
   });
+
+  // Cache data when both store and products are loaded
+  useEffect(() => {
+    if (store && products && !cachedData) {
+      setCachedData(storeName, store, products);
+    }
+  }, [store, products, storeName, setCachedData, cachedData]);
   
   // Handle errors and loading states
   useEffect(() => {
@@ -144,26 +162,30 @@ const Storefront: React.FC = () => {
   }, [queryClient, storeName]);
   
   // Show loading state while store is being fetched
-  if (storeLoading) {
+  if (storeLoading && !cachedData) {
     return <StorefrontLoader storeName={storeName} />;
   }
   
   // Show error page if store not found ONLY after loading is complete
-  if (storeError || (!store && !storeLoading)) {
+  if (storeError || (!store && !storeLoading && !cachedData)) {
     console.error('Storefront: Rendering error page due to store error');
     return <StoreNotFound storeName={storeName} />;
   }
   
   // Don't render content until store data is available
-  if (!store) {
+  if (!store && !cachedData) {
     return <StorefrontLoader storeName={storeName} />;
   }
 
+  // Use cached data if available
+  const storeData = store || cachedData?.store;
+  const productsData = products || cachedData?.products || [];
+  
   // Ensure products is always an array
-  const safeProducts = Array.isArray(products) ? products as Tables<'products'>[] : [];
+  const safeProducts = Array.isArray(productsData) ? productsData as Tables<'products'>[] : [];
   
   // Process theme data with enhanced color system
-  const themeData = store.theme && typeof store.theme === 'object' ? store.theme as any : {};
+  const themeData = storeData.theme && typeof storeData.theme === 'object' ? storeData.theme as any : {};
   console.log('Storefront: Processing theme data:', themeData);
 
   // Get color palette for fallbacks
@@ -172,13 +194,13 @@ const Storefront: React.FC = () => {
   
   // Enhanced store object with properly mapped colors
   const enhancedStore = {
-    ...store,
+    ...storeData,
     primaryColor: themeData.primaryColor || selectedPalette.primary,
     textColor: themeData.textColor || '#F9FAFB',
     buttonColor: themeData.buttonColor || selectedPalette.cta,
     buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
     accentColor: themeData.accentColor || selectedPalette.accent,
-    font_style: store.font_style || themeData.font_style || 'Poppins',
+    font_style: storeData.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
       primaryColor: themeData.primaryColor || selectedPalette.primary,
@@ -187,7 +209,7 @@ const Storefront: React.FC = () => {
       buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
       accentColor: themeData.accentColor || selectedPalette.accent,
       color_palette: colorPaletteId,
-      font_style: store.font_style || themeData.font_style || 'Poppins',
+      font_style: storeData.font_style || themeData.font_style || 'Poppins',
       instagram_url: themeData.instagram_url || '',
       facebook_url: themeData.facebook_url || '',
       whatsapp_url: themeData.whatsapp_url || ''
@@ -208,11 +230,22 @@ const Storefront: React.FC = () => {
     }
   });
 
+  // Show skeleton loading for products if they're still loading
+  if (productsLoading && !cachedData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <ProductGridSkeleton count={8} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ModernStorefront 
       store={enhancedStore} 
       products={safeProducts} 
-      isLoading={productsLoading}
+      isLoading={productsLoading && !cachedData}
     />
   );
 };
