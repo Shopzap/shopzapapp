@@ -43,6 +43,7 @@ import CustomizeStore from "./pages/CustomizeStore";
 import Analytics from "./pages/Analytics";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LegacyCartRedirect from "./components/cart/LegacyCartRedirect";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ const App = () => {
                   <Route path="/help" element={<Help />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/tutorials" element={<Tutorials />} />
+                  <Route path="/contact" element={<Contact />} />
                   
                   {/* Legal pages */}
                   <Route path="/terms" element={<Terms />} />

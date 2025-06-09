@@ -1,59 +1,107 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const Navbar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center">
-          <span className="font-bold text-2xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ShopZap<span className="text-foreground">.io</span></span>
-        </Link>
+    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border sticky top-0 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <span className="font-bold text-2xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              ShopZap<span className="text-foreground">.io</span>
+            </span>
+          </Link>
 
-        <nav className="hidden items-center space-x-4 md:flex">
-          <Link to="/features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            Features
-          </Link>
-          <Link to="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            Pricing
-          </Link>
-          <Link to="/blog" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            Blog
-          </Link>
-          <Button asChild size="sm">
-            <Link to="/dashboard">Get Started</Link>
-          </Button>
-        </nav>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link to="/features" className="text-muted-foreground hover:text-foreground transition-colors">
+              Features
+            </Link>
+            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+              Pricing
+            </Link>
+            <Link to="/help" className="text-muted-foreground hover:text-foreground transition-colors">
+              Help
+            </Link>
+            <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              Contact
+            </Link>
+          </div>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button size="icon" variant="outline" className="md:hidden">
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle navigation menu</span>
+          {/* Desktop Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => navigate('/auth')}>
+              Sign In
             </Button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <div className="flex flex-col gap-4 py-6">
-              <Link to="/features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            <Button onClick={() => navigate('/auth')}>
+              Get Started
+            </Button>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <Button variant="ghost" size="sm" onClick={toggleMenu}>
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border">
+            <div className="flex flex-col space-y-4">
+              <Link 
+                to="/features" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 Features
               </Link>
-              <Link to="/pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+              <Link 
+                to="/pricing" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
                 Pricing
               </Link>
-              <Link to="/blog" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-                Blog
+              <Link 
+                to="/help" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Help
               </Link>
-              <Button asChild size="sm">
-                <Link to="/dashboard">Get Started</Link>
-              </Button>
+              <Link 
+                to="/contact" 
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact
+              </Link>
+              <div className="flex flex-col space-y-2 pt-4 border-t border-border">
+                <Button variant="ghost" onClick={() => navigate('/auth')}>
+                  Sign In
+                </Button>
+                <Button onClick={() => navigate('/auth')}>
+                  Get Started
+                </Button>
+              </div>
             </div>
-          </SheetContent>
-        </Sheet>
+          </div>
+        )}
       </div>
-    </header>
+    </nav>
   );
 };
 
