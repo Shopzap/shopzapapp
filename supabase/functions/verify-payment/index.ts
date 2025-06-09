@@ -43,17 +43,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, isTestMode = true, orderData }: PaymentVerificationRequest = await req.json();
 
-    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Verifying payment for Razorpay order ${razorpay_order_id}`);
+    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Verifying payment for NEW ShopZap Razorpay order ${razorpay_order_id}`);
 
-    // Get Razorpay secret key from environment variables
+    // Get NEW ShopZap.io Razorpay secret key from environment variables
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY');
     
     if (!razorpaySecret) {
-      console.error('Razorpay secret key not configured');
-      throw new Error('Payment verification not configured');
+      console.error('NEW ShopZap.io Razorpay secret key not configured');
+      throw new Error('Payment verification not configured with NEW ShopZap.io credentials');
     }
 
-    // Verify signature
+    // Verify signature using NEW ShopZap secret
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     
     // Create HMAC using Web Crypto API
@@ -77,11 +77,11 @@ const handler = async (req: Request): Promise<Response> => {
     const isSignatureValid = expectedSignature === razorpay_signature;
 
     if (!isSignatureValid) {
-      console.error(`[${isTestMode ? 'TEST' : 'LIVE'}] Invalid signature for payment:`, razorpay_payment_id);
-      throw new Error('Payment verification failed');
+      console.error(`[${isTestMode ? 'TEST' : 'LIVE'}] Invalid signature for NEW ShopZap payment:`, razorpay_payment_id);
+      throw new Error('Payment verification failed with NEW ShopZap.io credentials');
     }
 
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Payment signature verified successfully`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Payment signature verified successfully with NEW ShopZap credentials`);
 
     // Create order in database after successful payment verification
     const { data: newOrder, error: orderError } = await supabaseClient
@@ -101,14 +101,14 @@ const handler = async (req: Request): Promise<Response> => {
         razorpay_signature,
         paid_at: new Date().toISOString(),
         status: 'pending',
-        // Add test mode flag to order notes
-        notes: isTestMode ? 'TEST MODE PAYMENT - This is a test transaction' : null
+        // Add test mode flag to order notes with NEW ShopZap info
+        notes: isTestMode ? 'TEST MODE PAYMENT - NEW ShopZap.io Razorpay Account - This is a test transaction' : 'LIVE PAYMENT - NEW ShopZap.io Razorpay Account'
       })
       .select()
       .single();
 
     if (orderError) {
-      console.error('Error creating order:', orderError);
+      console.error('Error creating order with NEW ShopZap payment:', orderError);
       throw new Error(orderError.message);
     }
 
@@ -127,19 +127,20 @@ const handler = async (req: Request): Promise<Response> => {
     if (itemsError) {
       // Rollback order creation
       await supabaseClient.from('orders').delete().eq('id', newOrder.id);
-      console.error('Error creating order items:', itemsError);
+      console.error('Error creating order items for NEW ShopZap payment:', itemsError);
       throw new Error(itemsError.message);
     }
 
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Order created successfully after payment verification:`, newOrder.id);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Order created successfully after NEW ShopZap payment verification:`, newOrder.id);
 
     return new Response(JSON.stringify({ 
       success: true,
-      message: `Payment verified and order created successfully${isTestMode ? ' (TEST MODE)' : ''}`,
+      message: `Payment verified and order created successfully with NEW ShopZap.io account${isTestMode ? ' (TEST MODE)' : ''}`,
       orderId: newOrder.id,
       order: newOrder,
       testMode: isTestMode,
-      testMessage: isTestMode ? 'This was a test payment using Razorpay test environment' : undefined
+      testMessage: isTestMode ? 'This was a test payment using NEW ShopZap.io Razorpay test environment' : undefined,
+      platform: 'ShopZap.io'
     }), {
       status: 200,
       headers: {
@@ -148,12 +149,13 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("Error in verify-payment function:", error);
+    console.error("Error in NEW ShopZap verify-payment function:", error);
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
-        testMode: true // Default to test mode for errors
+        testMode: true, // Default to test mode for errors
+        platform: 'ShopZap.io'
       }),
       {
         status: 500,

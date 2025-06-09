@@ -5,7 +5,7 @@ export const paymentConfig = {
   isTestMode: true,
   razorpay: {
     // Use test key ID - this will be returned from the edge function
-    keyId: 'rzp_test_8iFSU0EtVOddrf',
+    keyId: 'rzp_test_UGces6wIHu4wqX',
     webhookSecret: import.meta.env.VITE_RAZORPAY_WEBHOOK_SECRET || '',
     endpoints: {
       success: 'https://shopzap.io/payment/success',
