@@ -1,18 +1,15 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { CreateOrderRequest, SuccessResponse } from './types.ts';
+import { validateCredentials, validateAmount } from './validation.ts';
+import { createOrderPayload, createRazorpayOrder } from './razorpay-service.ts';
+import { handleRazorpayError, handleGenericError } from './error-handler.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-interface CreateOrderRequest {
-  amount: number;
-  currency: string;
-  receipt: string;
-  isTestMode?: boolean;
-}
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -29,34 +26,11 @@ const handler = async (req: Request): Promise<Response> => {
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID')?.trim();
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY')?.trim();
     
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID available: ${razorpayKeyId ? 'YES' : 'NO'}`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret available: ${razorpaySecret ? 'YES' : 'NO'}`);
-    
-    if (razorpayKeyId) {
-      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID prefix: ${razorpayKeyId.substring(0, 15)}...`);
-      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID length: ${razorpayKeyId.length}`);
-    }
-    
-    if (razorpaySecret) {
-      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret length: ${razorpaySecret.length}`);
-    }
-    
-    // Validate that we're using the correct ShopZap test keys
-    if (isTestMode && razorpayKeyId && !razorpayKeyId.startsWith('rzp_test_UGces6wIHu4wqX')) {
-      console.warn('WARNING: Expected ShopZap.io test key (rzp_test_UGces6wIHu4wqX) but found different key');
-    }
-    
-    if (!razorpayKeyId || !razorpaySecret) {
-      console.error('Missing ShopZap.io Razorpay credentials');
+    // Validate credentials
+    const credentialsValidation = validateCredentials(razorpayKeyId, razorpaySecret, isTestMode);
+    if (!credentialsValidation.isValid) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Payment gateway not configured with ShopZap.io credentials. Please contact support.',
-          details: 'Missing API credentials',
-          testMode: isTestMode,
-          keyIdSet: !!razorpayKeyId,
-          secretSet: !!razorpaySecret
-        }),
+        JSON.stringify(credentialsValidation.error),
         {
           status: 500,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -64,16 +38,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Validate amount (must be positive)
-    if (!amount || amount <= 0) {
-      console.error('Invalid amount:', amount);
+    // Validate amount
+    const amountValidation = validateAmount(amount, isTestMode);
+    if (!amountValidation.isValid) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Invalid payment amount',
-          details: 'Amount must be greater than 0',
-          testMode: isTestMode
-        }),
+        JSON.stringify(amountValidation.error),
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -82,78 +51,15 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create Razorpay order payload
-    const orderData = {
-      amount: Math.round(amount * 100), // Convert rupees to paise and ensure integer
-      currency: currency.toUpperCase(),
-      receipt: `${isTestMode ? 'SHOPZAP_TEST_' : 'SHOPZAP_'}${receipt}`,
-      payment_capture: 1, // Auto capture payment
-      notes: {
-        test_mode: isTestMode ? 'true' : 'false',
-        environment: isTestMode ? 'test' : 'production',
-        platform: 'ShopZap.io'
-      }
-    };
-
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] ShopZap Razorpay order payload:`, orderData);
-
-    // Create Basic Auth header using ShopZap credentials (TRIMMED)
-    const credentials = `${razorpayKeyId}:${razorpaySecret}`;
-    const encodedCredentials = btoa(credentials);
-    
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Making request to Razorpay API with ShopZap credentials...`);
+    const orderData = createOrderPayload(amount, currency, receipt, isTestMode);
 
     // Make request to Razorpay Orders API
-    const response = await fetch('https://api.razorpay.com/v1/orders', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${encodedCredentials}`
-      },
-      body: JSON.stringify(orderData)
-    });
-
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] ShopZap Razorpay API response status: ${response.status}`);
+    const response = await createRazorpayOrder(orderData, razorpayKeyId!, razorpaySecret!, isTestMode);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[${isTestMode ? 'TEST' : 'LIVE'}] ShopZap Razorpay API error response:`, {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      
-      let errorMessage = 'Payment initialization failed';
-      let userFriendlyMessage = `Unable to process payment${isTestMode ? ' (TEST MODE)' : ''} with ShopZap.io account. Please try again or contact support.`;
-      
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.error) {
-          errorMessage = errorData.error.description || errorData.error.code || errorMessage;
-          
-          // Provide user-friendly messages for common errors
-          if (errorData.error.code === 'BAD_REQUEST_ERROR') {
-            if (errorMessage.includes('Authentication failed')) {
-              userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
-            } else if (errorMessage.includes('amount')) {
-              userFriendlyMessage = 'Invalid payment amount. Please try again.';
-            }
-          } else if (response.status === 401) {
-            userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
-          }
-        }
-      } catch (parseError) {
-        console.error('Failed to parse ShopZap Razorpay error response:', parseError);
-      }
-      
+      const errorResponse = await handleRazorpayError(response, isTestMode, razorpayKeyId!);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: userFriendlyMessage,
-          details: errorMessage,
-          code: response.status,
-          testMode: isTestMode,
-          razorpayKeyId: razorpayKeyId ? `${razorpayKeyId.substring(0, 15)}...` : 'NOT SET'
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -171,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
       platform: 'ShopZap.io'
     });
 
-    return new Response(JSON.stringify({
+    const successResponse: SuccessResponse = {
       success: true,
       razorpayOrderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
@@ -179,9 +85,11 @@ const handler = async (req: Request): Promise<Response> => {
       receipt: razorpayOrder.receipt,
       testMode: isTestMode,
       testMessage: isTestMode ? 'This is a test transaction using ShopZap.io account. Use test card: 4111 1111 1111 1111' : undefined,
-      keyId: razorpayKeyId, // Return the key ID for frontend use
+      keyId: razorpayKeyId!, // Return the key ID for frontend use
       platform: 'ShopZap.io'
-    }), {
+    };
+
+    return new Response(JSON.stringify(successResponse), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -189,17 +97,9 @@ const handler = async (req: Request): Promise<Response> => {
       },
     });
   } catch (error: any) {
-    console.error("Error in ShopZap create-razorpay-order function:", error);
-    console.error("Error stack:", error.stack);
-    
+    const errorResponse = handleGenericError(error);
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: 'Payment service temporarily unavailable with ShopZap.io credentials. Please try again.',
-        details: error.message || 'Internal server error',
-        testMode: true, // Default to test mode for errors
-        platform: 'ShopZap.io'
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
