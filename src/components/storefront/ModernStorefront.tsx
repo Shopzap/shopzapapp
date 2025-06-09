@@ -23,7 +23,7 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
   isLoading = false 
 }) => {
   const navigate = useNavigate();
-  const { getTotalItems } = useCart();
+  const { getItemCount } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -42,7 +42,7 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
     navigate(`/store/${store.name}/cart`);
   };
 
-  const totalItems = getTotalItems();
+  const totalItems = getItemCount();
   
   // Extract colors from theme with fallbacks
   const theme = store.theme || {};

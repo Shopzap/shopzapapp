@@ -5,9 +5,10 @@ import { Tables } from '@/integrations/supabase/types';
 
 interface ProductGridProps {
   products: Tables<'products'>[];
+  storeName?: string;
 }
 
-const ProductGrid: React.FC<ProductGridProps> = ({ products }) => {
+const ProductGrid: React.FC<ProductGridProps> = ({ products, storeName = '' }) => {
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-12 bg-muted/30 rounded-lg">
@@ -23,6 +24,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ products }) => {
         <ModernProductCard 
           key={product.id}
           product={product}
+          storeName={storeName}
         />
       ))}
     </div>

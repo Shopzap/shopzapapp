@@ -1,24 +1,22 @@
 
 import React from 'react';
 import ModernProductCard from './ModernProductCard';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string | null;
-  image_url: string | null;
-  store_id: string;
-}
+import { Tables } from '@/integrations/supabase/types';
 
 interface ModernProductGridProps {
-  products: Product[];
+  products: Tables<'products'>[];
+  storeName: string;
   viewMode?: 'grid' | 'list';
+  buttonColor?: string;
+  buttonTextColor?: string;
 }
 
 const ModernProductGrid: React.FC<ModernProductGridProps> = ({ 
   products, 
-  viewMode = 'grid' 
+  storeName,
+  viewMode = 'grid',
+  buttonColor,
+  buttonTextColor 
 }) => {
   if (!products || products.length === 0) {
     return (
@@ -43,7 +41,9 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
           <ModernProductCard
             key={product.id}
             product={product}
-            viewMode="list"
+            storeName={storeName}
+            buttonColor={buttonColor}
+            buttonTextColor={buttonTextColor}
           />
         ))}
       </div>
@@ -56,7 +56,9 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
         <ModernProductCard
           key={product.id}
           product={product}
-          viewMode="grid"
+          storeName={storeName}
+          buttonColor={buttonColor}
+          buttonTextColor={buttonTextColor}
         />
       ))}
     </div>
