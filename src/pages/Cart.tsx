@@ -16,9 +16,9 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
-  // Fetch store data
+  // Fetch store data using username field instead of name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-name', storeName],
+    queryKey: ['store-by-username', storeName],
     queryFn: async () => {
       if (!storeName) {
         throw new Error('No store name provided');
@@ -27,7 +27,7 @@ const Cart = () => {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeName)
+        .eq('username', storeName)
         .single();
         
       if (error) throw error;
@@ -52,7 +52,9 @@ const Cart = () => {
   };
 
   const handleContinueShopping = () => {
-    if (storeName) {
+    if (store && store.username) {
+      navigate(`/store/${store.username}`);
+    } else if (storeName) {
       navigate(`/store/${storeName}`);
     } else {
       navigate('/');
