@@ -29,10 +29,17 @@ const handler = async (req: Request): Promise<Response> => {
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID')?.trim();
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY')?.trim();
     
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] ShopZap Key ID (trimmed): ${razorpayKeyId ? razorpayKeyId.substring(0, 15) + '...' : 'NOT SET'}`);
+    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID available: ${razorpayKeyId ? 'YES' : 'NO'}`);
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret available: ${razorpaySecret ? 'YES' : 'NO'}`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID length: ${razorpayKeyId?.length || 0}`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret length: ${razorpaySecret?.length || 0}`);
+    
+    if (razorpayKeyId) {
+      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID prefix: ${razorpayKeyId.substring(0, 15)}...`);
+      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Key ID length: ${razorpayKeyId.length}`);
+    }
+    
+    if (razorpaySecret) {
+      console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret length: ${razorpaySecret.length}`);
+    }
     
     // Validate that we're using the correct ShopZap test keys
     if (isTestMode && razorpayKeyId && !razorpayKeyId.startsWith('rzp_test_UGces6wIHu4wqX')) {
@@ -94,7 +101,6 @@ const handler = async (req: Request): Promise<Response> => {
     const encodedCredentials = btoa(credentials);
     
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Making request to Razorpay API with ShopZap credentials...`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Auth header length: ${encodedCredentials.length}`);
 
     // Make request to Razorpay Orders API
     const response = await fetch('https://api.razorpay.com/v1/orders', {
@@ -127,12 +133,12 @@ const handler = async (req: Request): Promise<Response> => {
           // Provide user-friendly messages for common errors
           if (errorData.error.code === 'BAD_REQUEST_ERROR') {
             if (errorMessage.includes('Authentication failed')) {
-              userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. API keys may have extra spaces or be incorrect. Please contact support.`;
+              userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
             } else if (errorMessage.includes('amount')) {
               userFriendlyMessage = 'Invalid payment amount. Please try again.';
             }
           } else if (response.status === 401) {
-            userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. API keys may have extra spaces or be incorrect. Please contact support.`;
+            userFriendlyMessage = `Payment gateway authentication failed with ShopZap.io credentials${isTestMode ? ' (TEST MODE)' : ''}. Please contact support.`;
           }
         }
       } catch (parseError) {
@@ -146,8 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
           details: errorMessage,
           code: response.status,
           testMode: isTestMode,
-          razorpayKeyId: razorpayKeyId ? `${razorpayKeyId.substring(0, 15)}...` : 'NOT SET',
-          keyTrimmed: true
+          razorpayKeyId: razorpayKeyId ? `${razorpayKeyId.substring(0, 15)}...` : 'NOT SET'
         }),
         {
           status: 400,
