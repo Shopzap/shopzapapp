@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +17,8 @@ import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import OrderSuccess from "./pages/OrderSuccess";
+import ThankYou from "./pages/ThankYou";
+import PaymentFailed from "./pages/PaymentFailed";
 import OrderTracking from "./pages/OrderTracking";
 import NotFound from "./pages/NotFound";
 import Contact from "./pages/Contact";
@@ -171,6 +172,8 @@ const App = () => {
                     </ProtectedRoute>
                   } />
                   <Route path="/order-success" element={<OrderSuccess />} />
+                  <Route path="/thank-you" element={<ThankYou />} />
+                  <Route path="/payment-failed" element={<PaymentFailed />} />
                   
                   {/* Order tracking routes - make these accessible without authentication */}
                   <Route path="/track-order" element={<OrderTracking />} />

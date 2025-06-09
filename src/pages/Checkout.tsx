@@ -193,51 +193,18 @@ const Checkout = () => {
             // Verify payment and create order
             const orderResult = await createOrderAfterPayment(response);
             
-            // Clear cart and navigate to success page
+            // Clear cart and redirect to thank you page with payment ID
             clearCart();
             
-            navigate('/order-success', {
-              state: {
-                orderId: orderResult.orderId,
-                orderItems: cartItems.map(item => ({
-                  id: item.product.id,
-                  name: item.product.name,
-                  price: item.product.price,
-                  quantity: item.quantity,
-                  image: item.product.image_url
-                })),
-                total: getTotalPrice(),
-                customerInfo,
-                paymentInfo: {
-                  paymentId: response.razorpay_payment_id,
-                  paymentMethod: 'Razorpay',
-                  paymentTime: new Date().toLocaleString('en-IN', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  }),
-                  paymentStatus: 'Paid',
-                  testMode: paymentConfig.isTestMode
-                },
-                estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric'
-                })
-              }
-            });
+            // Redirect to thank-you page with payment ID
+            window.location.href = `/thank-you?payment_id=${response.razorpay_payment_id}&order_id=${orderResult.orderId}`;
           } catch (error) {
             console.error('Payment verification error:', error);
             const errorMessage = error instanceof Error ? error.message : 'Payment verification failed';
             setPaymentError(errorMessage);
-            toast({
-              title: "Payment Verification Failed",
-              description: errorMessage + " Please contact support if the amount was deducted.",
-              variant: "destructive",
-            });
+            
+            // Redirect to payment failed page
+            window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
           } finally {
             setIsProcessing(false);
           }
@@ -268,11 +235,9 @@ const Checkout = () => {
       console.error('Error creating Razorpay order:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment';
       setPaymentError(errorMessage);
-      toast({
-        title: "Payment Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      
+      // Redirect to payment failed page
+      window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
       setIsProcessing(false);
     }
   };
@@ -337,25 +302,9 @@ const Checkout = () => {
         const orderResult = await createCODOrder();
 
         clearCart();
-        navigate('/order-success', {
-          state: {
-            orderId: orderResult.orderId,
-            orderItems: cartItems.map(item => ({
-              id: item.product.id,
-              name: item.product.name,
-              price: item.product.price,
-              quantity: item.quantity,
-              image: item.product.image_url
-            })),
-            total: getTotalPrice(),
-            customerInfo,
-            estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })
-          }
-        });
+        
+        // Redirect to thank-you page with order ID
+        window.location.href = `/thank-you?order_id=${orderResult.orderId}`;
       }
     } catch (error) {
       console.error('Order creation error:', error);
