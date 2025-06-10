@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalLink } from 'lucide-react';
-import { getStoreUrl } from '@/utils/storeRouting';
 
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import StoreUrlCard from '@/components/dashboard/StoreUrlCard';
 import StoreStats from '@/components/dashboard/StoreStats';
 import RecentOrdersList from '@/components/dashboard/RecentOrdersList';
+import QuickActionsCard from '@/components/dashboard/QuickActionsCard';
 
 const Dashboard = () => {
   const { toast } = useToast();
@@ -90,21 +91,13 @@ const Dashboard = () => {
     
     fetchDashboardData();
   }, [navigate, toast]);
-  
-  // Copy store link to clipboard
+
+  // Copy store link to clipboard for RecentOrdersList
   const handleCopyStoreLink = () => {
     if (storeData) {
       const storeLink = getStoreUrl(storeData, '', true);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
-    }
-  };
-  
-  // Open store in new tab
-  const handleOpenStore = () => {
-    if (storeData) {
-      const storeLink = getStoreUrl(storeData, '', true);
-      window.open(storeLink, '_blank');
     }
   };
   
@@ -136,87 +129,34 @@ const Dashboard = () => {
   }
   
   return (
-      <div className="container p-4 mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{storeData.name}</h1>
-            <p className="text-muted-foreground">Welcome to your store dashboard</p>
+    <div className="container p-4 mx-auto space-y-6">
+      <DashboardHeader storeName={storeData.name} productCount={productCount} />
+      
+      <StoreUrlCard storeData={storeData} />
+      
+      <StoreStats 
+        productCount={productCount} 
+        orderCount={orderCount} 
+        plan={storeData.plan} 
+      />
+      
+      {/* Recent Orders Section */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-medium">Recent Orders</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/orders')}>
+              View All
+            </Button>
           </div>
-          {productCount === 0 ? (
-            <Button onClick={() => navigate('/dashboard/products')} className="self-start w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add your first product
-            </Button>
-          ) : (
-            <Button onClick={() => navigate('/dashboard/products')} className="self-start w-full sm:w-auto">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Product
-            </Button>
-          )}
-        </div>
-        
-        {/* Your Store Link Box */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Your Store Link</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-              <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-                {getStoreUrl(storeData, '', true)}
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
-                  Copy
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleOpenStore} className="flex-1">
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Stats Cards - Total Products, Total Orders, Current Plan */}
-        <StoreStats 
-          productCount={productCount} 
-          orderCount={orderCount} 
-          plan={storeData.plan} 
-        />
-        
-        {/* Recent Orders Section */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-medium">Recent Orders</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/orders')}>
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <RecentOrdersList orders={recentOrders} onCopyStoreLink={handleCopyStoreLink} />
-          </CardContent>
-        </Card>
-        
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-medium">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/products')}>
-                <Package className="mr-2 h-4 w-4" /> Manage Products
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/customize-store')}>
-                <Palette className="mr-2 h-4 w-4" /> Customize Storefront
-              </Button>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/settings')}>
-                <Settings className="mr-2 h-4 w-4" /> Store Settings
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <RecentOrdersList orders={recentOrders} onCopyStoreLink={handleCopyStoreLink} />
+        </CardContent>
+      </Card>
+      
+      <QuickActionsCard />
+    </div>
   );
 };
 
