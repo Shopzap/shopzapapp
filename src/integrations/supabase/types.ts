@@ -419,6 +419,7 @@ export type Database = {
           id: string
           instagram_page_id: string
           is_active: boolean | null
+          manychat_api_key: string | null
           manychat_page_id: string
           page_name: string | null
           store_id: string
@@ -430,6 +431,7 @@ export type Database = {
           id?: string
           instagram_page_id: string
           is_active?: boolean | null
+          manychat_api_key?: string | null
           manychat_page_id: string
           page_name?: string | null
           store_id: string
@@ -441,6 +443,7 @@ export type Database = {
           id?: string
           instagram_page_id?: string
           is_active?: boolean | null
+          manychat_api_key?: string | null
           manychat_page_id?: string
           page_name?: string | null
           store_id?: string
