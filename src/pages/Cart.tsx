@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -16,9 +15,9 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
-  // Fetch store data
+  // Fetch store data using slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-name', storeName],
+    queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
       if (!storeName) {
         throw new Error('No store name provided');
@@ -27,7 +26,7 @@ const Cart = () => {
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .ilike('name', storeName)
+        .eq('slug', storeName)
         .single();
         
       if (error) throw error;

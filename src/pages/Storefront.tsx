@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,40 +35,21 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data with caching optimization
+  // Fetch store data using slug only
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-name', storeName],
+    queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for', storeName);
+      console.log('Storefront: Fetching store data for slug', storeName);
       
       try {
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', storeName)
+          .eq('slug', storeName)
           .single();
           
-        if (error && error.code === 'PGRST116') {
-          const decodedStoreName = decodeURIComponent(storeName);
-          console.log('Storefront: Trying with decoded store name', decodedStoreName);
-          
-          const { data: decodedData, error: decodedError } = await supabase
-            .from('stores')
-            .select('*')
-            .ilike('name', decodedStoreName)
-            .single();
-            
-          if (decodedError) {
-            console.error('Storefront: Store not found after decode attempt', decodedError);
-            throw new Error(`Store "${storeName}" not found`);
-          }
-          
-          console.log('Storefront: Store found with decoded name', decodedData);
-          return decodedData;
-        }
-          
         if (error) {
-          console.error('Storefront: Error fetching store', error);
+          console.error('Storefront: Store not found with slug', storeName, error);
           throw new Error(`Store "${storeName}" not found`);
         }
         
@@ -154,7 +134,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);

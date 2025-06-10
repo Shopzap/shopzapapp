@@ -24,6 +24,15 @@ const Onboarding = () => {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   
+  // Generate slug from store name
+  const generateSlug = (name: string): string => {
+    return name.toLowerCase()
+      .replace(/[^\w\s]/gi, '')
+      .replace(/\s+/g, '-');
+  };
+
+  const currentSlug = generateSlug(storeName);
+  
   // Handle logo file selection
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,24 +99,35 @@ const Onboarding = () => {
         storeLogoUrl = urlData.publicUrl;
       }
       
-      // Step 2: Create a unique username from store name
-      const storeSlug = storeName.toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
+      // Step 2: Generate slug from store name
+      const slug = generateSlug(storeName);
       
-      // Add a unique suffix to ensure uniqueness
-      const uniqueSuffix = `-${uuidv4().substring(0, 6)}`;
-      const uniqueUsername = `${storeSlug}${uniqueSuffix}`;
+      // Step 3: Check if slug already exists
+      const { data: existingStore, error: checkError } = await supabase
+        .from('stores')
+        .select('slug')
+        .eq('slug', slug)
+        .single();
       
-      // Step 3: Save store data to Supabase
+      if (existingStore) {
+        toast({
+          title: "Store name already exists",
+          description: "Please choose a different store name",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Step 4: Save store data to Supabase
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
             name: storeName,
+            slug: slug,
             logo_image: storeLogoUrl,
-            username: uniqueUsername,
-            user_id: user.id, // user.id is correctly used here
+            user_id: user.id,
             business_email: user.email || '',
             phone_number: '', // This is a required field in the stores table
             theme: { mode: storeTheme },
@@ -162,6 +182,11 @@ const Onboarding = () => {
                 placeholder="Enter your store name"
                 required
               />
+              {storeName && (
+                <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                  Your store URL: <span className="font-medium">shopzap.io/store/{currentSlug}</span>
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">

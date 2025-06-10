@@ -9,7 +9,6 @@ import { ArrowLeft, Loader } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const StoreBuilder = () => {
   const { toast } = useToast();
@@ -17,21 +16,16 @@ const StoreBuilder = () => {
   const { user } = useAuth();
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [storeUsername, setStoreUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Auto-generate username from store name
-  const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value;
-    setStoreName(name);
-    
-    // Generate clean slug from store name
-    const slug = name.toLowerCase()
+  // Generate slug from store name
+  const generateSlug = (name: string): string => {
+    return name.toLowerCase()
       .replace(/[^\w\s]/gi, '')
       .replace(/\s+/g, '-');
-    
-    setStoreUsername(slug);
   };
+
+  const currentSlug = generateSlug(storeName);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,21 +44,19 @@ const StoreBuilder = () => {
       
       const userId = user.id;
       
-      // Clean store name for the URL
-      let cleanStoreName = storeName.trim().toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
+      // Generate slug from store name
+      const slug = generateSlug(storeName);
       
-      // Check if store name already exists
+      // Check if slug already exists
       const { data: existingStore, error: checkError } = await supabase
         .from('stores')
-        .select('name')
-        .eq('name', cleanStoreName)
+        .select('slug')
+        .eq('slug', slug)
         .single();
       
       if (existingStore) {
         toast({
-          title: "Store name already taken",
+          title: "Store name already exists",
           description: "Please choose a different store name",
           variant: "destructive"
         });
@@ -72,13 +64,13 @@ const StoreBuilder = () => {
         return;
       }
       
-      // Create store with the clean name
+      // Create store with the slug
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
-            name: cleanStoreName,
-            username: storeUsername, // Keep username for backward compatibility
+            name: storeName,
+            slug: slug,
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -101,7 +93,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/store/${cleanStoreName}`,
+        description: `Your store is now available at shopzap.io/store/${slug}`,
       });
       
       // Redirect to dashboard
@@ -143,9 +135,14 @@ const StoreBuilder = () => {
                     id="storeName"
                     placeholder="e.g., Fashion Paradise" 
                     value={storeName}
-                    onChange={handleStoreNameChange}
+                    onChange={(e) => setStoreName(e.target.value)}
                     required
                   />
+                  {storeName && (
+                    <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                      Your store URL: <span className="font-medium">shopzap.io/store/{currentSlug}</span>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -162,26 +159,6 @@ const StoreBuilder = () => {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Include country code (e.g., +91 for India)
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="storeUrl">Your Store URL</Label>
-                  <div className="flex items-center">
-                    <div className="bg-muted px-3 py-2 rounded-l-md border-y border-l border-input text-muted-foreground">
-                      shopzap.io/store/
-                    </div>
-                    <Input
-                      id="storeUrl"
-                      className="rounded-l-none"
-                      placeholder="your-store-name" 
-                      value={storeUsername}
-                      onChange={(e) => setStoreUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Choose a unique name for your store URL
                   </p>
                 </div>
                 
