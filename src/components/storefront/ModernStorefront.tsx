@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search, Filter, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,6 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
   isLoading = false 
 }) => {
   const navigate = useNavigate();
-  const { storeName } = useParams<{ storeName: string }>();
   const { getItemCount } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -40,8 +39,7 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
   }, [products, searchTerm]);
 
   const handleCartClick = () => {
-    // Use the original storeName from URL params to maintain consistency
-    navigate(`/store/${storeName}/cart`);
+    navigate(`/store/${store.name}/cart`);
   };
 
   const totalItems = getItemCount();
@@ -182,7 +180,7 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
               <ModernProductCard
                 key={product.id}
                 product={product}
-                storeName={storeName || store.name}
+                storeName={store.name}
                 buttonColor={buttonColor}
                 buttonTextColor={buttonTextColor}
               />
