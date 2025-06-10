@@ -229,7 +229,7 @@ const InstagramAnalytics: React.FC<InstagramAnalyticsProps> = ({
                           {log.trigger_type.replace('_', ' ').toUpperCase()}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {log.message_sent ? `"${log.message_sent.substring(0, 50)}..."` : 'DM sent'}
+                          {log.message_sent ? `${String(log.message_sent).substring(0, 50)}...` : 'DM sent'}
                         </p>
                       </div>
                       <span className="text-xs text-muted-foreground">
