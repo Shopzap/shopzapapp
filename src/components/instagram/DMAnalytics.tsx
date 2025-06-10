@@ -42,12 +42,14 @@ const DMAnalytics = ({ storeId }: Props) => {
       
       if (error) throw error;
       
-      // Count keyword frequency
+      // Count keyword frequency with proper type checking
       const keywordCounts: { [key: string]: number } = {};
       data.forEach((log) => {
-        const keyword = log.trigger_data?.keyword;
-        if (keyword) {
-          keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+        if (log.trigger_data && typeof log.trigger_data === 'object' && 'keyword' in log.trigger_data) {
+          const keyword = (log.trigger_data as any).keyword;
+          if (typeof keyword === 'string') {
+            keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+          }
         }
       });
       

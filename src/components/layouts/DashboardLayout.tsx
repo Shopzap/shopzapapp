@@ -20,9 +20,9 @@ interface Props {
 
 const DashboardLayout = ({ children }: Props) => {
   const location = useLocation();
-  const { currentStore } = useStore();
+  const { storeData } = useStore();
   
-  const isPro = currentStore?.plan === 'pro';
+  const isPro = storeData?.plan === 'pro';
 
   const navigation = [
     {
@@ -106,12 +106,12 @@ const DashboardLayout = ({ children }: Props) => {
             })}
           </nav>
           
-          {currentStore && (
+          {storeData && (
             <div className="px-4 py-4 border-t">
               <div className="flex items-center">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{currentStore.name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{currentStore.plan} Plan</p>
+                  <p className="text-sm font-medium text-gray-900">{storeData.name}</p>
+                  <p className="text-xs text-gray-500 capitalize">{storeData.plan} Plan</p>
                 </div>
                 {isPro && (
                   <Crown className="w-5 h-5 text-yellow-500" />

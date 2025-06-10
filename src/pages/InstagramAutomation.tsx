@@ -15,10 +15,10 @@ import DMAnalytics from '@/components/instagram/DMAnalytics';
 
 const InstagramAutomation = () => {
   const { user } = useAuth();
-  const { currentStore } = useStore();
+  const { storeData } = useStore();
   const [activeTab, setActiveTab] = useState('connect');
 
-  if (!user || !currentStore) {
+  if (!user || !storeData) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -29,7 +29,7 @@ const InstagramAutomation = () => {
     );
   }
 
-  const isPro = currentStore.plan === 'pro';
+  const isPro = storeData.plan === 'pro';
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -73,28 +73,28 @@ const InstagramAutomation = () => {
         </TabsList>
 
         <TabsContent value="connect">
-          <InstagramConnect storeId={currentStore.id} />
+          <InstagramConnect storeId={storeData.id} />
         </TabsContent>
 
         <TabsContent value="keywords">
-          <KeywordManager storeId={currentStore.id} isPro={isPro} />
+          <KeywordManager storeId={storeData.id} isPro={isPro} />
         </TabsContent>
 
         <TabsContent value="reels">
-          <ReelsAutomation storeId={currentStore.id} isPro={isPro} />
+          <ReelsAutomation storeId={storeData.id} isPro={isPro} />
         </TabsContent>
 
         <TabsContent value="stories">
-          <StoryAutomation storeId={currentStore.id} isPro={isPro} />
+          <StoryAutomation storeId={storeData.id} isPro={isPro} />
         </TabsContent>
 
         <TabsContent value="welcome">
-          <WelcomeAutomation storeId={currentStore.id} />
+          <WelcomeAutomation storeId={storeData.id} />
         </TabsContent>
 
         <TabsContent value="analytics">
           {isPro ? (
-            <DMAnalytics storeId={currentStore.id} />
+            <DMAnalytics storeId={storeData.id} />
           ) : (
             <Card>
               <CardHeader>
