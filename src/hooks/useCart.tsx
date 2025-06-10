@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 import { safeParsePrice, isValidProduct } from '@/utils/priceUtils';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 
 interface CartItem {
   id: string;
@@ -39,16 +39,27 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { storeName } = useParams<{ storeName: string }>();
+  const location = useLocation();
 
-  // Track current store context
+  // Track current store context with enhanced logic
   useEffect(() => {
     if (storeName) {
-      localStorage.setItem('currentStore', storeName);
-      localStorage.setItem('lastVisitedStore', storeName);
+      // Normalize store name for consistent tracking
+      const normalizedStoreName = storeName.toLowerCase();
+      localStorage.setItem('currentStore', normalizedStoreName);
+      localStorage.setItem('lastVisitedStore', normalizedStoreName);
+      
+      // Store additional context for checkout flow
+      const storeContext = {
+        storeName: normalizedStoreName,
+        originalPath: location.pathname,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('shopzap_store_context', JSON.stringify(storeContext));
     }
-  }, [storeName]);
+  }, [storeName, location.pathname]);
 
-  // Generate or get session ID with store context
+  // Generate or get session ID with enhanced store context
   const getSessionId = () => {
     let sessionId = localStorage.getItem('cart_session_id');
     if (!sessionId) {
@@ -56,12 +67,14 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('cart_session_id', sessionId);
     }
     
-    // Create backup cart data with store context
+    // Create enhanced backup cart data with store context
     if (storeName) {
       const cartBackup = {
         sessionId,
-        storeName,
-        timestamp: Date.now()
+        storeName: storeName.toLowerCase(),
+        timestamp: Date.now(),
+        itemCount: items.length,
+        totalPrice: getTotalPrice()
       };
       localStorage.setItem('shopzap_cart_backup', JSON.stringify(cartBackup));
     }
@@ -69,7 +82,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return sessionId;
   };
 
-  // Load cart items from database
+  // Load cart items from database with store context validation
   const loadCartItems = async () => {
     try {
       setIsLoading(true);
@@ -95,6 +108,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         }));
 
       setItems(cartItems);
+      
+      // Update backup after successful load
+      if (storeName && cartItems.length > 0) {
+        const cartBackup = {
+          sessionId,
+          storeName: storeName.toLowerCase(),
+          timestamp: Date.now(),
+          itemCount: cartItems.length,
+          totalPrice: cartItems.reduce((total, item) => {
+            const price = safeParsePrice(item.product?.price);
+            return total + (price * item.quantity);
+          }, 0)
+        };
+        localStorage.setItem('shopzap_cart_backup', JSON.stringify(cartBackup));
+      }
     } catch (error) {
       console.error('Error loading cart items:', error);
       toast({
@@ -226,6 +254,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setItems([]);
       localStorage.removeItem('cart_session_id');
       localStorage.removeItem('shopzap_cart_backup');
+      localStorage.removeItem('shopzap_store_context');
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
@@ -255,7 +284,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     getTotalPrice,
     getItemCount,
     isLoading,
-    currentStore: storeName
+    currentStore: storeName?.toLowerCase()
   };
 
   return (

@@ -180,7 +180,7 @@ const App = () => {
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
                   <Route path="/order-tracking" element={<OrderTracking />} />
                   
-                  {/* Store routes with proper CartProvider scoping */}
+                  {/* Store routes with proper CartProvider scoping and enhanced routing */}
                   <Route path="/store/:storeName" element={
                     <CartProvider>
                       <Suspense fallback={<StorefrontFallback />}>

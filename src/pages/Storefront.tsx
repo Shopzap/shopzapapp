@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,11 +30,6 @@ const Storefront: React.FC = () => {
   // Normalize the store name to lowercase for consistent querying
   const normalizedStoreName = storeName?.toLowerCase();
 
-  // Redirect to lowercase URL if the current URL has uppercase characters
-  if (storeName && storeName !== normalizedStoreName) {
-    return <Navigate to={`/store/${normalizedStoreName}`} replace />;
-  }
-
   // Redirect to home if no store name provided
   if (!storeName || storeName.trim() === '') {
     console.error('Storefront: No store name provided in URL');
@@ -43,45 +39,53 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field (which appears to be the URL identifier)
-  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', normalizedStoreName],
+  // Fetch store data with enhanced logic for username/slug handling
+  const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
+    queryKey: ['store-lookup', normalizedStoreName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', normalizedStoreName);
+      console.log('Storefront: Fetching store data for identifier', normalizedStoreName);
       
       try {
-        const { data, error } = await supabase
+        // First, try to find by slug (new preferred method)
+        let { data: slugData, error: slugError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('slug', normalizedStoreName)
+          .single();
+          
+        if (slugData && !slugError) {
+          console.log('Storefront: Store found by slug', slugData);
+          return { store: slugData, redirectNeeded: false };
+        }
+        
+        // If not found by slug, try username (legacy support)
+        console.log('Storefront: Trying with username field', normalizedStoreName);
+        let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
           .eq('username', normalizedStoreName)
           .single();
           
-        if (error && error.code === 'PGRST116') {
-          // Also try with the name field as fallback
-          console.log('Storefront: Trying with name field', normalizedStoreName);
-          
-          const { data: nameData, error: nameError } = await supabase
-            .from('stores')
-            .select('*')
-            .eq('name', normalizedStoreName)
-            .single();
-            
-          if (nameError) {
-            console.error('Storefront: Store not found with username or name', normalizedStoreName);
-            throw new Error(`Store "${storeName}" not found`);
-          }
-          
-          console.log('Storefront: Store found with name field', nameData);
-          return nameData;
-        }
-          
-        if (error) {
-          console.error('Storefront: Error fetching store', error);
-          throw new Error(`Store "${storeName}" not found`);
+        if (usernameData && !usernameError) {
+          console.log('Storefront: Store found by username, redirect needed', usernameData);
+          return { store: usernameData, redirectNeeded: true };
         }
         
-        console.log('Storefront: Store data received with theme:', data?.theme);
-        return data;
+        // Finally, try name field as fallback
+        console.log('Storefront: Trying with name field', normalizedStoreName);
+        let { data: nameData, error: nameError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('name', normalizedStoreName)
+          .single();
+          
+        if (nameData && !nameError) {
+          console.log('Storefront: Store found by name', nameData);
+          return { store: nameData, redirectNeeded: false };
+        }
+        
+        console.error('Storefront: Store not found with any identifier', normalizedStoreName);
+        throw new Error(`Store "${storeName}" not found`);
       } catch (err) {
         console.error('Storefront: Exception in store fetch', err);
         throw err;
@@ -92,8 +96,18 @@ const Storefront: React.FC = () => {
     retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
-    initialData: cachedData?.store,
+    initialData: cachedData ? { store: cachedData.store, redirectNeeded: false } : undefined,
   });
+
+  // Handle redirect if needed (username -> slug redirect)
+  if (storeData?.redirectNeeded && storeData?.store?.slug) {
+    const newPath = location.pathname.replace(`/store/${storeName}`, `/store/${storeData.store.slug}`);
+    console.log('Storefront: Redirecting from username to slug', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  // Extract store from the data structure
+  const store = storeData?.store;
   
   // Fetch products with caching
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
@@ -161,7 +175,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-username', normalizedStoreName] });
+      queryClient.invalidateQueries({ queryKey: ['store-lookup', normalizedStoreName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -185,14 +199,14 @@ const Storefront: React.FC = () => {
   }
 
   // Use cached data if available
-  const storeData = store || cachedData?.store;
+  const storeDataFinal = store || cachedData?.store;
   const productsData = products || cachedData?.products || [];
   
   // Ensure products is always an array
   const safeProducts = Array.isArray(productsData) ? productsData as Tables<'products'>[] : [];
   
   // Process theme data with enhanced color system
-  const themeData = storeData.theme && typeof storeData.theme === 'object' ? storeData.theme as any : {};
+  const themeData = storeDataFinal.theme && typeof storeDataFinal.theme === 'object' ? storeDataFinal.theme as any : {};
   console.log('Storefront: Processing theme data:', themeData);
 
   // Get color palette for fallbacks
@@ -201,13 +215,13 @@ const Storefront: React.FC = () => {
   
   // Enhanced store object with properly mapped colors
   const enhancedStore = {
-    ...storeData,
+    ...storeDataFinal,
     primaryColor: themeData.primaryColor || selectedPalette.primary,
     textColor: themeData.textColor || '#F9FAFB',
     buttonColor: themeData.buttonColor || selectedPalette.cta,
     buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
     accentColor: themeData.accentColor || selectedPalette.accent,
-    font_style: storeData.font_style || themeData.font_style || 'Poppins',
+    font_style: storeDataFinal.font_style || themeData.font_style || 'Poppins',
     theme: {
       ...themeData,
       primaryColor: themeData.primaryColor || selectedPalette.primary,
@@ -216,7 +230,7 @@ const Storefront: React.FC = () => {
       buttonTextColor: themeData.buttonTextColor || '#FFFFFF',
       accentColor: themeData.accentColor || selectedPalette.accent,
       color_palette: colorPaletteId,
-      font_style: storeData.font_style || themeData.font_style || 'Poppins',
+      font_style: storeDataFinal.font_style || themeData.font_style || 'Poppins',
       instagram_url: themeData.instagram_url || '',
       facebook_url: themeData.facebook_url || '',
       whatsapp_url: themeData.whatsapp_url || ''
@@ -226,6 +240,7 @@ const Storefront: React.FC = () => {
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
     username: enhancedStore.username,
+    slug: enhancedStore.slug,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {

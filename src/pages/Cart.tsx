@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/hooks/useCart';
@@ -12,46 +13,78 @@ import StorefrontLoader from '@/components/storefront/StorefrontLoader';
 
 const Cart = () => {
   const { storeName } = useParams<{ storeName: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
   // Normalize the store name to lowercase for consistent querying
   const normalizedStoreName = storeName?.toLowerCase();
 
-  // Fetch store data using username field instead of name
-  const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', normalizedStoreName],
+  // Fetch store data with enhanced logic for username/slug handling
+  const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
+    queryKey: ['store-lookup-cart', normalizedStoreName],
     queryFn: async () => {
       if (!normalizedStoreName) {
         throw new Error('No store name provided');
       }
       
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('username', normalizedStoreName)
-        .single();
+      try {
+        // First, try to find by slug (new preferred method)
+        let { data: slugData, error: slugError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('slug', normalizedStoreName)
+          .single();
+          
+        if (slugData && !slugError) {
+          console.log('Cart: Store found by slug', slugData);
+          return { store: slugData, redirectNeeded: false };
+        }
         
-      if (error && error.code === 'PGRST116') {
-        // Also try with the name field as fallback
-        const { data: nameData, error: nameError } = await supabase
+        // If not found by slug, try username (legacy support)
+        console.log('Cart: Trying with username field', normalizedStoreName);
+        let { data: usernameData, error: usernameError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('username', normalizedStoreName)
+          .single();
+          
+        if (usernameData && !usernameError) {
+          console.log('Cart: Store found by username, redirect needed', usernameData);
+          return { store: usernameData, redirectNeeded: true };
+        }
+        
+        // Finally, try name field as fallback
+        console.log('Cart: Trying with name field', normalizedStoreName);
+        let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
           .eq('name', normalizedStoreName)
           .single();
           
-        if (nameError) {
-          throw new Error(`Store "${storeName}" not found`);
+        if (nameData && !nameError) {
+          console.log('Cart: Store found by name', nameData);
+          return { store: nameData, redirectNeeded: false };
         }
         
-        return nameData;
+        throw new Error(`Store "${storeName}" not found`);
+      } catch (err) {
+        console.error('Cart: Exception in store fetch', err);
+        throw err;
       }
-        
-      if (error) throw error;
-      return data;
     },
     enabled: !!normalizedStoreName,
   });
+
+  // Handle redirect if needed (username -> slug redirect)
+  if (storeData?.redirectNeeded && storeData?.store?.slug) {
+    const newPath = location.pathname.replace(`/store/${storeName}`, `/store/${storeData.store.slug}`);
+    console.log('Cart: Redirecting from username to slug', newPath);
+    return <Navigate to={newPath} replace />;
+  }
+
+  // Extract store from the data structure
+  const store = storeData?.store;
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -63,14 +96,18 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
-    if (storeName) {
+    if (store?.slug) {
+      navigate(`/store/${store.slug}/checkout`);
+    } else if (storeName) {
       navigate(`/store/${storeName}/checkout`);
     }
   };
 
   const handleContinueShopping = () => {
-    // Always use storeName (which is the username from the URL) for navigation
-    if (storeName) {
+    // Use slug if available, otherwise fall back to storeName
+    if (store?.slug) {
+      navigate(`/store/${store.slug}`);
+    } else if (storeName) {
       navigate(`/store/${storeName}`);
     } else {
       navigate('/');
