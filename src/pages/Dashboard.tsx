@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Store, AlertTriangle, Package, Palette, Settings, PlusCircle, ExternalLink } from 'lucide-react';
+import { getStoreUrl } from '@/utils/storeRouting';
 
 import StoreStats from '@/components/dashboard/StoreStats';
 import RecentOrdersList from '@/components/dashboard/RecentOrdersList';
@@ -93,7 +94,7 @@ const Dashboard = () => {
   // Copy store link to clipboard
   const handleCopyStoreLink = () => {
     if (storeData) {
-      const storeLink = `${window.location.origin}/store/${storeData.name}`;
+      const storeLink = getStoreUrl(storeData);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
     }
@@ -102,7 +103,7 @@ const Dashboard = () => {
   // Open store in new tab
   const handleOpenStore = () => {
     if (storeData) {
-      const storeLink = `${window.location.origin}/store/${storeData.name}`;
+      const storeLink = getStoreUrl(storeData);
       window.open(storeLink, '_blank');
     }
   };
@@ -160,7 +161,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-                {window.location.origin}/store/{storeData.name}
+                {getStoreUrl(storeData)}
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
@@ -206,7 +207,7 @@ const Dashboard = () => {
               <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/products')}>
                 <Package className="mr-2 h-4 w-4" /> Manage Products
               </Button>
-              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/customize')}>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/customize-store')}>
                 <Palette className="mr-2 h-4 w-4" /> Customize Storefront
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/settings')}>
