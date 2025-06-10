@@ -10,9 +10,11 @@ import {
   Palette, 
   BarChart3,
   Instagram,
-  Crown
+  Crown,
+  Shield
 } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   children: React.ReactNode;
@@ -21,8 +23,9 @@ interface Props {
 const DashboardLayout = ({ children }: Props) => {
   const location = useLocation();
   const { storeData } = useStore();
+  const { isAdmin } = useAuth();
   
-  const isPro = storeData?.plan === 'pro';
+  const isPro = storeData?.plan === 'pro' || isAdmin;
 
   const navigation = [
     {
@@ -71,6 +74,9 @@ const DashboardLayout = ({ children }: Props) => {
         <div className="flex flex-col h-full">
           <div className="flex items-center px-6 py-4 border-b">
             <h1 className="text-xl font-bold text-gray-900">ShopZap</h1>
+            {isAdmin && (
+              <Shield className="w-5 h-5 ml-2 text-red-500" title="Admin Access" />
+            )}
           </div>
           
           <nav className="flex-1 px-4 py-4 space-y-2">
@@ -111,7 +117,12 @@ const DashboardLayout = ({ children }: Props) => {
               <div className="flex items-center">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{storeData.name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{storeData.plan} Plan</p>
+                  <p className="text-xs text-gray-500 capitalize">
+                    {storeData.plan} Plan
+                    {isAdmin && (
+                      <span className="ml-2 text-red-500 font-semibold">(Admin)</span>
+                    )}
+                  </p>
                 </div>
                 {isPro && (
                   <Crown className="w-5 h-5 text-yellow-500" />

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Instagram, MessageCircle, Settings, BarChart3, Zap, Crown } from 'lucide-react';
+import { Instagram, MessageCircle, Settings, BarChart3, Zap, Crown, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
 import InstagramConnect from '@/components/instagram/InstagramConnect';
@@ -14,7 +14,7 @@ import WelcomeAutomation from '@/components/instagram/WelcomeAutomation';
 import DMAnalytics from '@/components/instagram/DMAnalytics';
 
 const InstagramAutomation = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { storeData } = useStore();
   const [activeTab, setActiveTab] = useState('connect');
 
@@ -29,7 +29,7 @@ const InstagramAutomation = () => {
     );
   }
 
-  const isPro = storeData.plan === 'pro';
+  const isPro = storeData.plan === 'pro' || isAdmin;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -37,7 +37,18 @@ const InstagramAutomation = () => {
         <div className="flex items-center gap-3 mb-4">
           <Instagram className="h-8 w-8 text-pink-600" />
           <h1 className="text-3xl font-bold">Instagram DM Automation</h1>
-          {isPro && <Badge className="bg-gradient-to-r from-purple-500 to-pink-500"><Crown className="w-3 h-3 mr-1" />Pro</Badge>}
+          {isPro && (
+            <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">
+              <Crown className="w-3 h-3 mr-1" />
+              Pro
+            </Badge>
+          )}
+          {isAdmin && (
+            <Badge variant="destructive">
+              <Shield className="w-3 h-3 mr-1" />
+              Admin Access
+            </Badge>
+          )}
         </div>
         <p className="text-muted-foreground text-lg">
           Automate your Instagram DMs, story replies, and comments to boost sales with AI-powered responses in Hindi, English, and Hinglish.
