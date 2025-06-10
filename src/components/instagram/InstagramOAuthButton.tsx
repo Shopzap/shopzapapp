@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { MessageSquare, ExternalLink } from 'lucide-react';
+import { supabase } from "@/integrations/supabase/client";
 
 interface InstagramOAuthButtonProps {
   storeId: string;
@@ -13,14 +14,34 @@ const InstagramOAuthButton: React.FC<InstagramOAuthButtonProps> = ({
   onConnectionStart
 }) => {
   const [isConnecting, setIsConnecting] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchClientId = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-manychat-config');
+        if (error) throw error;
+        setClientId(data.client_id);
+      } catch (error) {
+        console.error('Failed to fetch ManyChat config:', error);
+      }
+    };
+
+    fetchClientId();
+  }, []);
 
   const handleConnect = () => {
+    if (!clientId) {
+      console.error('ManyChat client ID not available');
+      return;
+    }
+
     setIsConnecting(true);
     onConnectionStart();
 
     // ManyChat OAuth URL with your centralized app credentials
     const manyChatOAuthUrl = new URL('https://api.manychat.com/oauth/authorize');
-    manyChatOAuthUrl.searchParams.set('client_id', 'your_manychat_client_id'); // This will use your centralized app
+    manyChatOAuthUrl.searchParams.set('client_id', clientId);
     manyChatOAuthUrl.searchParams.set('response_type', 'code');
     manyChatOAuthUrl.searchParams.set('scope', 'basic pages:read pages:write');
     manyChatOAuthUrl.searchParams.set('state', storeId);
@@ -36,7 +57,7 @@ const InstagramOAuthButton: React.FC<InstagramOAuthButtonProps> = ({
   return (
     <Button 
       onClick={handleConnect} 
-      disabled={isConnecting}
+      disabled={isConnecting || !clientId}
       className="flex items-center space-x-2"
       size="lg"
     >
