@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,10 @@ const Storefront: React.FC = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   
+  // Always call hooks unconditionally
+  const normalizedSlug = storeName?.toLowerCase() || '';
+  const { getCachedData, setCachedData } = useStoreCache(normalizedSlug);
+  
   // Preload critical resources on component mount
   useEffect(() => {
     preloadCriticalResources();
@@ -25,25 +30,10 @@ const Storefront: React.FC = () => {
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
 
-  // Redirect to home if no store name provided
-  if (!storeName || storeName.trim() === '') {
-    console.error('Storefront: No store name provided in URL');
-    return <Navigate to="/" replace />;
-  }
-
-  // Normalize slug to lowercase and redirect if needed
-  const normalizedSlug = storeName.toLowerCase();
-  if (storeName !== normalizedSlug) {
-    console.log('Storefront: Redirecting to lowercase slug', normalizedSlug);
-    return <Navigate to={`/store/${normalizedSlug}`} replace />;
-  }
-
-  const { getCachedData, setCachedData } = useStoreCache(normalizedSlug);
-  
-  // Check cache first
+  // Check cache first - always call this hook
   const cachedData = getCachedData(normalizedSlug);
   
-  // Fetch store data using lowercase slug
+  // Fetch store data using lowercase slug - always call this hook
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-slug', normalizedSlug],
     queryFn: async () => {
@@ -76,7 +66,7 @@ const Storefront: React.FC = () => {
     initialData: cachedData?.store,
   });
   
-  // Fetch products with caching
+  // Fetch products with caching - always call this hook
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -148,6 +138,18 @@ const Storefront: React.FC = () => {
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, [queryClient, normalizedSlug]);
+
+  // Handle redirects and error cases after all hooks have been called
+  if (!storeName || storeName.trim() === '') {
+    console.error('Storefront: No store name provided in URL');
+    return <Navigate to="/" replace />;
+  }
+
+  // Redirect to lowercase if needed
+  if (storeName !== normalizedSlug) {
+    console.log('Storefront: Redirecting to lowercase slug', normalizedSlug);
+    return <Navigate to={`/store/${normalizedSlug}`} replace />;
+  }
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
