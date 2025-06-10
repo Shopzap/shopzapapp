@@ -90,14 +90,16 @@ const Onboarding = () => {
         storeLogoUrl = urlData.publicUrl;
       }
       
-      // Step 2: Create a unique username from store name
-      const storeSlug = storeName.toLowerCase()
+      // Step 2: Create a clean slug from store name
+      const cleanSlug = storeName.toLowerCase()
         .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
+        .replace(/\s+/g, '-')
+        .substring(0, 30);
       
       // Add a unique suffix to ensure uniqueness
       const uniqueSuffix = `-${uuidv4().substring(0, 6)}`;
-      const uniqueUsername = `${storeSlug}${uniqueSuffix}`;
+      const uniqueUsername = `${cleanSlug}${uniqueSuffix}`;
+      const uniqueSlug = cleanSlug; // Use clean slug without suffix for better URLs
       
       // Step 3: Save store data to Supabase
       const { data: store, error: storeError } = await supabase
@@ -107,9 +109,10 @@ const Onboarding = () => {
             name: storeName,
             logo_image: storeLogoUrl,
             username: uniqueUsername,
-            user_id: user.id, // user.id is correctly used here
+            slug: uniqueSlug,
+            user_id: user.id,
             business_email: user.email || '',
-            phone_number: '', // This is a required field in the stores table
+            phone_number: '',
             theme: { mode: storeTheme },
             plan: 'free'
           }
