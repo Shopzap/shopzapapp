@@ -29,8 +29,8 @@ serve(async (req) => {
       )
     }
 
-    // Test the API token by fetching page data
-    const pageResponse = await fetch('https://api.manychat.com/fb/page/getPages', {
+    // Test the API token by fetching page data - using correct endpoint
+    const pageResponse = await fetch('https://api.manychat.com/fb/page/getInfo', {
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json'
@@ -49,33 +49,31 @@ serve(async (req) => {
     }
 
     const pageData = await pageResponse.json()
-    const pages = pageData.data || []
     
-    console.log('Pages fetched from ManyChat:', pages.length)
+    console.log('Page data fetched from ManyChat:', pageData)
 
-    if (pages.length === 0) {
-      throw new Error('No pages found in your ManyChat account. Please make sure you have connected your Instagram page to ManyChat.')
+    if (!pageData.data) {
+      throw new Error('No page data found in your ManyChat account.')
     }
 
-    // Get the first Instagram-connected page or fallback to first page
-    const instagramPage = pages.find((page: any) => page.instagram_id) || pages[0]
+    const page = pageData.data
 
-    if (!instagramPage) {
-      throw new Error('No suitable page found. Please make sure your Instagram page is connected to ManyChat.')
+    if (!page) {
+      throw new Error('No page found. Please make sure your Instagram page is connected to ManyChat.')
     }
 
     console.log('Selected page:', { 
-      id: instagramPage.id, 
-      name: instagramPage.name,
-      instagram_id: instagramPage.instagram_id 
+      id: page.id, 
+      name: page.name,
+      instagram_id: page.instagram_id 
     })
 
     return new Response(
       JSON.stringify({
-        instagram_page_id: instagramPage.instagram_id || instagramPage.id,
-        bot_id: instagramPage.id,
-        page_name: instagramPage.name,
-        instagram_username: instagramPage.instagram_username || instagramPage.name
+        instagram_page_id: page.instagram_id || page.id,
+        bot_id: page.id,
+        page_name: page.name,
+        instagram_username: page.instagram_username || page.name
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
