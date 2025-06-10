@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,13 +36,14 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field instead of name
+  // Fetch store data using username field (this is the correct field for store URLs)
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-username', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', storeName);
+      console.log('Storefront: Fetching store data for username:', storeName);
       
       try {
+        // First try exact match on username
         const { data, error } = await supabase
           .from('stores')
           .select('*')
@@ -49,8 +51,9 @@ const Storefront: React.FC = () => {
           .single();
           
         if (error && error.code === 'PGRST116') {
+          // Try with decoded store name in case of URL encoding
           const decodedStoreName = decodeURIComponent(storeName);
-          console.log('Storefront: Trying with decoded store name', decodedStoreName);
+          console.log('Storefront: Trying with decoded store name:', decodedStoreName);
           
           const { data: decodedData, error: decodedError } = await supabase
             .from('stores')
@@ -59,23 +62,36 @@ const Storefront: React.FC = () => {
             .single();
             
           if (decodedError) {
-            console.error('Storefront: Store not found after decode attempt', decodedError);
-            throw new Error(`Store "${storeName}" not found`);
+            // Try case-insensitive match on username
+            console.log('Storefront: Trying case-insensitive match on username');
+            const { data: ciData, error: ciError } = await supabase
+              .from('stores')
+              .select('*')
+              .ilike('username', storeName)
+              .single();
+              
+            if (ciError) {
+              console.error('Storefront: Store not found after all attempts:', ciError);
+              throw new Error(`Store "${storeName}" not found`);
+            }
+            
+            console.log('Storefront: Store found with case-insensitive username match:', ciData);
+            return ciData;
           }
           
-          console.log('Storefront: Store found with decoded username', decodedData);
+          console.log('Storefront: Store found with decoded username:', decodedData);
           return decodedData;
         }
           
         if (error) {
-          console.error('Storefront: Error fetching store', error);
+          console.error('Storefront: Error fetching store:', error);
           throw new Error(`Store "${storeName}" not found`);
         }
         
-        console.log('Storefront: Store data received with theme:', data?.theme);
+        console.log('Storefront: Store data received:', data);
         return data;
       } catch (err) {
-        console.error('Storefront: Exception in store fetch', err);
+        console.error('Storefront: Exception in store fetch:', err);
         throw err;
       }
     },
