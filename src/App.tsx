@@ -95,8 +95,8 @@ const AppContent = () => (
             <Route path="products" element={<ProductManager />} />
             <Route path="orders" element={<Orders />} />
             <Route path="customize-store" element={<CustomizeStore />} />
-            <Route path="analytics" element={<Analytics />} />
             <Route path="instagram" element={<InstagramAutomation />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
