@@ -11,8 +11,7 @@ import {
   BarChart3,
   Instagram,
   Crown,
-  Shield,
-  LogOut
+  Shield
 } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,7 +23,7 @@ interface Props {
 const DashboardLayout = ({ children }: Props) => {
   const location = useLocation();
   const { storeData } = useStore();
-  const { isAdmin, signOut } = useAuth();
+  const { isAdmin } = useAuth();
   
   const isPro = storeData?.plan === 'pro' || isAdmin;
 
@@ -68,10 +67,6 @@ const DashboardLayout = ({ children }: Props) => {
     },
   ];
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -80,7 +75,7 @@ const DashboardLayout = ({ children }: Props) => {
           <div className="flex items-center px-6 py-4 border-b">
             <h1 className="text-xl font-bold text-gray-900">ShopZap</h1>
             {isAdmin && (
-              <Shield className="w-5 h-5 ml-2 text-red-500" />
+              <Shield className="w-5 h-5 ml-2 text-red-500" title="Admin Access" />
             )}
           </div>
           
@@ -116,17 +111,6 @@ const DashboardLayout = ({ children }: Props) => {
               );
             })}
           </nav>
-          
-          {/* Logout Button */}
-          <div className="px-4 py-4 border-t">
-            <button
-              onClick={handleSignOut}
-              className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 hover:text-red-700 transition-colors"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Sign Out
-            </button>
-          </div>
           
           {storeData && (
             <div className="px-4 py-4 border-t">

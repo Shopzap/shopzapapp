@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -105,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       
-      console.log('Fetched user profile:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -148,7 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
-      console.error('Sign up error:', error);
       toast.error(error.message || 'An error occurred during sign up');
     } finally {
       setIsLoading(false);
@@ -169,19 +166,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Continue even if this fails
       }
       
-      console.log('Attempting to sign in with:', email);
-      
+      // Fix: Remove redirectTo from options and use correctly formatted options
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) {
-        console.error('Sign in error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('Sign in successful:', data);
       toast.success("Successfully signed in!");
       
       // Force page reload for clean state
@@ -189,16 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
-      console.error('Sign in error details:', error);
-      
-      // Provide more specific error messages
-      if (error.message === 'Invalid login credentials') {
-        toast.error('Invalid email or password. Please check your credentials and try again.');
-      } else if (error.message === 'Email not confirmed') {
-        toast.error('Please check your email and click the confirmation link before signing in.');
-      } else {
-        toast.error(error.message || 'An error occurred during sign in');
-      }
+      toast.error(error.message || 'An error occurred during sign in');
     }
     finally {
       setIsLoading(false);

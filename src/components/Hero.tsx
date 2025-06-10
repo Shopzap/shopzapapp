@@ -2,12 +2,8 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { User } from 'lucide-react';
 
 const Hero = () => {
-  const { isAuthenticated } = useAuth();
-
   return (
     <section className="relative py-20 md:py-28 px-4 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-accent/50 to-background -z-10"></div>
@@ -22,18 +18,9 @@ const Hero = () => {
               Turn your WhatsApp into a powerful online store. No coding, no website needed. Just add products and start selling.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              {isAuthenticated ? (
-                <Button size="lg" asChild className="btn-hover">
-                  <Link to="/dashboard">
-                    <User className="w-4 h-4 mr-2" />
-                    Go to Dashboard
-                  </Link>
-                </Button>
-              ) : (
-                <Button size="lg" asChild className="btn-hover">
-                  <Link to="/onboarding">Create Your Store</Link>
-                </Button>
-              )}
+              <Button size="lg" asChild className="btn-hover">
+                <Link to="/onboarding">Create Your Store</Link>
+              </Button>
               <Button size="lg" variant="outline" asChild className="btn-hover">
                 <a href="#features">See How It Works</a>
               </Button>

@@ -2,13 +2,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, User } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Menu, X } from 'lucide-react';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -41,28 +39,14 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Desktop Auth Buttons / Profile */}
+          {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center space-x-2"
-              >
-                <User className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Button>
-            ) : (
-              <>
-                <Button variant="ghost" onClick={() => navigate('/auth')}>
-                  Sign In
-                </Button>
-                <Button onClick={() => navigate('/auth')}>
-                  Get Started
-                </Button>
-              </>
-            )}
+            <Button variant="ghost" onClick={() => navigate('/auth')}>
+              Sign In
+            </Button>
+            <Button onClick={() => navigate('/auth')}>
+              Get Started
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -106,28 +90,12 @@ const Navbar = () => {
                 Contact
               </Link>
               <div className="flex flex-col space-y-2 pt-4 border-t border-border">
-                {isAuthenticated ? (
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => {
-                      navigate('/dashboard');
-                      setIsMenuOpen(false);
-                    }}
-                    className="justify-start"
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="ghost" onClick={() => navigate('/auth')}>
-                      Sign In
-                    </Button>
-                    <Button onClick={() => navigate('/auth')}>
-                      Get Started
-                    </Button>
-                  </>
-                )}
+                <Button variant="ghost" onClick={() => navigate('/auth')}>
+                  Sign In
+                </Button>
+                <Button onClick={() => navigate('/auth')}>
+                  Get Started
+                </Button>
               </div>
             </div>
           </div>
