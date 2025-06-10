@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -16,24 +15,42 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
+  // Normalize the store name to lowercase for consistent querying
+  const normalizedStoreName = storeName?.toLowerCase();
+
   // Fetch store data using username field instead of name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', storeName],
+    queryKey: ['store-by-username', normalizedStoreName],
     queryFn: async () => {
-      if (!storeName) {
+      if (!normalizedStoreName) {
         throw new Error('No store name provided');
       }
       
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('username', storeName)
+        .eq('username', normalizedStoreName)
         .single();
+        
+      if (error && error.code === 'PGRST116') {
+        // Also try with the name field as fallback
+        const { data: nameData, error: nameError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('name', normalizedStoreName)
+          .single();
+          
+        if (nameError) {
+          throw new Error(`Store "${storeName}" not found`);
+        }
+        
+        return nameData;
+      }
         
       if (error) throw error;
       return data;
     },
-    enabled: !!storeName,
+    enabled: !!normalizedStoreName,
   });
 
   const formatPrice = (amount: number) => {

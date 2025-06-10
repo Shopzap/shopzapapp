@@ -26,6 +26,14 @@ const Storefront: React.FC = () => {
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
 
+  // Normalize the store name to lowercase for consistent querying
+  const normalizedStoreName = storeName?.toLowerCase();
+
+  // Redirect to lowercase URL if the current URL has uppercase characters
+  if (storeName && storeName !== normalizedStoreName) {
+    return <Navigate to={`/store/${normalizedStoreName}`} replace />;
+  }
+
   // Redirect to home if no store name provided
   if (!storeName || storeName.trim() === '') {
     console.error('Storefront: No store name provided in URL');
@@ -35,36 +43,36 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field instead of name
+  // Fetch store data using username field (which appears to be the URL identifier)
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', storeName],
+    queryKey: ['store-by-username', normalizedStoreName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', storeName);
+      console.log('Storefront: Fetching store data for username', normalizedStoreName);
       
       try {
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('username', storeName)
+          .eq('username', normalizedStoreName)
           .single();
           
         if (error && error.code === 'PGRST116') {
-          const decodedStoreName = decodeURIComponent(storeName);
-          console.log('Storefront: Trying with decoded store name', decodedStoreName);
+          // Also try with the name field as fallback
+          console.log('Storefront: Trying with name field', normalizedStoreName);
           
-          const { data: decodedData, error: decodedError } = await supabase
+          const { data: nameData, error: nameError } = await supabase
             .from('stores')
             .select('*')
-            .eq('username', decodedStoreName)
+            .eq('name', normalizedStoreName)
             .single();
             
-          if (decodedError) {
-            console.error('Storefront: Store not found after decode attempt', decodedError);
+          if (nameError) {
+            console.error('Storefront: Store not found with username or name', normalizedStoreName);
             throw new Error(`Store "${storeName}" not found`);
           }
           
-          console.log('Storefront: Store found with decoded username', decodedData);
-          return decodedData;
+          console.log('Storefront: Store found with name field', nameData);
+          return nameData;
         }
           
         if (error) {
@@ -79,7 +87,7 @@ const Storefront: React.FC = () => {
         throw err;
       }
     },
-    enabled: !!storeName && !cachedData,
+    enabled: !!normalizedStoreName && !cachedData,
     retry: 2,
     retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
@@ -153,12 +161,12 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-username', normalizedStoreName] });
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [queryClient, storeName]);
+  }, [queryClient, normalizedStoreName]);
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
