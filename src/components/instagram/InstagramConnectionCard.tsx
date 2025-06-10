@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Instagram, CheckCircle, ExternalLink } from 'lucide-react';
+import { Instagram, CheckCircle, ExternalLink, Key } from 'lucide-react';
 
 interface InstagramConnectionCardProps {
   storeData: any;
@@ -25,7 +25,8 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
     instagram_page_id: '',
     manychat_page_id: '',
     page_name: '',
-    access_token: ''
+    access_token: '',
+    manychat_api_key: ''
   });
 
   const handleConnect = async () => {
@@ -33,6 +34,15 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       toast({
         title: "Missing Information",
         description: "Please fill in both Instagram Page ID and ManyChat Page ID",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!connectionForm.manychat_api_key) {
+      toast({
+        title: "Missing API Key",
+        description: "Please provide your ManyChat API key",
         variant: "destructive"
       });
       return;
@@ -48,6 +58,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
           manychat_page_id: connectionForm.manychat_page_id,
           page_name: connectionForm.page_name,
           access_token: connectionForm.access_token,
+          manychat_api_key: connectionForm.manychat_api_key,
           is_active: true
         })
         .select()
@@ -58,7 +69,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       onConnectionUpdate(data);
       toast({
         title: "Instagram Connected",
-        description: "Your Instagram account has been successfully connected!",
+        description: "Your Instagram account with ManyChat has been successfully connected!",
       });
     } catch (error) {
       console.error("Error connecting Instagram:", error);
@@ -145,7 +156,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Instagram className="h-5 w-5" />
-          <span>Connect Instagram</span>
+          <span>Connect Instagram with ManyChat</span>
         </CardTitle>
         <CardDescription>
           Connect your Instagram Business Account with ManyChat to enable automation features.
@@ -158,6 +169,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
             <li>• Instagram Business Account</li>
             <li>• Facebook Page linked to Instagram</li>
             <li>• ManyChat account with Instagram integration</li>
+            <li>• ManyChat API key with proper permissions</li>
             <li>• Message permissions approved</li>
           </ul>
         </div>
@@ -203,11 +215,28 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
           </div>
 
           <div>
+            <Label htmlFor="manychat_api_key" className="flex items-center space-x-2">
+              <Key className="h-4 w-4" />
+              <span>ManyChat API Key *</span>
+            </Label>
+            <Input
+              id="manychat_api_key"
+              type="password"
+              placeholder="Your ManyChat API key"
+              value={connectionForm.manychat_api_key}
+              onChange={(e) => setConnectionForm(prev => ({
+                ...prev,
+                manychat_api_key: e.target.value
+              }))}
+            />
+          </div>
+
+          <div>
             <Label htmlFor="access_token">Access Token (Optional)</Label>
             <Input
               id="access_token"
               type="password"
-              placeholder="Access token if required"
+              placeholder="Additional access token if required"
               value={connectionForm.access_token}
               onChange={(e) => setConnectionForm(prev => ({
                 ...prev,
@@ -217,16 +246,26 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
           </div>
         </div>
 
+        <div className="bg-yellow-50 p-4 rounded-lg">
+          <h4 className="font-medium text-yellow-900 mb-2">Where to find your ManyChat API Key:</h4>
+          <ol className="text-sm text-yellow-800 space-y-1">
+            <li>1. Go to ManyChat dashboard</li>
+            <li>2. Click on "Settings" → "API"</li>
+            <li>3. Generate or copy your API key</li>
+            <li>4. Make sure it has the required permissions for Instagram messaging</li>
+          </ol>
+        </div>
+
         <div className="flex space-x-2">
           <Button 
             onClick={handleConnect} 
             disabled={isConnecting}
             className="flex-1"
           >
-            {isConnecting ? "Connecting..." : "Connect Instagram"}
+            {isConnecting ? "Connecting..." : "Connect Instagram & ManyChat"}
           </Button>
           <Button variant="outline" asChild>
-            <a href="https://manychat.com/instagram" target="_blank" rel="noopener noreferrer">
+            <a href="https://manychat.com/help/instagram-setup" target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4 mr-2" />
               Setup Guide
             </a>
