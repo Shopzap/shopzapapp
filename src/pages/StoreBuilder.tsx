@@ -17,10 +17,10 @@ const StoreBuilder = () => {
   const { user } = useAuth();
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [storeSlug, setStoreSlug] = useState("");
+  const [storeUsername, setStoreUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Auto-generate slug from store name
+  // Auto-generate username from store name
   const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setStoreName(name);
@@ -28,35 +28,9 @@ const StoreBuilder = () => {
     // Generate clean slug from store name
     const slug = name.toLowerCase()
       .replace(/[^\w\s]/gi, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 30); // Limit length
+      .replace(/\s+/g, '-');
     
-    setStoreSlug(slug);
-  };
-  
-  // Generate unique slug
-  const generateUniqueSlug = async (baseSlug: string): Promise<string> => {
-    let uniqueSlug = baseSlug;
-    let counter = 1;
-    
-    while (true) {
-      const { data, error } = await supabase
-        .from('stores')
-        .select('slug')
-        .eq('slug', uniqueSlug)
-        .maybeSingle();
-      
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-      
-      if (!data) {
-        return uniqueSlug;
-      }
-      
-      uniqueSlug = `${baseSlug}-${counter}`;
-      counter++;
-    }
+    setStoreUsername(slug);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,35 +50,35 @@ const StoreBuilder = () => {
       
       const userId = user.id;
       
-      // Clean and validate slug
-      let cleanSlug = storeSlug.trim().toLowerCase()
-        .replace(/[^\w-]/gi, '')
-        .replace(/--+/g, '-')
-        .replace(/^-|-$/g, '');
-      
-      if (!cleanSlug) {
-        cleanSlug = storeName.toLowerCase()
-          .replace(/[^\w\s]/gi, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 30);
-      }
-      
-      // Generate unique slug
-      const uniqueSlug = await generateUniqueSlug(cleanSlug);
-      
-      // Also generate a unique username for backward compatibility
-      const cleanStoreName = storeName.trim().toLowerCase()
+      // Clean store name for the URL
+      let cleanStoreName = storeName.trim().toLowerCase()
         .replace(/[^\w\s]/gi, '')
         .replace(/\s+/g, '-');
       
-      // Create store with both slug and username
+      // Check if store name already exists
+      const { data: existingStore, error: checkError } = await supabase
+        .from('stores')
+        .select('name')
+        .eq('name', cleanStoreName)
+        .single();
+      
+      if (existingStore) {
+        toast({
+          title: "Store name already taken",
+          description: "Please choose a different store name",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create store with the clean name
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
-            name: storeName.trim(),
-            slug: uniqueSlug,
-            username: uniqueSlug, // Use the same unique slug for username
+            name: cleanStoreName,
+            username: storeUsername, // Keep username for backward compatibility
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -127,7 +101,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/store/${uniqueSlug}`,
+        description: `Your store is now available at shopzap.io/store/${cleanStoreName}`,
       });
       
       // Redirect to dashboard
@@ -201,13 +175,13 @@ const StoreBuilder = () => {
                       id="storeUrl"
                       className="rounded-l-none"
                       placeholder="your-store-name" 
-                      value={storeSlug}
-                      onChange={(e) => setStoreSlug(e.target.value)}
+                      value={storeUsername}
+                      onChange={(e) => setStoreUsername(e.target.value)}
                       required
                     />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Choose a unique, clean URL for your store (letters, numbers, and hyphens only)
+                    Choose a unique name for your store URL
                   </p>
                 </div>
                 

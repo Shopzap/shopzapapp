@@ -22,7 +22,6 @@ import PaymentFailed from "./pages/PaymentFailed";
 import OrderTracking from "./pages/OrderTracking";
 import NotFound from "./pages/NotFound";
 import Contact from "./pages/Contact";
-import InstagramAutomation from "./pages/InstagramAutomation";
 
 // Lazy load non-critical pages
 const StoreThemes = lazy(() => import("./pages/StoreThemes"));
@@ -251,15 +250,6 @@ const App = () => {
                       <DashboardLayout>
                         <LazyComponentWrapper>
                           <CustomizeStore />
-                        </LazyComponentWrapper>
-                      </DashboardLayout>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/dashboard/instagram-automation" element={
-                    <ProtectedRoute>
-                      <DashboardLayout>
-                        <LazyComponentWrapper>
-                          <InstagramAutomation />
                         </LazyComponentWrapper>
                       </DashboardLayout>
                     </ProtectedRoute>

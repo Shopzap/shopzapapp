@@ -8,7 +8,6 @@ interface UserProfile {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-  is_admin: boolean | null;
 }
 
 type AuthContextType = {
@@ -20,7 +19,6 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
-  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -96,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, is_admin')
+        .select('id, full_name, avatar_url')
         .eq('id', userId)
         .maybeSingle();
       
@@ -109,7 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error fetching user profile:', error);
     }
   };
-  
   
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
@@ -215,7 +212,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isAuthenticated = !!user;
-  const isAdmin = profile?.is_admin === true;
 
   const value = {
     user,
@@ -226,7 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     isAuthenticated,
-    isAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

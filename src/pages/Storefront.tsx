@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,92 +35,53 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fixed store lookup with proper slug prioritization
+  // Fetch store data using username field instead of name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', storeName],
+    queryKey: ['store-by-username', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug/name', storeName);
+      console.log('Storefront: Fetching store data for username', storeName);
       
       try {
-        // Strategy 1: Try exact slug match first (PRIMARY - this should work for 'dore')
-        console.log('Storefront: Trying slug match for:', storeName.toLowerCase());
-        let { data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('slug', storeName.toLowerCase())
-          .maybeSingle();
-          
-        if (data) {
-          console.log('Storefront: Store found by exact slug match', data);
-          return data;
-        }
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error('Storefront: Error in slug query:', error);
-        }
-        
-        // Strategy 2: Try case-insensitive slug match
-        console.log('Storefront: Trying case-insensitive slug match');
-        ({ data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .ilike('slug', storeName)
-          .maybeSingle());
-          
-        if (data) {
-          console.log('Storefront: Store found by case-insensitive slug', data);
-          return data;
-        }
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error('Storefront: Error in case-insensitive slug query:', error);
-        }
-        
-        // Strategy 3: Try username match (legacy support)
-        console.log('Storefront: Trying username match for:', storeName);
-        ({ data, error } = await supabase
+        const { data, error } = await supabase
           .from('stores')
           .select('*')
           .eq('username', storeName)
-          .maybeSingle());
+          .single();
           
-        if (data) {
-          console.log('Storefront: Store found by username (legacy)', data);
-          return data;
-        }
-        
-        if (error && error.code !== 'PGRST116') {
-          console.error('Storefront: Error in username query:', error);
-        }
-        
-        // Strategy 4: Try case-insensitive username match
-        console.log('Storefront: Trying case-insensitive username match');
-        ({ data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .ilike('username', storeName)
-          .maybeSingle());
+        if (error && error.code === 'PGRST116') {
+          const decodedStoreName = decodeURIComponent(storeName);
+          console.log('Storefront: Trying with decoded store name', decodedStoreName);
           
-        if (data) {
-          console.log('Storefront: Store found by case-insensitive username', data);
-          return data;
+          const { data: decodedData, error: decodedError } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('username', decodedStoreName)
+            .single();
+            
+          if (decodedError) {
+            console.error('Storefront: Store not found after decode attempt', decodedError);
+            throw new Error(`Store "${storeName}" not found`);
+          }
+          
+          console.log('Storefront: Store found with decoded username', decodedData);
+          return decodedData;
+        }
+          
+        if (error) {
+          console.error('Storefront: Error fetching store', error);
+          throw new Error(`Store "${storeName}" not found`);
         }
         
-        if (error && error.code !== 'PGRST116') {
-          console.error('Storefront: Error in case-insensitive username query:', error);
-        }
-        
-        // If we get here, store not found
-        console.error('Storefront: Store not found after all lookup strategies for:', storeName);
-        throw new Error(`Store "${storeName}" not found`);
+        console.log('Storefront: Store data received with theme:', data?.theme);
+        return data;
       } catch (err) {
         console.error('Storefront: Exception in store fetch', err);
         throw err;
       }
     },
     enabled: !!storeName && !cachedData,
-    retry: 1,
-    retryDelay: 500,
+    retry: 2,
+    retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
     initialData: cachedData?.store,
@@ -193,7 +153,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -202,30 +162,18 @@ const Storefront: React.FC = () => {
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <StorefrontLoader storeName={storeName} />
-      </div>
-    );
+    return <StorefrontLoader storeName={storeName} />;
   }
   
   // Show error page if store not found ONLY after loading is complete
   if (storeError || (!store && !storeLoading && !cachedData)) {
     console.error('Storefront: Rendering error page due to store error');
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <StoreNotFound storeName={storeName} />
-      </div>
-    );
+    return <StoreNotFound storeName={storeName} />;
   }
   
   // Don't render content until store data is available
   if (!store && !cachedData) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <StorefrontLoader storeName={storeName} />
-      </div>
-    );
+    return <StorefrontLoader storeName={storeName} />;
   }
 
   // Use cached data if available
@@ -270,7 +218,6 @@ const Storefront: React.FC = () => {
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
     username: enhancedStore.username,
-    slug: enhancedStore.slug,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {

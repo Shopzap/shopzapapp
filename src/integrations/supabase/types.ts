@@ -139,323 +139,6 @@ export type Database = {
           },
         ]
       }
-      ig_dm_analytics: {
-        Row: {
-          created_at: string | null
-          date: string
-          dm_to_order_conversions: number | null
-          id: string
-          keyword_triggers: Json | null
-          link_clicks: number | null
-          reel_comment_conversions: number | null
-          store_id: string
-          total_dms_sent: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date?: string
-          dm_to_order_conversions?: number | null
-          id?: string
-          keyword_triggers?: Json | null
-          link_clicks?: number | null
-          reel_comment_conversions?: number | null
-          store_id: string
-          total_dms_sent?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date?: string
-          dm_to_order_conversions?: number | null
-          id?: string
-          keyword_triggers?: Json | null
-          link_clicks?: number | null
-          reel_comment_conversions?: number | null
-          store_id?: string
-          total_dms_sent?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_dm_analytics_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ig_dm_logs: {
-        Row: {
-          created_at: string | null
-          id: string
-          manychat_message_id: string | null
-          message_sent: string | null
-          recipient_id: string | null
-          status: string | null
-          store_id: string
-          trigger_data: Json | null
-          trigger_type: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          manychat_message_id?: string | null
-          message_sent?: string | null
-          recipient_id?: string | null
-          status?: string | null
-          store_id: string
-          trigger_data?: Json | null
-          trigger_type: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          manychat_message_id?: string | null
-          message_sent?: string | null
-          recipient_id?: string | null
-          status?: string | null
-          store_id?: string
-          trigger_data?: Json | null
-          trigger_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_dm_logs_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ig_keywords: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          keyword: string
-          language: string
-          product_id: string | null
-          reply_template: string
-          store_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          keyword: string
-          language: string
-          product_id?: string | null
-          reply_template: string
-          store_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          keyword?: string
-          language?: string
-          product_id?: string | null
-          reply_template?: string
-          store_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_keywords_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ig_keywords_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ig_reels_automation: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          post_url: string
-          product_id: string | null
-          reply_message: string
-          store_id: string
-          trigger_word: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          post_url: string
-          product_id?: string | null
-          reply_message: string
-          store_id: string
-          trigger_word?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          post_url?: string
-          product_id?: string | null
-          reply_message?: string
-          store_id?: string
-          trigger_word?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_reels_automation_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ig_reels_automation_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ig_story_automation: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_enabled: boolean | null
-          product_id: string | null
-          reply_message: string
-          store_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          product_id?: string | null
-          reply_message: string
-          store_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          product_id?: string | null
-          reply_message?: string
-          store_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_story_automation_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ig_story_automation_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: true
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ig_welcome_automation: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_enabled: boolean | null
-          store_id: string
-          updated_at: string | null
-          welcome_message: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          store_id: string
-          updated_at?: string | null
-          welcome_message?: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_enabled?: boolean | null
-          store_id?: string
-          updated_at?: string | null
-          welcome_message?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ig_welcome_automation_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: true
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      instagram_connections: {
-        Row: {
-          access_token: string | null
-          created_at: string | null
-          id: string
-          instagram_page_id: string
-          is_active: boolean | null
-          manychat_page_id: string
-          page_name: string | null
-          store_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          access_token?: string | null
-          created_at?: string | null
-          id?: string
-          instagram_page_id: string
-          is_active?: boolean | null
-          manychat_page_id: string
-          page_name?: string | null
-          store_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          access_token?: string | null
-          created_at?: string | null
-          id?: string
-          instagram_page_id?: string
-          is_active?: boolean | null
-          manychat_page_id?: string
-          page_name?: string | null
-          store_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "instagram_connections_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       order_items: {
         Row: {
           id: string
@@ -675,7 +358,6 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
-          is_admin: boolean | null
           updated_at: string
         }
         Insert: {
@@ -683,7 +365,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
-          is_admin?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -691,7 +372,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          is_admin?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -710,7 +390,6 @@ export type Database = {
           name: string
           phone_number: string
           plan: string
-          slug: string
           tagline: string | null
           theme: Json | null
           updated_at: string | null
@@ -730,7 +409,6 @@ export type Database = {
           name: string
           phone_number: string
           plan?: string
-          slug: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
@@ -750,7 +428,6 @@ export type Database = {
           name?: string
           phone_number?: string
           plan?: string
-          slug?: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
