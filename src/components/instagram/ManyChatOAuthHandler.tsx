@@ -24,7 +24,10 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
+    console.log('OAuth callback params:', { code, state, error, storeId });
+
     if (error) {
+      console.error('OAuth error:', error);
       toast({
         title: "Connection Failed",
         description: "ManyChat authorization was cancelled or failed.",
@@ -34,6 +37,7 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
     }
 
     if (code && state === storeId) {
+      console.log('Processing OAuth callback with code:', code);
       handleOAuthCallback(code);
     }
   }, [searchParams, storeId]);
@@ -41,6 +45,8 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
   const handleOAuthCallback = async (code: string) => {
     setIsProcessing(true);
     try {
+      console.log('Calling edge function with code:', code);
+      
       // Call our edge function to handle the OAuth exchange
       const { data, error } = await supabase.functions.invoke('manychat-oauth', {
         body: {
@@ -48,6 +54,8 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
           storeId
         }
       });
+
+      console.log('Edge function response:', { data, error });
 
       if (error) {
         throw error;
@@ -69,8 +77,11 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
         .single();
 
       if (dbError) {
+        console.error('Database error:', dbError);
         throw dbError;
       }
+
+      console.log('Connection stored successfully:', connection);
 
       onConnectionSuccess(connection);
       toast({

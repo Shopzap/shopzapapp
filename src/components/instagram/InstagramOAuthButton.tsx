@@ -26,6 +26,9 @@ const InstagramOAuthButton: React.FC<InstagramOAuthButtonProps> = ({
     manyChatOAuthUrl.searchParams.set('state', storeId);
     manyChatOAuthUrl.searchParams.set('redirect_uri', `${window.location.origin}/dashboard/instagram`);
 
+    console.log('OAuth URL:', manyChatOAuthUrl.toString());
+    console.log('Redirect URI:', `${window.location.origin}/dashboard/instagram`);
+
     // Open OAuth flow
     window.location.href = manyChatOAuthUrl.toString();
   };

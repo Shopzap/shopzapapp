@@ -14,11 +14,34 @@ serve(async (req) => {
   try {
     const { code, storeId } = await req.json()
 
+    console.log('OAuth function called with:', { code: code ? 'present' : 'missing', storeId })
+
     if (!code) {
       return new Response(
         JSON.stringify({ error: 'Authorization code is required' }),
         { 
           status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    const clientId = Deno.env.get('MANYCHAT_CLIENT_ID')
+    const clientSecret = Deno.env.get('MANYCHAT_CLIENT_SECRET')
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://shopzap.io'
+
+    console.log('Environment check:', { 
+      clientId: clientId ? 'present' : 'missing',
+      clientSecret: clientSecret ? 'present' : 'missing',
+      siteUrl 
+    })
+
+    if (!clientId || !clientSecret) {
+      console.error('Missing ManyChat credentials')
+      return new Response(
+        JSON.stringify({ error: 'ManyChat credentials not configured' }),
+        { 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
@@ -32,10 +55,10 @@ serve(async (req) => {
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: Deno.env.get('MANYCHAT_CLIENT_ID') || '',
-        client_secret: Deno.env.get('MANYCHAT_CLIENT_SECRET') || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         code: code,
-        redirect_uri: `${Deno.env.get('SITE_URL') || 'https://shopzap.io'}/dashboard/instagram`
+        redirect_uri: `${siteUrl}/dashboard/instagram`
       })
     })
 
@@ -47,6 +70,8 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
+
+    console.log('Token exchange successful, fetching pages...')
 
     // Fetch page data from ManyChat using the seller's access token
     const pageResponse = await fetch('https://api.manychat.com/fb/page/getPages', {
@@ -65,12 +90,16 @@ serve(async (req) => {
     const pageData = await pageResponse.json()
     const pages = pageData.data || []
     
+    console.log('Pages fetched:', pages.length)
+
     if (pages.length === 0) {
       throw new Error('No pages found in ManyChat account')
     }
 
     // Get the first Instagram-connected page or fallback to first page
     const instagramPage = pages.find((page: any) => page.instagram_id) || pages[0]
+
+    console.log('Selected page:', { id: instagramPage.id, name: instagramPage.name })
 
     return new Response(
       JSON.stringify({
