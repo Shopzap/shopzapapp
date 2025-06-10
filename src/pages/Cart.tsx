@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, useNavigate, Link, Navigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCart } from '@/hooks/useCart';
@@ -13,14 +13,13 @@ import StorefrontLoader from '@/components/storefront/StorefrontLoader';
 
 const Cart = () => {
   const { storeName } = useParams<{ storeName: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
   // Normalize the store name to lowercase for consistent querying
   const normalizedStoreName = storeName?.toLowerCase();
 
-  // Fetch store data with enhanced logic for username/slug handling
+  // Fetch store data
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-lookup-cart', normalizedStoreName],
     queryFn: async () => {
@@ -37,12 +36,10 @@ const Cart = () => {
           .single();
           
         if (slugData && !slugError) {
-          console.log('Cart: Store found by slug', slugData);
           return { store: slugData, redirectNeeded: false };
         }
         
         // If not found by slug, try username (legacy support)
-        console.log('Cart: Trying with username field', normalizedStoreName);
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
@@ -50,12 +47,10 @@ const Cart = () => {
           .single();
           
         if (usernameData && !usernameError) {
-          console.log('Cart: Store found by username, redirect needed', usernameData);
           return { store: usernameData, redirectNeeded: true };
         }
         
         // Finally, try name field as fallback
-        console.log('Cart: Trying with name field', normalizedStoreName);
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
@@ -63,7 +58,6 @@ const Cart = () => {
           .single();
           
         if (nameData && !nameError) {
-          console.log('Cart: Store found by name', nameData);
           return { store: nameData, redirectNeeded: false };
         }
         
@@ -75,13 +69,6 @@ const Cart = () => {
     },
     enabled: !!normalizedStoreName,
   });
-
-  // Handle redirect if needed (username -> slug redirect)
-  if (storeData?.redirectNeeded && storeData?.store?.slug) {
-    const newPath = location.pathname.replace(`/store/${storeName}`, `/store/${storeData.store.slug}`);
-    console.log('Cart: Redirecting from username to slug', newPath);
-    return <Navigate to={newPath} replace />;
-  }
 
   // Extract store from the data structure
   const store = storeData?.store;
