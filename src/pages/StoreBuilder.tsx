@@ -78,7 +78,8 @@ const StoreBuilder = () => {
         .insert([
           {
             name: cleanStoreName,
-            username: storeUsername, // Keep username for backward compatibility
+            username: storeUsername,
+            slug: cleanStoreName, // Add the required slug field
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
