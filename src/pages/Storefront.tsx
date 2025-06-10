@@ -36,26 +36,38 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Enhanced store lookup with multiple fallback strategies
+  // Fixed store lookup with proper slug prioritization
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug/username', storeName);
+      console.log('Storefront: Fetching store data for slug', storeName);
       
       try {
-        // Strategy 1: Try exact slug match first (new slug field)
+        // Strategy 1: Try exact slug match first (PRIMARY - this should work for 'dore')
         let { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('slug', storeName)
+          .eq('slug', storeName.toLowerCase())
           .maybeSingle();
           
         if (data) {
-          console.log('Storefront: Store found by slug', data);
+          console.log('Storefront: Store found by exact slug match', data);
           return data;
         }
         
-        // Strategy 2: Try username match (legacy support)
+        // Strategy 2: Try case-insensitive slug match
+        ({ data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .ilike('slug', storeName)
+          .maybeSingle());
+          
+        if (data) {
+          console.log('Storefront: Store found by case-insensitive slug', data);
+          return data;
+        }
+        
+        // Strategy 3: Try username match (legacy support)
         ({ data, error } = await supabase
           .from('stores')
           .select('*')
@@ -63,54 +75,24 @@ const Storefront: React.FC = () => {
           .maybeSingle());
           
         if (data) {
-          console.log('Storefront: Store found by username', data);
+          console.log('Storefront: Store found by username (legacy)', data);
           return data;
         }
         
-        // Strategy 3: Try trimmed slug (remove suffix like -0b517a)
-        const trimmedSlug = storeName.split('-')[0];
-        if (trimmedSlug !== storeName) {
-          ({ data, error } = await supabase
-            .from('stores')
-            .select('*')
-            .ilike('username', `${trimmedSlug}%`)
-            .maybeSingle());
-            
-          if (data) {
-            console.log('Storefront: Store found by trimmed slug pattern', data);
-            return data;
-          }
-        }
-        
-        // Strategy 4: Try case-insensitive name match
+        // Strategy 4: Try case-insensitive username match
         ({ data, error } = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', storeName)
+          .ilike('username', storeName)
           .maybeSingle());
           
         if (data) {
-          console.log('Storefront: Store found by name', data);
+          console.log('Storefront: Store found by case-insensitive username', data);
           return data;
         }
         
-        // Strategy 5: Try URL decoded name (for special characters)
-        const decodedStoreName = decodeURIComponent(storeName);
-        if (decodedStoreName !== storeName) {
-          ({ data, error } = await supabase
-            .from('stores')
-            .select('*')
-            .ilike('name', decodedStoreName)
-            .maybeSingle());
-            
-          if (data) {
-            console.log('Storefront: Store found with decoded name', data);
-            return data;
-          }
-        }
-        
         // If we get here, store not found
-        console.error('Storefront: Store not found after all lookup strategies');
+        console.error('Storefront: Store not found after all lookup strategies for:', storeName);
         throw new Error(`Store "${storeName}" not found`);
       } catch (err) {
         console.error('Storefront: Exception in store fetch', err);
@@ -268,6 +250,7 @@ const Storefront: React.FC = () => {
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
     username: enhancedStore.username,
+    slug: enhancedStore.slug,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {
