@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut, User } from 'lucide-react';
+import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut, User, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
 
@@ -28,6 +28,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { label: 'Products', path: '/dashboard/products', icon: <Package className="h-4 w-4 mr-2" /> },
     { label: 'Orders', path: '/dashboard/orders', icon: <ShoppingBag className="h-4 w-4 mr-2" /> },
     { label: 'Customize Store', path: '/dashboard/customize-store', icon: <Palette className="h-4 w-4 mr-2" /> },
+    { label: 'Instagram Automation', path: '/dashboard/instagram', icon: <Instagram className="h-4 w-4 mr-2" /> },
     { label: 'Analytics', path: '/dashboard/analytics', icon: <BarChart3 className="h-4 w-4 mr-2" /> },
     { label: 'Settings', path: '/dashboard/settings', icon: <Settings className="h-4 w-4 mr-2" /> },
   ];
