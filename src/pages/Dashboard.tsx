@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoreUrl } from '@/utils/storeRouting';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import StoreUrlCard from '@/components/dashboard/StoreUrlCard';
