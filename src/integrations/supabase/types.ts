@@ -710,7 +710,6 @@ export type Database = {
           name: string
           phone_number: string
           plan: string
-          slug: string
           tagline: string | null
           theme: Json | null
           updated_at: string | null
@@ -730,7 +729,6 @@ export type Database = {
           name: string
           phone_number: string
           plan?: string
-          slug: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
@@ -750,7 +748,6 @@ export type Database = {
           name?: string
           phone_number?: string
           plan?: string
-          slug?: string
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null

@@ -35,61 +35,47 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using the new slug field
+  // Fetch store data using username field instead of name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', storeName],
+    queryKey: ['store-by-username', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug:', storeName);
+      console.log('Storefront: Fetching store data for username', storeName);
       
       try {
-        // First try exact match on slug
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('slug', storeName)
+          .eq('username', storeName)
           .single();
           
         if (error && error.code === 'PGRST116') {
-          // Fallback: try username for backward compatibility
-          console.log('Storefront: Trying username fallback for:', storeName);
+          const decodedStoreName = decodeURIComponent(storeName);
+          console.log('Storefront: Trying with decoded store name', decodedStoreName);
           
-          const { data: usernameData, error: usernameError } = await supabase
+          const { data: decodedData, error: decodedError } = await supabase
             .from('stores')
             .select('*')
-            .eq('username', storeName)
+            .eq('username', decodedStoreName)
             .single();
             
-          if (!usernameError && usernameData) {
-            console.log('Storefront: Store found by username fallback:', usernameData);
-            return usernameData;
-          }
-          
-          // Last fallback: try case-insensitive slug match
-          console.log('Storefront: Trying case-insensitive slug match');
-          const { data: ciData, error: ciError } = await supabase
-            .from('stores')
-            .select('*')
-            .ilike('slug', storeName)
-            .single();
-            
-          if (ciError) {
-            console.error('Storefront: Store not found after all attempts:', ciError);
+          if (decodedError) {
+            console.error('Storefront: Store not found after decode attempt', decodedError);
             throw new Error(`Store "${storeName}" not found`);
           }
           
-          console.log('Storefront: Store found with case-insensitive slug match:', ciData);
-          return ciData;
+          console.log('Storefront: Store found with decoded username', decodedData);
+          return decodedData;
         }
           
         if (error) {
-          console.error('Storefront: Error fetching store:', error);
+          console.error('Storefront: Error fetching store', error);
           throw new Error(`Store "${storeName}" not found`);
         }
         
-        console.log('Storefront: Store data received:', data);
+        console.log('Storefront: Store data received with theme:', data?.theme);
         return data;
       } catch (err) {
-        console.error('Storefront: Exception in store fetch:', err);
+        console.error('Storefront: Exception in store fetch', err);
         throw err;
       }
     },
@@ -167,7 +153,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -231,7 +217,7 @@ const Storefront: React.FC = () => {
   
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
-    slug: enhancedStore.slug,
+    username: enhancedStore.username,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {
