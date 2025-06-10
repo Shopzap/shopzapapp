@@ -17,20 +17,36 @@ const StoreBuilder = () => {
   const { user } = useAuth();
   const [storeName, setStoreName] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [storeUsername, setStoreUsername] = useState("");
+  const [storeSlug, setStoreSlug] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // Auto-generate username from store name
+  // Generate slug from store name
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  };
+  
+  // Auto-generate slug from store name
   const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setStoreName(name);
     
-    // Generate clean slug from store name
-    const slug = name.toLowerCase()
-      .replace(/[^\w\s]/gi, '')
-      .replace(/\s+/g, '-');
-    
-    setStoreUsername(slug);
+    if (name.trim()) {
+      const generatedSlug = generateSlug(name);
+      setStoreSlug(generatedSlug);
+    } else {
+      setStoreSlug('');
+    }
+  };
+  
+  // Handle manual slug editing
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const slug = generateSlug(e.target.value);
+    setStoreSlug(slug);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,35 +66,42 @@ const StoreBuilder = () => {
       
       const userId = user.id;
       
-      // Clean store name for the URL
-      let cleanStoreName = storeName.trim().toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
-      
-      // Check if store name already exists
-      const { data: existingStore, error: checkError } = await supabase
-        .from('stores')
-        .select('name')
-        .eq('name', cleanStoreName)
-        .single();
-      
-      if (existingStore) {
+      // Validate slug
+      if (!storeSlug || storeSlug.length < 3) {
         toast({
-          title: "Store name already taken",
-          description: "Please choose a different store name",
+          title: "Invalid store URL",
+          description: "Store URL must be at least 3 characters long",
           variant: "destructive"
         });
         setIsLoading(false);
         return;
       }
       
-      // Create store with the clean name
+      // Check if slug already exists
+      const { data: existingStore, error: checkError } = await supabase
+        .from('stores')
+        .select('slug')
+        .eq('slug', storeSlug)
+        .single();
+      
+      if (existingStore) {
+        toast({
+          title: "Store URL already taken",
+          description: "Please choose a different store URL",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create store with the slug
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
-            name: cleanStoreName,
-            username: storeUsername, // Keep username for backward compatibility
+            name: storeName.trim(),
+            slug: storeSlug,
+            username: storeSlug, // Keep username for backward compatibility
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -101,7 +124,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/store/${cleanStoreName}`,
+        description: `Your store is now available at shopzap.io/store/${storeSlug}`,
       });
       
       // Redirect to dashboard
@@ -149,12 +172,33 @@ const StoreBuilder = () => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="storeSlug">Your Store URL</Label>
+                  <div className="flex items-center">
+                    <div className="bg-muted px-3 py-2 rounded-l-md border-y border-l border-input text-muted-foreground text-sm">
+                      shopzap.io/store/
+                    </div>
+                    <Input
+                      id="storeSlug"
+                      className="rounded-l-none"
+                      placeholder="your-store-name" 
+                      value={storeSlug}
+                      onChange={handleSlugChange}
+                      required
+                      minLength={3}
+                    />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a unique URL for your store (only lowercase letters, numbers, and hyphens)
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
                   <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
                   <div className="flex">
                     <Input
                       id="whatsappNumber"
                       type="tel"
-                      placeholder="e.g., 9876543210" 
+                      placeholder="e.g., +919876543210" 
                       value={whatsappNumber}
                       onChange={(e) => setWhatsappNumber(e.target.value)}
                       required
@@ -162,26 +206,6 @@ const StoreBuilder = () => {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Include country code (e.g., +91 for India)
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="storeUrl">Your Store URL</Label>
-                  <div className="flex items-center">
-                    <div className="bg-muted px-3 py-2 rounded-l-md border-y border-l border-input text-muted-foreground">
-                      shopzap.io/store/
-                    </div>
-                    <Input
-                      id="storeUrl"
-                      className="rounded-l-none"
-                      placeholder="your-store-name" 
-                      value={storeUsername}
-                      onChange={(e) => setStoreUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Choose a unique name for your store URL
                   </p>
                 </div>
                 

@@ -1,18 +1,19 @@
 
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Filter, Grid, List } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import ModernStorefrontHeader from './ModernStorefrontHeader';
-import ModernProductCard from './ModernProductCard';
-import ProductGridSkeleton from './ProductGridSkeleton';
-import OptimizedImage from './StoreImageOptimizer';
-import { useCart } from '@/hooks/useCart';
+import React from 'react';
 import { Tables } from '@/integrations/supabase/types';
+import ModernStorefrontHeader from './ModernStorefrontHeader';
+import ModernProductGrid from './ModernProductGrid';
+import CTAButtons from './CTAButtons';
 
 interface ModernStorefrontProps {
-  store: any;
+  store: Tables<'stores'> & {
+    primaryColor?: string;
+    textColor?: string;
+    buttonColor?: string;
+    buttonTextColor?: string;
+    accentColor?: string;
+    theme?: any;
+  };
   products: Tables<'products'>[];
   isLoading?: boolean;
 }
@@ -20,174 +21,190 @@ interface ModernStorefrontProps {
 const ModernStorefront: React.FC<ModernStorefrontProps> = ({ 
   store, 
   products, 
-  isLoading = false 
+  isLoading 
 }) => {
-  const navigate = useNavigate();
-  const { getItemCount } = useCart();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showFilters, setShowFilters] = useState(false);
-
-  // Memoized filtered products for better performance
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return products;
-    
-    return products.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [products, searchTerm]);
-
-  const handleCartClick = () => {
-    navigate(`/store/${store.name}/cart`);
-  };
-
-  const totalItems = getItemCount();
-  
-  // Extract colors from theme with fallbacks
   const theme = store.theme || {};
-  const primaryColor = theme.primaryColor || store.primaryColor || '#6c5ce7';
-  const buttonColor = theme.buttonColor || store.buttonColor || '#6c5ce7';
-  const buttonTextColor = theme.buttonTextColor || store.buttonTextColor || '#FFFFFF';
-  const fontFamily = store.font_style || theme.font_style || 'Poppins';
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <ModernStorefrontHeader store={store} />
-        <div className="container mx-auto px-4 py-8">
-          <ProductGridSkeleton count={8} />
-        </div>
-      </div>
-    );
-  }
+  const storeSlug = store.slug || store.username || store.name;
 
   return (
     <div 
-      className="min-h-screen bg-gray-50"
-      style={{ fontFamily }}
+      className="min-h-screen"
+      style={{ 
+        backgroundColor: store.primaryColor || '#1F2937',
+        color: store.textColor || '#F9FAFB'
+      }}
     >
+      {/* Header */}
       <ModernStorefrontHeader store={store} />
       
-      {/* Hero Banner */}
-      {store.banner_image && (
-        <div className="relative h-48 md:h-64 overflow-hidden">
-          <OptimizedImage
-            src={store.banner_image}
-            alt={`${store.name} banner`}
-            className="w-full h-full object-cover"
-            loading="eager"
-            width={1200}
-            height={400}
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="text-center text-white">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">{store.name}</h1>
-              {store.tagline && (
-                <p className="text-lg md:text-xl opacity-90">{store.tagline}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-            </Button>
-            
-            <div className="flex border rounded-md">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="rounded-r-none"
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-l-none"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <Button
-              onClick={handleCartClick}
-              className="relative flex items-center gap-2"
-              style={{
-                backgroundColor: buttonColor,
-                color: buttonTextColor,
-              }}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Cart
-              {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {totalItems}
-                </span>
+      <main className="relative">
+        {/* Store Info Section */}
+        <div className="px-4 py-8 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Store Description */}
+            {store.description && (
+              <div className="mb-8">
+                <div className="max-w-4xl mx-auto text-center">
+                  <p 
+                    className="text-lg sm:text-xl leading-relaxed px-4"
+                    style={{ color: store.textColor || '#F9FAFB' }}
+                  >
+                    {store.description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Products Section */}
+            <div className="mb-12">
+              <div className="text-center mb-8">
+                <h2 
+                  className="text-2xl sm:text-3xl font-bold mb-4"
+                  style={{ color: store.textColor || '#F9FAFB' }}
+                >
+                  Our Products
+                </h2>
+                {products.length > 0 && (
+                  <p 
+                    className="text-sm sm:text-base opacity-80"
+                    style={{ color: store.textColor || '#F9FAFB' }}
+                  >
+                    Discover our collection of {products.length} amazing products
+                  </p>
+                )}
+              </div>
+              
+              {products.length > 0 ? (
+                <ModernProductGrid 
+                  products={products} 
+                  store={store}
+                  isLoading={isLoading}
+                />
+              ) : (
+                <div className="text-center py-16">
+                  <div className="max-w-md mx-auto px-4">
+                    <div 
+                      className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: store.accentColor || '#6B7280' }}
+                    >
+                      <svg 
+                        className="w-8 h-8" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: store.textColor || '#F9FAFB' }}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 9h6M9 9l-2-2m2 2l-2 2M9 9v2m6-2h2M15 9l2-2m-2 2l2 2M15 9v2" />
+                      </svg>
+                    </div>
+                    <h3 
+                      className="text-xl font-semibold mb-2"
+                      style={{ color: store.textColor || '#F9FAFB' }}
+                    >
+                      No Products Yet
+                    </h3>
+                    <p 
+                      className="text-sm opacity-80"
+                      style={{ color: store.textColor || '#F9FAFB' }}
+                    >
+                      This store is being set up. Check back soon for amazing products!
+                    </p>
+                  </div>
+                </div>
               )}
-            </Button>
+            </div>
+
+            {/* Call to Action */}
+            <div className="text-center">
+              <CTAButtons 
+                store={store} 
+                products={products}
+                storeSlug={storeSlug}
+              />
+            </div>
           </div>
         </div>
+      </main>
 
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-gray-400 mb-4">
-              <Search className="h-16 w-16 mx-auto" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {searchTerm ? 'No products found' : 'No products available'}
-            </h3>
-            <p className="text-gray-500">
-              {searchTerm 
-                ? 'Try adjusting your search terms'
-                : 'Check back later for new products'
-              }
+      {/* Footer */}
+      <footer 
+        className="border-t py-8 px-4 sm:px-6 lg:px-8"
+        style={{ 
+          borderTopColor: store.accentColor || '#374151',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <p 
+              className="text-sm opacity-80 mb-4"
+              style={{ color: store.textColor || '#F9FAFB' }}
+            >
+              © 2024 {store.name}. All rights reserved.
             </p>
+            
+            {/* Social Links */}
+            {(theme.instagram_url || theme.facebook_url || theme.whatsapp_url) && (
+              <div className="flex justify-center space-x-6">
+                {theme.instagram_url && (
+                  <a 
+                    href={theme.instagram_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{ color: store.textColor || '#F9FAFB' }}
+                  >
+                    <span className="sr-only">Instagram</span>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 6.621 5.367 11.988 11.988 11.988s11.987-5.367 11.987-11.988C24.004 5.367 18.637.001 12.017.001zM8.449 16.988c-1.297 0-2.448-.49-3.323-1.297C4.198 14.864 3.708 13.713 3.708 12.416s.49-2.448 1.297-3.323C5.832 8.215 6.983 7.725 8.28 7.725s2.448.49 3.323 1.297c.807.827 1.297 1.978 1.297 3.275s-.49 2.448-1.297 3.323c-.875.807-2.026 1.297-3.323 1.297z"/>
+                    </svg>
+                  </a>
+                )}
+                
+                {theme.facebook_url && (
+                  <a 
+                    href={theme.facebook_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{ color: store.textColor || '#F9FAFB' }}
+                  >
+                    <span className="sr-only">Facebook</span>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </a>
+                )}
+                
+                {theme.whatsapp_url && (
+                  <a 
+                    href={theme.whatsapp_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:opacity-80 transition-opacity"
+                    style={{ color: store.textColor || '#F9FAFB' }}
+                  >
+                    <span className="sr-only">WhatsApp</span>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.085"/>
+                    </svg>
+                  </a>
+                )}
+              </div>
+            )}
+            
+            <div className="mt-4 pt-4 border-t" style={{ borderTopColor: store.accentColor || '#374151' }}>
+              <p 
+                className="text-xs opacity-60"
+                style={{ color: store.textColor || '#F9FAFB' }}
+              >
+                Powered by <span className="font-semibold">ShopZap.io</span>
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className={
-            viewMode === 'grid' 
-              ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
-              : "space-y-4"
-          }>
-            {filteredProducts.map((product) => (
-              <ModernProductCard
-                key={product.id}
-                product={product}
-                storeName={store.name}
-                buttonColor={buttonColor}
-                buttonTextColor={buttonTextColor}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      </footer>
     </div>
   );
 };

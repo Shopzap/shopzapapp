@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -181,7 +182,7 @@ const App = () => {
                   <Route path="/track-order/:orderId" element={<OrderTracking />} />
                   <Route path="/order-tracking" element={<OrderTracking />} />
                   
-                  {/* Store routes with proper CartProvider scoping */}
+                  {/* Store routes with proper CartProvider scoping - Updated to use slug */}
                   <Route path="/store/:storeName" element={
                     <CartProvider>
                       <Suspense fallback={<StorefrontFallback />}>

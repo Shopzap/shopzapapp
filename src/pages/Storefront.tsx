@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,51 +35,50 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field (this is the correct field for store URLs)
+  // Fetch store data using the new slug field
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', storeName],
+    queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username:', storeName);
+      console.log('Storefront: Fetching store data for slug:', storeName);
       
       try {
-        // First try exact match on username
+        // First try exact match on slug
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('username', storeName)
+          .eq('slug', storeName)
           .single();
           
         if (error && error.code === 'PGRST116') {
-          // Try with decoded store name in case of URL encoding
-          const decodedStoreName = decodeURIComponent(storeName);
-          console.log('Storefront: Trying with decoded store name:', decodedStoreName);
+          // Fallback: try username for backward compatibility
+          console.log('Storefront: Trying username fallback for:', storeName);
           
-          const { data: decodedData, error: decodedError } = await supabase
+          const { data: usernameData, error: usernameError } = await supabase
             .from('stores')
             .select('*')
-            .eq('username', decodedStoreName)
+            .eq('username', storeName)
             .single();
             
-          if (decodedError) {
-            // Try case-insensitive match on username
-            console.log('Storefront: Trying case-insensitive match on username');
-            const { data: ciData, error: ciError } = await supabase
-              .from('stores')
-              .select('*')
-              .ilike('username', storeName)
-              .single();
-              
-            if (ciError) {
-              console.error('Storefront: Store not found after all attempts:', ciError);
-              throw new Error(`Store "${storeName}" not found`);
-            }
-            
-            console.log('Storefront: Store found with case-insensitive username match:', ciData);
-            return ciData;
+          if (!usernameError && usernameData) {
+            console.log('Storefront: Store found by username fallback:', usernameData);
+            return usernameData;
           }
           
-          console.log('Storefront: Store found with decoded username:', decodedData);
-          return decodedData;
+          // Last fallback: try case-insensitive slug match
+          console.log('Storefront: Trying case-insensitive slug match');
+          const { data: ciData, error: ciError } = await supabase
+            .from('stores')
+            .select('*')
+            .ilike('slug', storeName)
+            .single();
+            
+          if (ciError) {
+            console.error('Storefront: Store not found after all attempts:', ciError);
+            throw new Error(`Store "${storeName}" not found`);
+          }
+          
+          console.log('Storefront: Store found with case-insensitive slug match:', ciData);
+          return ciData;
         }
           
         if (error) {
@@ -169,7 +167,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -233,7 +231,7 @@ const Storefront: React.FC = () => {
   
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
-    username: enhancedStore.username,
+    slug: enhancedStore.slug,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {
