@@ -9,7 +9,6 @@ import { Instagram, MessageCircle, Users, BarChart3 } from 'lucide-react';
 import InstagramConnectionCard from '@/components/instagram/InstagramConnectionCard';
 import KeywordAutomationSection from '@/components/instagram/KeywordAutomationSection';
 import ReelsAutomationSection from '@/components/instagram/ReelsAutomationSection';
-import StoryWelcomeSection from '@/components/instagram/StoryWelcomeSection';
 import InstagramAnalytics from '@/components/instagram/InstagramAnalytics';
 
 const InstagramAutomation = () => {
