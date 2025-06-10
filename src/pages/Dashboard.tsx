@@ -94,7 +94,7 @@ const Dashboard = () => {
   // Copy store link to clipboard
   const handleCopyStoreLink = () => {
     if (storeData) {
-      const storeLink = getStoreUrl(storeData);
+      const storeLink = getStoreUrl(storeData, '', true);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
     }
@@ -103,7 +103,7 @@ const Dashboard = () => {
   // Open store in new tab
   const handleOpenStore = () => {
     if (storeData) {
-      const storeLink = getStoreUrl(storeData);
+      const storeLink = getStoreUrl(storeData, '', true);
       window.open(storeLink, '_blank');
     }
   };
@@ -161,7 +161,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-                {getStoreUrl(storeData)}
+                {getStoreUrl(storeData, '', true)}
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">

@@ -51,7 +51,7 @@ const Storefront: React.FC = () => {
           .from('stores')
           .select('*')
           .eq('slug', normalizedStoreName)
-          .single();
+          .maybeSingle();
           
         if (slugData && !slugError) {
           console.log('Storefront: Store found by slug', slugData);
@@ -64,20 +64,20 @@ const Storefront: React.FC = () => {
           .from('stores')
           .select('*')
           .eq('username', normalizedStoreName)
-          .single();
+          .maybeSingle();
           
         if (usernameData && !usernameError) {
-          console.log('Storefront: Store found by username, redirect needed', usernameData);
-          return { store: usernameData, redirectNeeded: true };
+          console.log('Storefront: Store found by username', usernameData);
+          return { store: usernameData, redirectNeeded: false };
         }
         
-        // Finally, try name field as fallback
+        // Finally, try name field as fallback (case-insensitive)
         console.log('Storefront: Trying with name field', normalizedStoreName);
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
-          .eq('name', normalizedStoreName)
-          .single();
+          .ilike('name', normalizedStoreName)
+          .maybeSingle();
           
         if (nameData && !nameError) {
           console.log('Storefront: Store found by name', nameData);
@@ -98,13 +98,6 @@ const Storefront: React.FC = () => {
     gcTime: 10 * 60 * 1000, // 10 minutes
     initialData: cachedData ? { store: cachedData.store, redirectNeeded: false } : undefined,
   });
-
-  // Handle redirect if needed (username -> slug redirect)
-  if (storeData?.redirectNeeded && storeData?.store?.slug) {
-    const newPath = location.pathname.replace(`/store/${storeName}`, `/store/${storeData.store.slug}`);
-    console.log('Storefront: Redirecting from username to slug', newPath);
-    return <Navigate to={newPath} replace />;
-  }
 
   // Extract store from the data structure
   const store = storeData?.store;

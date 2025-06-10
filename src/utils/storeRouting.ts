@@ -73,9 +73,15 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
 /**
  * Generates the correct store URL based on the store's slug
  */
-export const getStoreUrl = (store: any, path: string = ''): string => {
+export const getStoreUrl = (store: any, path: string = '', includeOrigin: boolean = true): string => {
   const slug = store.slug || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-');
-  return `/store/${slug}${path}`;
+  const storeUrl = `/store/${slug}${path}`;
+  
+  if (includeOrigin) {
+    return `${window.location.origin}${storeUrl}`;
+  }
+  
+  return storeUrl;
 };
 
 /**
