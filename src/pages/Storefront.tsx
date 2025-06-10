@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,17 +36,17 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field instead of name
+  // Fetch store data with caching optimization
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', storeName],
+    queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', storeName);
+      console.log('Storefront: Fetching store data for', storeName);
       
       try {
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('username', storeName)
+          .ilike('name', storeName)
           .single();
           
         if (error && error.code === 'PGRST116') {
@@ -55,7 +56,7 @@ const Storefront: React.FC = () => {
           const { data: decodedData, error: decodedError } = await supabase
             .from('stores')
             .select('*')
-            .eq('username', decodedStoreName)
+            .ilike('name', decodedStoreName)
             .single();
             
           if (decodedError) {
@@ -63,7 +64,7 @@ const Storefront: React.FC = () => {
             throw new Error(`Store "${storeName}" not found`);
           }
           
-          console.log('Storefront: Store found with decoded username', decodedData);
+          console.log('Storefront: Store found with decoded name', decodedData);
           return decodedData;
         }
           
@@ -153,7 +154,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -217,7 +218,6 @@ const Storefront: React.FC = () => {
   
   console.log('Storefront: Enhanced store with applied customization:', {
     name: enhancedStore.name,
-    username: enhancedStore.username,
     productCount: safeProducts.length,
     storeId: enhancedStore.id,
     customizationApplied: {
