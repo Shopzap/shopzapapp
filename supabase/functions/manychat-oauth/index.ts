@@ -1,6 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,7 +24,7 @@ serve(async (req) => {
       )
     }
 
-    // Exchange code for access token
+    // Exchange code for access token using your centralized ManyChat app credentials
     const tokenResponse = await fetch('https://api.manychat.com/oauth/token', {
       method: 'POST',
       headers: {
@@ -36,18 +35,20 @@ serve(async (req) => {
         client_id: Deno.env.get('MANYCHAT_CLIENT_ID') || '',
         client_secret: Deno.env.get('MANYCHAT_CLIENT_SECRET') || '',
         code: code,
-        redirect_uri: `${Deno.env.get('SITE_URL')}/dashboard/instagram`
+        redirect_uri: `${Deno.env.get('SITE_URL') || 'https://shopzap.io'}/dashboard/instagram`
       })
     })
 
     if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text()
+      console.error('Token exchange failed:', errorText)
       throw new Error('Failed to exchange code for token')
     }
 
     const tokenData = await tokenResponse.json()
     const accessToken = tokenData.access_token
 
-    // Fetch page data from ManyChat
+    // Fetch page data from ManyChat using the seller's access token
     const pageResponse = await fetch('https://api.manychat.com/fb/page/getPages', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -56,6 +57,8 @@ serve(async (req) => {
     })
 
     if (!pageResponse.ok) {
+      const errorText = await pageResponse.text()
+      console.error('Page fetch failed:', errorText)
       throw new Error('Failed to fetch page data')
     }
 
@@ -63,10 +66,10 @@ serve(async (req) => {
     const pages = pageData.data || []
     
     if (pages.length === 0) {
-      throw new Error('No Instagram pages found')
+      throw new Error('No pages found in ManyChat account')
     }
 
-    // Get the first Instagram-connected page
+    // Get the first Instagram-connected page or fallback to first page
     const instagramPage = pages.find((page: any) => page.instagram_id) || pages[0]
 
     return new Response(

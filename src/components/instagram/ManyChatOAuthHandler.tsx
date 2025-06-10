@@ -41,26 +41,20 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
   const handleOAuthCallback = async (code: string) => {
     setIsProcessing(true);
     try {
-      // Exchange code for access token and fetch page data
-      const response = await fetch('/api/manychat/oauth-callback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Call our edge function to handle the OAuth exchange
+      const { data, error } = await supabase.functions.invoke('manychat-oauth', {
+        body: {
           code,
           storeId
-        })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to complete OAuth flow');
+      if (error) {
+        throw error;
       }
-
-      const data = await response.json();
       
       // Store connection in Supabase
-      const { data: connection, error } = await supabase
+      const { data: connection, error: dbError } = await supabase
         .from('instagram_connections')
         .insert({
           store_id: storeId,
@@ -68,14 +62,14 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
           manychat_page_id: data.bot_id,
           page_name: data.page_name,
           access_token: data.access_token,
-          manychat_api_key: data.access_token, // Using access token as API key
+          manychat_api_key: data.access_token,
           is_active: true
         })
         .select()
         .single();
 
-      if (error) {
-        throw error;
+      if (dbError) {
+        throw dbError;
       }
 
       onConnectionSuccess(connection);
@@ -83,6 +77,9 @@ const ManyChatOAuthHandler: React.FC<ManyChatOAuthHandlerProps> = ({
         title: "Successfully Connected!",
         description: `Connected ${data.page_name} to ManyChat automation.`,
       });
+
+      // Clear URL parameters
+      navigate('/dashboard/instagram', { replace: true });
 
     } catch (error) {
       console.error('OAuth callback error:', error);

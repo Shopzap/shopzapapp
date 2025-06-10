@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Instagram, ExternalLink } from 'lucide-react';
+import { MessageSquare, ExternalLink } from 'lucide-react';
 
 interface InstagramOAuthButtonProps {
   storeId: string;
@@ -18,9 +18,9 @@ const InstagramOAuthButton: React.FC<InstagramOAuthButtonProps> = ({
     setIsConnecting(true);
     onConnectionStart();
 
-    // ManyChat OAuth URL with proper scopes
+    // ManyChat OAuth URL with your centralized app credentials
     const manyChatOAuthUrl = new URL('https://api.manychat.com/oauth/authorize');
-    manyChatOAuthUrl.searchParams.set('client_id', process.env.REACT_APP_MANYCHAT_CLIENT_ID || '');
+    manyChatOAuthUrl.searchParams.set('client_id', 'your_manychat_client_id'); // This will use your centralized app
     manyChatOAuthUrl.searchParams.set('response_type', 'code');
     manyChatOAuthUrl.searchParams.set('scope', 'basic pages:read pages:write');
     manyChatOAuthUrl.searchParams.set('state', storeId);
@@ -37,8 +37,8 @@ const InstagramOAuthButton: React.FC<InstagramOAuthButtonProps> = ({
       className="flex items-center space-x-2"
       size="lg"
     >
-      <Instagram className="h-5 w-5" />
-      <span>{isConnecting ? "Connecting..." : "Connect Instagram & ManyChat"}</span>
+      <MessageSquare className="h-5 w-5" />
+      <span>{isConnecting ? "Connecting..." : "Connect ManyChat Account"}</span>
       <ExternalLink className="h-4 w-4" />
     </Button>
   );

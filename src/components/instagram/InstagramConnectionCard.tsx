@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Instagram, CheckCircle, ExternalLink, AlertCircle } from 'lucide-react';
+import { MessageSquare, CheckCircle, ExternalLink, AlertCircle } from 'lucide-react';
 import InstagramOAuthButton from './InstagramOAuthButton';
 import ManyChatOAuthHandler from './ManyChatOAuthHandler';
 
@@ -44,14 +44,14 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
 
       onConnectionUpdate(null);
       toast({
-        title: "Instagram Disconnected",
-        description: "Your Instagram account has been disconnected.",
+        title: "ManyChat Disconnected",
+        description: "Your ManyChat account has been disconnected.",
       });
     } catch (error) {
-      console.error("Error disconnecting Instagram:", error);
+      console.error("Error disconnecting ManyChat:", error);
       toast({
         title: "Disconnection Failed",
-        description: "Failed to disconnect Instagram. Please try again.",
+        description: "Failed to disconnect ManyChat. Please try again.",
         variant: "destructive"
       });
     }
@@ -71,10 +71,10 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
-            <span>Instagram Connected</span>
+            <span>ManyChat Connected</span>
           </CardTitle>
           <CardDescription>
-            Your Instagram account is successfully connected via ManyChat and ready for automation.
+            Your ManyChat account is successfully connected and ready for Instagram automation.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -93,7 +93,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
           
           <div className="flex space-x-2">
             <Button variant="outline" onClick={handleDisconnect}>
-              Disconnect Instagram
+              Disconnect ManyChat
             </Button>
             <Button variant="outline" asChild>
               <a href="https://manychat.com" target="_blank" rel="noopener noreferrer">
@@ -117,11 +117,11 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Instagram className="h-5 w-5" />
-            <span>Connect Instagram with ManyChat</span>
+            <MessageSquare className="h-5 w-5" />
+            <span>Connect ManyChat for Instagram Automation</span>
           </CardTitle>
           <CardDescription>
-            One-click connection to link your Instagram Business Account with ManyChat for automation.
+            One-click connection to link your ManyChat account for Instagram DM automation.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -144,7 +144,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
                 <ul className="text-sm text-yellow-800 space-y-1">
                   <li>• Instagram Business Account</li>
                   <li>• Facebook Page linked to Instagram</li>
-                  <li>• ManyChat account (free signup available)</li>
+                  <li>• ManyChat account connected to your Instagram page</li>
                   <li>• Admin access to your Facebook Page</li>
                 </ul>
               </div>
