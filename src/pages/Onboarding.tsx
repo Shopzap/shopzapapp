@@ -130,6 +130,7 @@ const Onboarding = () => {
             user_id: user.id,
             business_email: user.email || '',
             phone_number: '', // This is a required field in the stores table
+            username: slug, // Keep username for backward compatibility, using slug as value
             theme: { mode: storeTheme },
             plan: 'free'
           }

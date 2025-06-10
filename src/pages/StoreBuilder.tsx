@@ -74,6 +74,7 @@ const StoreBuilder = () => {
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
+            username: slug, // Keep username for backward compatibility, using slug as value
             plan: 'free'
           }
         ])
