@@ -40,10 +40,11 @@ const Storefront: React.FC = () => {
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug', storeName);
+      console.log('Storefront: Fetching store data for slug/name', storeName);
       
       try {
         // Strategy 1: Try exact slug match first (PRIMARY - this should work for 'dore')
+        console.log('Storefront: Trying slug match for:', storeName.toLowerCase());
         let { data, error } = await supabase
           .from('stores')
           .select('*')
@@ -55,7 +56,12 @@ const Storefront: React.FC = () => {
           return data;
         }
         
+        if (error && error.code !== 'PGRST116') {
+          console.error('Storefront: Error in slug query:', error);
+        }
+        
         // Strategy 2: Try case-insensitive slug match
+        console.log('Storefront: Trying case-insensitive slug match');
         ({ data, error } = await supabase
           .from('stores')
           .select('*')
@@ -67,7 +73,12 @@ const Storefront: React.FC = () => {
           return data;
         }
         
+        if (error && error.code !== 'PGRST116') {
+          console.error('Storefront: Error in case-insensitive slug query:', error);
+        }
+        
         // Strategy 3: Try username match (legacy support)
+        console.log('Storefront: Trying username match for:', storeName);
         ({ data, error } = await supabase
           .from('stores')
           .select('*')
@@ -79,7 +90,12 @@ const Storefront: React.FC = () => {
           return data;
         }
         
+        if (error && error.code !== 'PGRST116') {
+          console.error('Storefront: Error in username query:', error);
+        }
+        
         // Strategy 4: Try case-insensitive username match
+        console.log('Storefront: Trying case-insensitive username match');
         ({ data, error } = await supabase
           .from('stores')
           .select('*')
@@ -89,6 +105,10 @@ const Storefront: React.FC = () => {
         if (data) {
           console.log('Storefront: Store found by case-insensitive username', data);
           return data;
+        }
+        
+        if (error && error.code !== 'PGRST116') {
+          console.error('Storefront: Error in case-insensitive username query:', error);
         }
         
         // If we get here, store not found
