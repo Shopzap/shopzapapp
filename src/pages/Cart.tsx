@@ -16,27 +16,24 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
 
-  // Normalize slug to lowercase
-  const normalizedSlug = storeName?.toLowerCase();
-
-  // Fetch store data using lowercase slug
+  // Fetch store data using username field instead of name
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', normalizedSlug],
+    queryKey: ['store-by-username', storeName],
     queryFn: async () => {
-      if (!normalizedSlug) {
+      if (!storeName) {
         throw new Error('No store name provided');
       }
       
       const { data, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('slug', normalizedSlug)
+        .eq('username', storeName)
         .single();
         
       if (error) throw error;
       return data;
     },
-    enabled: !!normalizedSlug,
+    enabled: !!storeName,
   });
 
   const formatPrice = (amount: number) => {
@@ -49,14 +46,16 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
-    if (normalizedSlug) {
-      navigate(`/store/${normalizedSlug}/checkout`);
+    if (storeName) {
+      navigate(`/store/${storeName}/checkout`);
     }
   };
 
   const handleContinueShopping = () => {
-    if (normalizedSlug) {
-      navigate(`/store/${normalizedSlug}`);
+    if (store && store.username) {
+      navigate(`/store/${store.username}`);
+    } else if (storeName) {
+      navigate(`/store/${storeName}`);
     } else {
       navigate('/');
     }
@@ -64,17 +63,17 @@ const Cart = () => {
 
   // Show loading state while store is being fetched
   if (storeLoading) {
-    return <StorefrontLoader storeName={normalizedSlug} message="Loading cart..." />;
+    return <StorefrontLoader storeName={storeName} message="Loading cart..." />;
   }
 
   // Show error page if store not found ONLY after loading is complete
   if (storeError || (!store && !storeLoading)) {
-    return <StoreNotFound storeName={normalizedSlug} />;
+    return <StoreNotFound storeName={storeName} />;
   }
 
   // Don't render content until store data is available
   if (!store) {
-    return <StorefrontLoader storeName={normalizedSlug} message="Loading cart..." />;
+    return <StorefrontLoader storeName={storeName} message="Loading cart..." />;
   }
 
   const storeWithTheme = {

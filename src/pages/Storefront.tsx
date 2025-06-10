@@ -15,10 +15,7 @@ const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
-  
-  // Always call hooks unconditionally
-  const normalizedSlug = storeName?.toLowerCase() || '';
-  const { getCachedData, setCachedData } = useStoreCache(normalizedSlug);
+  const { getCachedData, setCachedData } = useStoreCache(storeName || '');
   
   // Preload critical resources on component mount
   useEffect(() => {
@@ -30,25 +27,50 @@ const Storefront: React.FC = () => {
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
 
-  // Check cache first - always call this hook
-  const cachedData = getCachedData(normalizedSlug);
+  // Redirect to home if no store name provided
+  if (!storeName || storeName.trim() === '') {
+    console.error('Storefront: No store name provided in URL');
+    return <Navigate to="/" replace />;
+  }
+
+  // Check cache first
+  const cachedData = getCachedData(storeName);
   
-  // Fetch store data using lowercase slug - always call this hook
+  // Fetch store data with caching optimization
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', normalizedSlug],
+    queryKey: ['store-by-name', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug', normalizedSlug);
+      console.log('Storefront: Fetching store data for', storeName);
       
       try {
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('slug', normalizedSlug)
+          .ilike('name', storeName)
           .single();
           
+        if (error && error.code === 'PGRST116') {
+          const decodedStoreName = decodeURIComponent(storeName);
+          console.log('Storefront: Trying with decoded store name', decodedStoreName);
+          
+          const { data: decodedData, error: decodedError } = await supabase
+            .from('stores')
+            .select('*')
+            .ilike('name', decodedStoreName)
+            .single();
+            
+          if (decodedError) {
+            console.error('Storefront: Store not found after decode attempt', decodedError);
+            throw new Error(`Store "${storeName}" not found`);
+          }
+          
+          console.log('Storefront: Store found with decoded name', decodedData);
+          return decodedData;
+        }
+          
         if (error) {
-          console.error('Storefront: Store not found with slug', normalizedSlug, error);
-          throw new Error(`Store "${normalizedSlug}" not found`);
+          console.error('Storefront: Error fetching store', error);
+          throw new Error(`Store "${storeName}" not found`);
         }
         
         console.log('Storefront: Store data received with theme:', data?.theme);
@@ -58,7 +80,7 @@ const Storefront: React.FC = () => {
         throw err;
       }
     },
-    enabled: !!normalizedSlug && !cachedData,
+    enabled: !!storeName && !cachedData,
     retry: 2,
     retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
@@ -66,7 +88,7 @@ const Storefront: React.FC = () => {
     initialData: cachedData?.store,
   });
   
-  // Fetch products with caching - always call this hook
+  // Fetch products with caching
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -109,9 +131,9 @@ const Storefront: React.FC = () => {
   // Cache data when both store and products are loaded
   useEffect(() => {
     if (store && products && !cachedData) {
-      setCachedData(normalizedSlug, store, products);
+      setCachedData(storeName, store, products);
     }
-  }, [store, products, normalizedSlug, setCachedData, cachedData]);
+  }, [store, products, storeName, setCachedData, cachedData]);
   
   // Handle errors and loading states
   useEffect(() => {
@@ -132,39 +154,27 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-slug', normalizedSlug] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-name', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [queryClient, normalizedSlug]);
-
-  // Handle redirects and error cases after all hooks have been called
-  if (!storeName || storeName.trim() === '') {
-    console.error('Storefront: No store name provided in URL');
-    return <Navigate to="/" replace />;
-  }
-
-  // Redirect to lowercase if needed
-  if (storeName !== normalizedSlug) {
-    console.log('Storefront: Redirecting to lowercase slug', normalizedSlug);
-    return <Navigate to={`/store/${normalizedSlug}`} replace />;
-  }
+  }, [queryClient, storeName]);
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
-    return <StorefrontLoader storeName={normalizedSlug} />;
+    return <StorefrontLoader storeName={storeName} />;
   }
   
   // Show error page if store not found ONLY after loading is complete
   if (storeError || (!store && !storeLoading && !cachedData)) {
     console.error('Storefront: Rendering error page due to store error');
-    return <StoreNotFound storeName={normalizedSlug} />;
+    return <StoreNotFound storeName={storeName} />;
   }
   
   // Don't render content until store data is available
   if (!store && !cachedData) {
-    return <StorefrontLoader storeName={normalizedSlug} />;
+    return <StorefrontLoader storeName={storeName} />;
   }
 
   // Use cached data if available
