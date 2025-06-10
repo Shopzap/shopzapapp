@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,53 +36,90 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data using username field instead of name
+  // Enhanced store lookup with multiple fallback strategies
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-username', storeName],
+    queryKey: ['store-by-slug', storeName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', storeName);
+      console.log('Storefront: Fetching store data for slug/username', storeName);
       
       try {
-        const { data, error } = await supabase
+        // Strategy 1: Try exact slug match first (new slug field)
+        let { data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('slug', storeName)
+          .maybeSingle();
+          
+        if (data) {
+          console.log('Storefront: Store found by slug', data);
+          return data;
+        }
+        
+        // Strategy 2: Try username match (legacy support)
+        ({ data, error } = await supabase
           .from('stores')
           .select('*')
           .eq('username', storeName)
-          .single();
+          .maybeSingle());
           
-        if (error && error.code === 'PGRST116') {
-          const decodedStoreName = decodeURIComponent(storeName);
-          console.log('Storefront: Trying with decoded store name', decodedStoreName);
-          
-          const { data: decodedData, error: decodedError } = await supabase
-            .from('stores')
-            .select('*')
-            .eq('username', decodedStoreName)
-            .single();
-            
-          if (decodedError) {
-            console.error('Storefront: Store not found after decode attempt', decodedError);
-            throw new Error(`Store "${storeName}" not found`);
-          }
-          
-          console.log('Storefront: Store found with decoded username', decodedData);
-          return decodedData;
-        }
-          
-        if (error) {
-          console.error('Storefront: Error fetching store', error);
-          throw new Error(`Store "${storeName}" not found`);
+        if (data) {
+          console.log('Storefront: Store found by username', data);
+          return data;
         }
         
-        console.log('Storefront: Store data received with theme:', data?.theme);
-        return data;
+        // Strategy 3: Try trimmed slug (remove suffix like -0b517a)
+        const trimmedSlug = storeName.split('-')[0];
+        if (trimmedSlug !== storeName) {
+          ({ data, error } = await supabase
+            .from('stores')
+            .select('*')
+            .ilike('username', `${trimmedSlug}%`)
+            .maybeSingle());
+            
+          if (data) {
+            console.log('Storefront: Store found by trimmed slug pattern', data);
+            return data;
+          }
+        }
+        
+        // Strategy 4: Try case-insensitive name match
+        ({ data, error } = await supabase
+          .from('stores')
+          .select('*')
+          .ilike('name', storeName)
+          .maybeSingle());
+          
+        if (data) {
+          console.log('Storefront: Store found by name', data);
+          return data;
+        }
+        
+        // Strategy 5: Try URL decoded name (for special characters)
+        const decodedStoreName = decodeURIComponent(storeName);
+        if (decodedStoreName !== storeName) {
+          ({ data, error } = await supabase
+            .from('stores')
+            .select('*')
+            .ilike('name', decodedStoreName)
+            .maybeSingle());
+            
+          if (data) {
+            console.log('Storefront: Store found with decoded name', data);
+            return data;
+          }
+        }
+        
+        // If we get here, store not found
+        console.error('Storefront: Store not found after all lookup strategies');
+        throw new Error(`Store "${storeName}" not found`);
       } catch (err) {
         console.error('Storefront: Exception in store fetch', err);
         throw err;
       }
     },
     enabled: !!storeName && !cachedData,
-    retry: 2,
-    retryDelay: 1000,
+    retry: 1,
+    retryDelay: 500,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
     initialData: cachedData?.store,
@@ -153,7 +191,7 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-username', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
     };
 
     window.addEventListener('focus', handleFocus);
@@ -162,18 +200,30 @@ const Storefront: React.FC = () => {
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <StorefrontLoader storeName={storeName} />
+      </div>
+    );
   }
   
   // Show error page if store not found ONLY after loading is complete
   if (storeError || (!store && !storeLoading && !cachedData)) {
     console.error('Storefront: Rendering error page due to store error');
-    return <StoreNotFound storeName={storeName} />;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <StoreNotFound storeName={storeName} />
+      </div>
+    );
   }
   
   // Don't render content until store data is available
   if (!store && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <StorefrontLoader storeName={storeName} />
+      </div>
+    );
   }
 
   // Use cached data if available

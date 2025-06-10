@@ -75,7 +75,7 @@ const DashboardLayout = ({ children }: Props) => {
           <div className="flex items-center px-6 py-4 border-b">
             <h1 className="text-xl font-bold text-gray-900">ShopZap</h1>
             {isAdmin && (
-              <Shield className="w-5 h-5 ml-2 text-red-500" title="Admin Access" />
+              <Shield className="w-5 h-5 ml-2 text-red-500" />
             )}
           </div>
           
