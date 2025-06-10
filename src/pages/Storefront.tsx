@@ -14,7 +14,6 @@ const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { getCachedData, setCachedData } = useStoreCache(storeName || '');
   
   // Preload critical resources on component mount
   useEffect(() => {
@@ -32,25 +31,34 @@ const Storefront: React.FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  // Check cache first
-  const cachedData = getCachedData(storeName);
+  // Normalize slug to lowercase and redirect if needed
+  const normalizedSlug = storeName.toLowerCase();
+  if (storeName !== normalizedSlug) {
+    console.log('Storefront: Redirecting to lowercase slug', normalizedSlug);
+    return <Navigate to={`/store/${normalizedSlug}`} replace />;
+  }
+
+  const { getCachedData, setCachedData } = useStoreCache(normalizedSlug);
   
-  // Fetch store data using slug only
+  // Check cache first
+  const cachedData = getCachedData(normalizedSlug);
+  
+  // Fetch store data using lowercase slug
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-slug', storeName],
+    queryKey: ['store-by-slug', normalizedSlug],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for slug', storeName);
+      console.log('Storefront: Fetching store data for slug', normalizedSlug);
       
       try {
         const { data, error } = await supabase
           .from('stores')
           .select('*')
-          .eq('slug', storeName)
+          .eq('slug', normalizedSlug)
           .single();
           
         if (error) {
-          console.error('Storefront: Store not found with slug', storeName, error);
-          throw new Error(`Store "${storeName}" not found`);
+          console.error('Storefront: Store not found with slug', normalizedSlug, error);
+          throw new Error(`Store "${normalizedSlug}" not found`);
         }
         
         console.log('Storefront: Store data received with theme:', data?.theme);
@@ -60,7 +68,7 @@ const Storefront: React.FC = () => {
         throw err;
       }
     },
-    enabled: !!storeName && !cachedData,
+    enabled: !!normalizedSlug && !cachedData,
     retry: 2,
     retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
@@ -111,9 +119,9 @@ const Storefront: React.FC = () => {
   // Cache data when both store and products are loaded
   useEffect(() => {
     if (store && products && !cachedData) {
-      setCachedData(storeName, store, products);
+      setCachedData(normalizedSlug, store, products);
     }
-  }, [store, products, storeName, setCachedData, cachedData]);
+  }, [store, products, normalizedSlug, setCachedData, cachedData]);
   
   // Handle errors and loading states
   useEffect(() => {
@@ -134,27 +142,27 @@ const Storefront: React.FC = () => {
   useEffect(() => {
     const handleFocus = () => {
       console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-by-slug', storeName] });
+      queryClient.invalidateQueries({ queryKey: ['store-by-slug', normalizedSlug] });
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [queryClient, storeName]);
+  }, [queryClient, normalizedSlug]);
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+    return <StorefrontLoader storeName={normalizedSlug} />;
   }
   
   // Show error page if store not found ONLY after loading is complete
   if (storeError || (!store && !storeLoading && !cachedData)) {
     console.error('Storefront: Rendering error page due to store error');
-    return <StoreNotFound storeName={storeName} />;
+    return <StoreNotFound storeName={normalizedSlug} />;
   }
   
   // Don't render content until store data is available
   if (!store && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+    return <StorefrontLoader storeName={normalizedSlug} />;
   }
 
   // Use cached data if available
