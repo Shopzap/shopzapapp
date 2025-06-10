@@ -27,7 +27,7 @@ const Storefront: React.FC = () => {
     console.log('Storefront: storeName from params', storeName);
   }, [location, storeName]);
 
-  // Normalize the store name to lowercase for consistent querying
+  // Normalize the store name to lowercase for database queries
   const normalizedStoreName = storeName?.toLowerCase();
 
   // Redirect to home if no store name provided
@@ -39,49 +39,49 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data with enhanced logic for username/slug handling
+  // Fetch store data with transparent fallback logic (no redirects)
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-lookup', normalizedStoreName],
     queryFn: async () => {
       console.log('Storefront: Fetching store data for identifier', normalizedStoreName);
       
       try {
-        // First, try to find by slug (new preferred method)
+        // First, try to find by slug (case-insensitive)
         let { data: slugData, error: slugError } = await supabase
           .from('stores')
           .select('*')
-          .eq('slug', normalizedStoreName)
+          .ilike('slug', normalizedStoreName)
           .single();
           
         if (slugData && !slugError) {
           console.log('Storefront: Store found by slug', slugData);
-          return { store: slugData, redirectNeeded: false };
+          return { store: slugData };
         }
         
-        // If not found by slug, try username (legacy support)
+        // If not found by slug, try username (case-insensitive fallback)
         console.log('Storefront: Trying with username field', normalizedStoreName);
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
-          .eq('username', normalizedStoreName)
+          .ilike('username', normalizedStoreName)
           .single();
           
         if (usernameData && !usernameError) {
-          console.log('Storefront: Store found by username, redirect needed', usernameData);
-          return { store: usernameData, redirectNeeded: true };
+          console.log('Storefront: Store found by username (keeping original URL)', usernameData);
+          return { store: usernameData };
         }
         
-        // Finally, try name field as fallback
+        // Finally, try name field as last fallback
         console.log('Storefront: Trying with name field', normalizedStoreName);
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
-          .eq('name', normalizedStoreName)
+          .ilike('name', normalizedStoreName)
           .single();
           
         if (nameData && !nameError) {
           console.log('Storefront: Store found by name', nameData);
-          return { store: nameData, redirectNeeded: false };
+          return { store: nameData };
         }
         
         console.error('Storefront: Store not found with any identifier', normalizedStoreName);
@@ -96,15 +96,8 @@ const Storefront: React.FC = () => {
     retryDelay: 1000,
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
-    initialData: cachedData ? { store: cachedData.store, redirectNeeded: false } : undefined,
+    initialData: cachedData ? { store: cachedData.store } : undefined,
   });
-
-  // Handle redirect if needed (username -> slug redirect)
-  if (storeData?.redirectNeeded && storeData?.store?.slug) {
-    const newPath = location.pathname.replace(`/store/${storeName}`, `/store/${storeData.store.slug}`);
-    console.log('Storefront: Redirecting from username to slug', newPath);
-    return <Navigate to={newPath} replace />;
-  }
 
   // Extract store from the data structure
   const store = storeData?.store;
