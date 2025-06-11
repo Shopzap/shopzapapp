@@ -3,8 +3,6 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-console.log('StoreContext: Loading StoreContext');
-
 interface StoreData {
   id: string;
   name: string;
@@ -33,8 +31,6 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  console.log('StoreContext: Rendering StoreProvider');
-  
   const { user, isLoading: isLoadingAuth } = useAuth();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<StoreData | null>(null);
@@ -42,15 +38,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function fetchStore() {
-      console.log('StoreContext: fetchStore called, isLoadingAuth:', isLoadingAuth, 'user:', !!user);
-      
-      if (isLoadingAuth) {
-        console.log('StoreContext: Still loading auth, waiting...');
-        return; // Wait for auth to load
-      }
+      if (isLoadingAuth) return; // Wait for auth to load
 
       if (!user) {
-        console.log('StoreContext: No user, clearing store data');
         setStoreId(null);
         setStoreData(null);
         setIsLoadingStore(false);
@@ -58,9 +48,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        console.log('StoreContext: Fetching store for user:', user.id);
         setIsLoadingStore(true);
-        
         const { data, error } = await supabase
           .from('stores')
           .select('*')
@@ -68,22 +56,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .single();
 
         if (error) {
-          console.log('StoreContext: Error fetching store (user may not have store yet):', error.message);
+          console.error('Error fetching store:', error);
           // Handle case where user might not have a store yet
           setStoreId(null);
           setStoreData(null);
         } else if (data) {
-          console.log('StoreContext: Store data received:', data.id);
           setStoreId(data.id);
           setStoreData(data);
         } else {
-          console.log('StoreContext: No store found for user');
           // No store found for the user
           setStoreId(null);
           setStoreData(null);
         }
       } catch (err) {
-        console.error('StoreContext: Unexpected error fetching store:', err);
+        console.error('Unexpected error fetching store:', err);
         setStoreId(null);
         setStoreData(null);
       } finally {
@@ -94,16 +80,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     fetchStore();
   }, [user, isLoadingAuth]);
 
-  const value = {
-    storeId,
-    storeData,
-    isLoadingStore,
-  };
-
-  console.log('StoreContext: Providing store context, storeId:', storeId, 'loading:', isLoadingStore);
-
   return (
-    <StoreContext.Provider value={value}>
+    <StoreContext.Provider value={{ storeId, storeData, isLoadingStore }}>
       {children}
     </StoreContext.Provider>
   );

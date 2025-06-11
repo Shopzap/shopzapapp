@@ -6,6 +6,3 @@ verify_jwt = false
 
 [functions.verify-payment]
 verify_jwt = false
-
-[functions.manychat-connect]
-verify_jwt = false

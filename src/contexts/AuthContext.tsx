@@ -1,10 +1,8 @@
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-console.log('AuthContext: Loading AuthContext');
+import { User, Session } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -12,27 +10,26 @@ interface UserProfile {
   avatar_url: string | null;
 }
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-}
+  isAuthenticated: boolean;
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  console.log('AuthContext: Rendering AuthProvider');
-  
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
+  const navigate = useNavigate();
+  
   // Clean up Supabase auth state
   const cleanupAuthState = () => {
     // Remove standard auth tokens
@@ -50,48 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
   };
-
+  
   useEffect(() => {
-    console.log('AuthContext: Setting up auth state listener');
-    
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('AuthContext: Error getting initial session:', error);
-        } else {
-          console.log('AuthContext: Initial session retrieved:', !!initialSession);
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          
-          if (initialSession?.user) {
-            setTimeout(() => {
-              fetchUserProfile(initialSession.user.id);
-            }, 0);
-          }
-        }
-      } catch (error) {
-        console.error('AuthContext: Exception getting initial session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('AuthContext: Auth state changed:', event, !!session);
+    // Set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change event:', event);
+      
       setSession(session);
       setUser(session?.user ?? null);
+      console.log('onAuthStateChange - session:', session);
+      console.log('onAuthStateChange - user:', session?.user);
       
       if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id);
+        // Defer fetching user profile to avoid potential deadlocks
+        setTimeout(async () => {
+          await fetchUserProfile(session.user.id);
         }, 0);
       } else {
         setProfile(null);
@@ -99,13 +69,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setIsLoading(false);
     });
-
+    
+    // Check for existing session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      console.log('getSession - session:', session);
+      console.log('getSession - user:', session?.user);
+      
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
+      
+      setIsLoading(false);
+    });
+    
     return () => {
-      console.log('AuthContext: Cleaning up auth listener');
       subscription.unsubscribe();
     };
   }, []);
-
+  
   // Fetch user profile from the profiles table
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -116,15 +99,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
       
       if (error) {
-        console.error('AuthContext: Error fetching user profile:', error);
-      } else {
-        setProfile(data);
+        throw error;
       }
+      
+      setProfile(data);
     } catch (error) {
-      console.error('AuthContext: Exception fetching user profile:', error);
+      console.error('Error fetching user profile:', error);
     }
   };
-
+  
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       setIsLoading(true);
@@ -146,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: {
             full_name: fullName,
           },
+          // Add redirect URL for auth callback
           emailRedirectTo: `${window.location.origin}/auth-callback`,
         },
       });
@@ -159,7 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
-      console.error('AuthContext: Sign up error:', error);
       toast.error(error.message || 'An error occurred during sign up');
     } finally {
       setIsLoading(false);
@@ -180,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Continue even if this fails
       }
       
+      // Fix: Remove redirectTo from options and use correctly formatted options
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -194,29 +178,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.href = '/dashboard';
       }
     } catch (error: any) {
-      console.error('AuthContext: Sign in error:', error);
       toast.error(error.message || 'An error occurred during sign in');
-    } finally {
+    }
+    finally {
       setIsLoading(false);
     }
   };
-
+  
   const signOut = async () => {
     try {
       setIsLoading(true);
-      console.log('AuthContext: Signing out user');
       
       // Clean up auth state
       cleanupAuthState();
       
       // Attempt global sign out
       try {
-        const { error } = await supabase.auth.signOut({ scope: 'global' });
-        if (error) {
-          console.error('AuthContext: Error signing out:', error);
-        }
+        await supabase.auth.signOut({ scope: 'global' });
       } catch (error) {
-        console.error('AuthContext: Exception during sign out:', error);
+        // Continue even if this fails
       }
       
       toast.success("Successfully signed out");
@@ -224,9 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Force page reload
       window.location.href = '/';
     } catch (error: any) {
-      console.error('AuthContext: Sign out error:', error);
       toast.error(error.message || 'An error occurred during sign out');
-    } finally {
+    }
+    finally {
       setIsLoading(false);
     }
   };
@@ -238,21 +218,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     isLoading,
-    isAuthenticated,
-    signIn,
     signUp,
+    signIn,
     signOut,
+    isAuthenticated,
   };
-
-  console.log('AuthContext: Providing auth context with user:', !!user, 'loading:', isLoading);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

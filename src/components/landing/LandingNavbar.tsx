@@ -20,7 +20,7 @@ const LandingNavbar = () => {
             <img 
               src="/lovable-uploads/4ab17ded-ab2f-4611-bb24-50d3892724d0.png" 
               alt="ShopZap Logo" 
-              className="h-10 w-auto max-w-[120px]"
+              className="h-8 w-auto"
             />
             <span className="font-bold text-xl font-jakarta">ShopZap</span>
           </Link>

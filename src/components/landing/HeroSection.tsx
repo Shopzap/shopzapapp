@@ -19,7 +19,7 @@ const HeroSection = () => {
             <img 
               src="/lovable-uploads/4ab17ded-ab2f-4611-bb24-50d3892724d0.png" 
               alt="ShopZap Logo" 
-              className="h-24 w-auto max-w-[350px] md:h-28"
+              className="h-16 w-auto"
             />
           </div>
           

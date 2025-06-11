@@ -4,7 +4,6 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
 interface State {
@@ -19,17 +18,11 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    console.error('ErrorBoundary: Error caught by getDerivedStateFromError', error);
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary: componentDidCatch called', {
-      error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack
-    });
-    
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error,
       errorInfo
@@ -37,24 +30,15 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleRefresh = () => {
-    console.log('ErrorBoundary: Refreshing page');
     window.location.reload();
   };
 
   private handleGoHome = () => {
-    console.log('ErrorBoundary: Navigating to home');
     window.location.href = '/';
   };
 
   public render() {
     if (this.state.hasError) {
-      console.error('ErrorBoundary: Rendering error UI', this.state.error);
-      
-      // If custom fallback is provided, use it
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-      
       return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
           <div className="max-w-md w-full text-center space-y-6">
@@ -74,7 +58,7 @@ class ErrorBoundary extends Component<Props, State> {
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <div className="text-left bg-red-50 border border-red-200 rounded-lg p-4">
                 <h3 className="font-medium text-red-800 mb-2">Error Details:</h3>
-                <pre className="text-xs text-red-700 overflow-auto max-h-32 whitespace-pre-wrap">
+                <pre className="text-xs text-red-700 overflow-auto max-h-32">
                   {this.state.error.toString()}
                   {this.state.errorInfo && this.state.errorInfo.componentStack}
                 </pre>
