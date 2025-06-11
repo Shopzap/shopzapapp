@@ -41,11 +41,39 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
 
+  // Enhanced store context detection
+  const currentStoreContext = React.useMemo(() => {
+    // First priority: URL parameter
+    if (storeName) {
+      return storeName.toLowerCase();
+    }
+    
+    // Second priority: Check if we're on a cart page and try to get store from localStorage
+    if (location.pathname === '/cart') {
+      try {
+        const storeContext = localStorage.getItem('shopzap_store_context');
+        if (storeContext) {
+          const parsed = JSON.parse(storeContext);
+          return parsed.storeName;
+        }
+        
+        const lastVisitedStore = localStorage.getItem('lastVisitedStore');
+        if (lastVisitedStore) {
+          return lastVisitedStore;
+        }
+      } catch (error) {
+        console.log('Could not parse store context from localStorage');
+      }
+    }
+    
+    return null;
+  }, [storeName, location.pathname]);
+
   // Track current store context with enhanced logic
   useEffect(() => {
-    if (storeName) {
+    if (currentStoreContext) {
       // Normalize store name for consistent tracking
-      const normalizedStoreName = storeName.toLowerCase();
+      const normalizedStoreName = currentStoreContext.toLowerCase();
       localStorage.setItem('currentStore', normalizedStoreName);
       localStorage.setItem('lastVisitedStore', normalizedStoreName);
       
@@ -57,7 +85,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       };
       localStorage.setItem('shopzap_store_context', JSON.stringify(storeContext));
     }
-  }, [storeName, location.pathname]);
+  }, [currentStoreContext, location.pathname]);
 
   // Generate or get session ID with enhanced store context
   const getSessionId = () => {
@@ -68,10 +96,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
     
     // Create enhanced backup cart data with store context
-    if (storeName) {
+    if (currentStoreContext) {
       const cartBackup = {
         sessionId,
-        storeName: storeName.toLowerCase(),
+        storeName: currentStoreContext.toLowerCase(),
         timestamp: Date.now(),
         itemCount: items.length,
         totalPrice: getTotalPrice()
@@ -110,10 +138,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setItems(cartItems);
       
       // Update backup after successful load
-      if (storeName && cartItems.length > 0) {
+      if (currentStoreContext && cartItems.length > 0) {
         const cartBackup = {
           sessionId,
-          storeName: storeName.toLowerCase(),
+          storeName: currentStoreContext.toLowerCase(),
           timestamp: Date.now(),
           itemCount: cartItems.length,
           totalPrice: cartItems.reduce((total, item) => {
@@ -137,7 +165,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     loadCartItems();
-  }, [storeName]); // Reload cart when store changes
+  }, [currentStoreContext]); // Reload cart when store context changes
 
   const addToCart = async (product: Tables<'products'>, quantity = 1) => {
     try {
@@ -254,7 +282,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       setItems([]);
       localStorage.removeItem('cart_session_id');
       localStorage.removeItem('shopzap_cart_backup');
-      localStorage.removeItem('shopzap_store_context');
+      // Don't remove store context on cart clear, as user might still be browsing
     } catch (error) {
       console.error('Error clearing cart:', error);
     }
@@ -284,7 +312,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     getTotalPrice,
     getItemCount,
     isLoading,
-    currentStore: storeName?.toLowerCase()
+    currentStore: currentStoreContext?.toLowerCase()
   };
 
   return (

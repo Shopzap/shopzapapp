@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,6 +48,13 @@ const StorePageWrapper = ({ children }: { children: React.ReactNode }) => (
   </CartProvider>
 );
 
+// Global cart page wrapper with CartProvider
+const GlobalCartWrapper = () => (
+  <CartProvider>
+    <Cart />
+  </CartProvider>
+);
+
 // Create a separate App component wrapper to ensure proper provider nesting
 const AppContent = () => (
   <Routes>
@@ -56,12 +62,14 @@ const AppContent = () => (
     <Route path="/" element={<Index />} />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/features" element={<Features />} />
-    <Route path="*" element={<NotFound />} />
 
-    {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
+    {/* Auth routes */}
     <Route path="/auth" element={<Auth />} />
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
+    
+    {/* Global cart route - handles both store-specific and general cart access */}
+    <Route path="/cart" element={<GlobalCartWrapper />} />
     
     {/* Store routes wrapped with CartProvider */}
     <Route path="/store/:storeName" element={
@@ -86,7 +94,7 @@ const AppContent = () => (
       <StorePageWrapper>
         <ErrorBoundary>
           <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading cart...</p></div>}>
-            <Checkout />
+            <Cart />
           </Suspense>
         </ErrorBoundary>
       </StorePageWrapper>
@@ -133,6 +141,9 @@ const AppContent = () => (
         </Routes>
       </ProtectedRoute>
     } />
+
+    {/* Catch-all route - must be last */}
+    <Route path="*" element={<NotFound />} />
   </Routes>
 );
 
