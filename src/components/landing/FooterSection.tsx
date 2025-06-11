@@ -15,7 +15,7 @@ const FooterSection = () => {
                 <img 
                   src="/lovable-uploads/4ab17ded-ab2f-4611-bb24-50d3892724d0.png" 
                   alt="ShopZap Logo" 
-                  className="h-8 w-auto"
+                  className="h-10 w-auto max-w-[120px]"
                 />
                 <span className="text-xl font-bold font-jakarta">ShopZap</span>
               </div>
