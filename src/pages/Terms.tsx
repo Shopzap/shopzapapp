@@ -1,117 +1,126 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import LandingNavbar from '@/components/landing/LandingNavbar';
+import FooterSection from '@/components/landing/FooterSection';
 
 const Terms = () => {
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-grow">
-        <div className="container mx-auto px-4 py-12 max-w-4xl">
-          <h1 className="text-4xl font-bold mb-8 text-center">Terms and Conditions</h1>
-          <p className="text-muted-foreground text-center mb-8">Last updated: {new Date().toLocaleDateString()}</p>
+    <div className="min-h-screen bg-background">
+      <LandingNavbar />
+      
+      <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold font-jakarta mb-8 text-center">
+            Terms of Service
+          </h1>
           
           <div className="prose prose-lg max-w-none">
-            <h2>1. Introduction</h2>
-            <p>
-              Welcome to ShopZap.io ("we," "our," or "us"). These Terms and Conditions ("Terms") govern your use of our website located at [WEBSITE_URL] and our services provided through the ShopZap platform.
-            </p>
-            <p>
-              By accessing or using our service, you agree to be bound by these Terms. If you disagree with any part of these terms, then you may not access the service.
+            <p className="text-muted-foreground text-center mb-12">
+              Last updated: January 2025
             </p>
 
-            <h2>2. Acceptance of Terms</h2>
-            <p>
-              By creating an account or using our services, you acknowledge that you have read, understood, and agree to be bound by these Terms and our Privacy Policy.
-            </p>
+            <div className="space-y-8">
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">1. Acceptance of Terms</h2>
+                <p className="text-muted-foreground">
+                  By accessing and using ShopZap's services, you accept and agree to be bound by the 
+                  terms and provision of this agreement. These Terms of Service govern your use of 
+                  our platform and services.
+                </p>
+              </section>
 
-            <h2>3. Description of Service</h2>
-            <p>
-              ShopZap.io is an e-commerce platform that enables users to create online stores and sell products through WhatsApp integration. Our services include:
-            </p>
-            <ul>
-              <li>Store creation and customization tools</li>
-              <li>Product catalog management</li>
-              <li>Order processing and payment integration</li>
-              <li>WhatsApp integration for customer communication</li>
-              <li>Analytics and reporting tools</li>
-            </ul>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">2. Description of Service</h2>
+                <p className="text-muted-foreground mb-4">
+                  ShopZap provides an online platform that enables users to:
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                  <li>Create and manage online stores</li>
+                  <li>Automate Instagram DM responses</li>
+                  <li>Process payments through integrated gateways</li>
+                  <li>Manage products and inventory</li>
+                  <li>Access analytics and reporting tools</li>
+                </ul>
+              </section>
 
-            <h2>4. User Accounts</h2>
-            <p>
-              To use certain features of our service, you must create an account. You are responsible for:
-            </p>
-            <ul>
-              <li>Maintaining the confidentiality of your account credentials</li>
-              <li>All activities that occur under your account</li>
-              <li>Providing accurate and complete information</li>
-              <li>Keeping your account information updated</li>
-            </ul>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">3. User Responsibilities</h2>
+                <p className="text-muted-foreground mb-4">
+                  As a user of our service, you agree to:
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                  <li>Provide accurate and complete information</li>
+                  <li>Maintain the security of your account</li>
+                  <li>Comply with all applicable laws and regulations</li>
+                  <li>Not use the service for illegal or unauthorized purposes</li>
+                  <li>Respect intellectual property rights</li>
+                </ul>
+              </section>
 
-            <h2>5. Prohibited Uses</h2>
-            <p>You may not use our service:</p>
-            <ul>
-              <li>For any unlawful purpose or to solicit others to perform unlawful acts</li>
-              <li>To violate any international, federal, provincial, or state regulations, rules, laws, or local ordinances</li>
-              <li>To sell counterfeit, illegal, or prohibited products</li>
-              <li>To transmit or procure the sending of advertising or promotional material without prior written consent</li>
-              <li>To impersonate or attempt to impersonate the company, employees, or other users</li>
-            </ul>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">4. Payment Terms</h2>
+                <p className="text-muted-foreground mb-4">
+                  For paid services:
+                </p>
+                <ul className="list-disc list-inside text-muted-foreground space-y-2">
+                  <li>Fees are charged in Indian Rupees (INR)</li>
+                  <li>Payments are processed through Razorpay</li>
+                  <li>Subscriptions renew automatically unless cancelled</li>
+                  <li>Refunds are subject to our refund policy</li>
+                </ul>
+              </section>
 
-            <h2>6. Payment Terms</h2>
-            <p>
-              Payment processing is handled through Razorpay and other authorized payment partners. By using our payment services, you agree to:
-            </p>
-            <ul>
-              <li>Provide accurate payment information</li>
-              <li>Pay all fees associated with your use of the service</li>
-              <li>Accept responsibility for all charges incurred under your account</li>
-            </ul>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">5. Intellectual Property</h2>
+                <p className="text-muted-foreground">
+                  The ShopZap platform, including its design, functionality, and content, is owned by 
+                  ShopZap and protected by intellectual property laws. You retain ownership of content 
+                  you upload to the platform.
+                </p>
+              </section>
 
-            <h2>7. Intellectual Property Rights</h2>
-            <p>
-              The service and its original content, features, and functionality are and will remain the exclusive property of ShopZap.io and its licensors. The service is protected by copyright, trademark, and other laws.
-            </p>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">6. Limitation of Liability</h2>
+                <p className="text-muted-foreground">
+                  ShopZap shall not be liable for any indirect, incidental, special, consequential, 
+                  or punitive damages, including without limitation, loss of profits, data, use, 
+                  goodwill, or other intangible losses.
+                </p>
+              </section>
 
-            <h2>8. User-Generated Content</h2>
-            <p>
-              You retain ownership of content you upload to our platform. However, by uploading content, you grant us a worldwide, non-exclusive, royalty-free license to use, modify, and display such content in connection with our services.
-            </p>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">7. Termination</h2>
+                <p className="text-muted-foreground">
+                  We may terminate or suspend your account and access to the service at our sole 
+                  discretion, without prior notice, for conduct that we believe violates these Terms 
+                  or is harmful to other users.
+                </p>
+              </section>
 
-            <h2>9. Termination</h2>
-            <p>
-              We may terminate or suspend your account and access to the service immediately, without prior notice, for any reason, including breach of these Terms.
-            </p>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">8. Changes to Terms</h2>
+                <p className="text-muted-foreground">
+                  We reserve the right to modify these terms at any time. We will notify users of 
+                  significant changes via email or through the platform.
+                </p>
+              </section>
 
-            <h2>10. Limitation of Liability</h2>
-            <p>
-              In no event shall ShopZap.io, its directors, employees, or agents be liable for any indirect, incidental, special, consequential, or punitive damages, including lost profits, arising out of your use of the service.
-            </p>
-
-            <h2>11. Governing Law</h2>
-            <p>
-              These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions.
-            </p>
-
-            <h2>12. Changes to Terms</h2>
-            <p>
-              We reserve the right to modify these Terms at any time. We will notify users of material changes by posting the new Terms on this page and updating the "Last updated" date.
-            </p>
-
-            <h2>13. Contact Information</h2>
-            <p>
-              If you have any questions about these Terms, please contact us at:
-            </p>
-            <p>
-              Email: [SUPPORT_EMAIL]<br/>
-              Address: [COMPANY_ADDRESS]
-            </p>
+              <section>
+                <h2 className="text-2xl font-bold font-jakarta mb-4">9. Contact Information</h2>
+                <p className="text-muted-foreground">
+                  For questions about these Terms of Service, please contact us at:
+                </p>
+                <p className="text-muted-foreground mt-4">
+                  Email: legal@shopzap.io<br />
+                  Address: Mumbai, Maharashtra, India
+                </p>
+              </section>
+            </div>
           </div>
         </div>
-      </main>
-      <Footer />
+      </div>
+
+      <FooterSection />
     </div>
   );
 };

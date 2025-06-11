@@ -59,8 +59,8 @@ const FooterSection = () => {
             <div>
               <h3 className="font-semibold font-jakarta mb-4">Support</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Contact Us</a></li>
+                <li><Link to="/help" className="text-muted-foreground hover:text-primary transition-colors">Help Center</Link></li>
+                <li><Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">Contact Us</Link></li>
                 <li><a href="#" className="text-muted-foreground hover:text-primary transition-colors">API Docs</a></li>
               </ul>
             </div>
@@ -73,9 +73,9 @@ const FooterSection = () => {
                 © 2025 ShopZap. All rights reserved.
               </p>
               <div className="flex space-x-6 mt-4 md:mt-0">
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Privacy Policy</a>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Terms of Service</a>
-                <a href="#" className="text-muted-foreground hover:text-primary transition-colors text-sm">Cookie Policy</a>
+                <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors text-sm">Privacy Policy</Link>
+                <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors text-sm">Terms of Service</Link>
+                <Link to="/cookie-policy" className="text-muted-foreground hover:text-primary transition-colors text-sm">Cookie Policy</Link>
               </div>
             </div>
           </div>

@@ -1,172 +1,177 @@
 
 import React from 'react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import LandingNavbar from '@/components/landing/LandingNavbar';
+import FooterSection from '@/components/landing/FooterSection';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Search, MessageCircle, Book, Video, Mail } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search, Book, MessageCircle, Video, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Help = () => {
-  const faqs = [
+  const helpCategories = [
     {
-      question: "How do I create my first store?",
-      answer: "Sign up for a ShopZap account, go through our onboarding process, and use the store builder to customize your store appearance and add products."
+      icon: Book,
+      title: 'Getting Started',
+      description: 'Learn the basics of setting up your store',
+      articles: [
+        'How to create your first store',
+        'Adding products to your catalog',
+        'Setting up Instagram automation',
+        'Configuring payment methods'
+      ]
     },
     {
-      question: "How does WhatsApp integration work?",
-      answer: "Customers can browse your products on your ShopZap store and place orders directly through WhatsApp. Orders are automatically forwarded to your WhatsApp number."
+      icon: MessageCircle,
+      title: 'Instagram Automation',
+      description: 'Master DM automation and customer engagement',
+      articles: [
+        'Setting up keyword triggers',
+        'Creating auto-reply templates',
+        'Managing customer conversations',
+        'Analytics for DM performance'
+      ]
     },
     {
-      question: "Can I customize my store design?",
-      answer: "Yes! You can customize colors, fonts, layout, add your logo, and choose from various themes to match your brand."
+      icon: Video,
+      title: 'Video Tutorials',
+      description: 'Step-by-step video guides',
+      articles: [
+        'Store setup walkthrough',
+        'Instagram integration guide',
+        'Product management tutorial',
+        'Analytics dashboard overview'
+      ]
     },
     {
-      question: "How do I track my orders?",
-      answer: "Use the Orders section in your dashboard to view all incoming orders, update order status, and track customer communications."
-    },
-    {
-      question: "What payment methods are supported?",
-      answer: "We support UPI, credit/debit cards, net banking, and digital wallets through Razorpay integration."
-    },
-    {
-      question: "Is there a mobile app?",
-      answer: "Currently, ShopZap is a web-based platform optimized for mobile browsers. A dedicated mobile app is coming soon."
+      icon: FileText,
+      title: 'Store Management',
+      description: 'Manage orders, inventory, and customers',
+      articles: [
+        'Processing and tracking orders',
+        'Managing inventory levels',
+        'Customer support best practices',
+        'Store customization options'
+      ]
     }
   ];
 
-  const resources = [
+  const faqs = [
     {
-      title: "Getting Started Guide",
-      description: "Learn the basics of setting up your store",
-      icon: <Book className="h-6 w-6" />,
-      link: "/tutorials"
+      question: 'How do I connect my Instagram account?',
+      answer: 'Go to Settings > Integrations > Instagram and follow the simple authorization process. You\'ll need a business Instagram account.'
     },
     {
-      title: "Video Tutorials",
-      description: "Watch step-by-step video guides",
-      icon: <Video className="h-6 w-6" />,
-      link: "/tutorials"
+      question: 'Can I customize the automated replies?',
+      answer: 'Yes, you can create custom templates and set keyword triggers. We also provide pre-made templates in Hindi and English.'
     },
     {
-      title: "Contact Support",
-      description: "Get help from our support team",
-      icon: <Mail className="h-6 w-6" />,
-      link: "mailto:support@shopzap.io"
+      question: 'How many products can I add?',
+      answer: 'Free plan allows up to 10 products. Pro plan has unlimited products. You can upgrade anytime.'
     },
     {
-      title: "Community Chat",
-      description: "Join our user community",
-      icon: <MessageCircle className="h-6 w-6" />,
-      link: "#"
+      question: 'Is my data secure?',
+      answer: 'Yes, we use industry-standard encryption and security measures. Your data is stored securely and never shared with third parties.'
     }
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-grow">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-b from-background to-muted/30 py-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-4xl mx-auto">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Help Center
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground mb-8">
-                Find answers to your questions and get the most out of ShopZap
-              </p>
+    <div className="min-h-screen bg-background">
+      <LandingNavbar />
+      
+      {/* Hero Section */}
+      <section className="py-16 md:py-24 bg-gradient-to-br from-background via-background to-accent/20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h1 className="text-4xl md:text-6xl font-bold font-jakarta mb-6">
+              How Can We{' '}
+              <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Help You?
+              </span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+              Find answers to your questions and learn how to make the most of ShopZap.
+            </p>
+            
+            {/* Search Bar */}
+            <div className="relative max-w-lg mx-auto">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input 
+                placeholder="Search for help articles..." 
+                className="pl-10 py-3 text-lg"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Help Categories */}
+      <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-3xl font-bold font-jakarta text-center mb-12">Browse Help Topics</h2>
+            
+            <div className="grid md:grid-cols-2 gap-8 mb-16">
+              {helpCategories.map((category, index) => {
+                const Icon = category.icon;
+                return (
+                  <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                    <CardHeader>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Icon className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="font-jakarta">{category.title}</CardTitle>
+                          <p className="text-muted-foreground text-sm">{category.description}</p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {category.articles.map((article, articleIndex) => (
+                          <li key={articleIndex}>
+                            <a href="#" className="text-primary hover:underline text-sm">
+                              {article}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* FAQ Section */}
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-3xl font-bold font-jakarta text-center mb-12">Frequently Asked Questions</h2>
               
-              {/* Search Bar */}
-              <div className="max-w-md mx-auto relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search for help..."
-                  className="pl-10"
-                />
+              <div className="space-y-6">
+                {faqs.map((faq, index) => (
+                  <Card key={index} className="border-0 shadow-md">
+                    <CardContent className="p-6">
+                      <h3 className="font-semibold font-jakarta mb-3">{faq.question}</h3>
+                      <p className="text-muted-foreground">{faq.answer}</p>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Quick Resources */}
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Quick Resources</h2>
-              <p className="text-muted-foreground">
-                Find the help you need quickly
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {resources.map((resource, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow cursor-pointer">
-                  <CardHeader className="text-center">
-                    <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                      {resource.icon}
-                    </div>
-                    <CardTitle className="text-lg">{resource.title}</CardTitle>
-                    <CardDescription>{resource.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button asChild className="w-full">
-                      <Link to={resource.link}>Access</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+            {/* Contact Support */}
+            <div className="text-center mt-16">
+              <h3 className="text-2xl font-bold font-jakarta mb-4">Still need help?</h3>
+              <p className="text-muted-foreground mb-6">Can't find what you're looking for? Our support team is here to help.</p>
+              <Button asChild size="lg">
+                <Link to="/contact">Contact Support</Link>
+              </Button>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* FAQ Section */}
-        <section className="bg-muted/30 py-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
-              <p className="text-muted-foreground">
-                Common questions and answers about ShopZap
-              </p>
-            </div>
-
-            <div className="max-w-4xl mx-auto space-y-6">
-              {faqs.map((faq, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{faq.question}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{faq.answer}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Section */}
-        <section className="py-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-2xl mx-auto">
-              <h2 className="text-3xl font-bold mb-4">Still Need Help?</h2>
-              <p className="text-muted-foreground mb-8">
-                Can't find what you're looking for? Our support team is here to help.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button asChild size="lg">
-                  <a href="mailto:support@shopzap.io">Email Support</a>
-                </Button>
-                <Button variant="outline" size="lg" asChild>
-                  <Link to="/tutorials">Browse Tutorials</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-      <Footer />
+      <FooterSection />
     </div>
   );
 };
