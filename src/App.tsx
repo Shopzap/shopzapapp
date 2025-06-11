@@ -93,7 +93,7 @@ const AppContent = () => (
     <Route path="/thank-you" element={<ThankYou />} />
     <Route path="/order" element={<OrderRedirect />} />
     <Route path="/track-order" element={<OrderTracking />} />
-    {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */
+    {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */}
     
     {/* Store routes wrapped with CartProvider */}
     <Route path="/store/:storeName" element={
