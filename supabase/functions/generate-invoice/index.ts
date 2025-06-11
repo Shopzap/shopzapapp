@@ -62,7 +62,19 @@ serve(async (req) => {
     // Create PDF
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
+    const pageHeight = doc.internal.pageSize.height;
     let yPosition = 20;
+
+    // Add ShopZap watermark
+    doc.setTextColor(240, 240, 240); // Very light gray
+    doc.setFontSize(60);
+    doc.text('ShopZap', pageWidth / 2, pageHeight / 2, { 
+      align: 'center',
+      angle: 45
+    });
+
+    // Reset color for main content
+    doc.setTextColor(0, 0, 0);
 
     // Helper function to add text with line wrapping
     const addText = (text: string, x: number, y: number, maxWidth?: number, fontSize = 10) => {
@@ -232,13 +244,18 @@ serve(async (req) => {
       yPosition += 15;
     }
 
-    // Footer
-    yPosition += 10;
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    // Footer with ShopZap branding
+    yPosition = pageHeight - 40;
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Powered by ShopZap', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 5;
     doc.text('Thank you for your business!', pageWidth / 2, yPosition, { align: 'center' });
     yPosition += 5;
     doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 8;
+    doc.setFontSize(7);
+    doc.text('Create your own online store at shopzap.io', pageWidth / 2, yPosition, { align: 'center' });
 
     // Generate PDF buffer
     const pdfBuffer = doc.output('arraybuffer');
