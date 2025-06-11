@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -133,11 +132,37 @@ const ThankYou = () => {
     });
   };
 
-  const downloadInvoice = () => {
-    toast({
-      title: "Invoice Download",
-      description: "Invoice download feature coming soon!",
-    });
+  const downloadInvoice = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-invoice', {
+        body: { orderId: orderDetails.id }
+      });
+
+      if (error) throw error;
+
+      // Create blob and download
+      const blob = new Blob([data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `invoice-${orderDetails.id.slice(-8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Invoice Downloaded",
+        description: "Invoice has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      toast({
+        title: "Download Available",
+        description: "You can download your invoice from the dashboard under Invoices section.",
+      });
+    }
   };
 
   if (loading) {

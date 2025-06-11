@@ -1,142 +1,240 @@
-
-import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { Store, Package, ShoppingBag, Palette, Settings, BarChart3, LogOut, User, Instagram } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStore } from '@/contexts/StoreContext';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, Package, ShoppingCart, FileText, Palette, Instagram, TrendingUp, Menu, X } from 'lucide-react';
 
-type DashboardLayoutProps = {
-  children: React.ReactNode;
-};
-
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+const DashboardLayout: React.FC = ({ children }) => {
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const location = useLocation();
-  const { signOut, profile } = useAuth();
-  const { storeId, isLoadingStore } = useStore();
-  
-  const handleLogout = async () => {
-    await signOut();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-  
-  const navItems = [
-    { label: 'Dashboard', path: '/dashboard', icon: <Store className="h-4 w-4 mr-2" /> },
-    { label: 'Products', path: '/dashboard/products', icon: <Package className="h-4 w-4 mr-2" /> },
-    { label: 'Orders', path: '/dashboard/orders', icon: <ShoppingBag className="h-4 w-4 mr-2" /> },
-    { label: 'Customize Store', path: '/dashboard/customize-store', icon: <Palette className="h-4 w-4 mr-2" /> },
-    { label: 'Instagram Automation', path: '/dashboard/instagram', icon: <Instagram className="h-4 w-4 mr-2" /> },
-    { label: 'Analytics', path: '/dashboard/analytics', icon: <BarChart3 className="h-4 w-4 mr-2" /> },
-    { label: 'Settings', path: '/dashboard/settings', icon: <Settings className="h-4 w-4 mr-2" /> },
-  ];
-  
-  const isActive = (path: string) => {
-    if (path === '/dashboard' && location.pathname === '/dashboard') {
-      return true;
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Failed to sign out', error);
     }
-    return location.pathname.startsWith(path) && path !== '/dashboard';
   };
 
   return (
-    <div className="flex h-screen bg-accent/10">
-      {/* Sidebar for medium screens and up */}
-      <aside className="hidden md:flex flex-col w-64 bg-card border-r p-4">
-        <div className="mb-8">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ShopZap.io</div>
-          </Link>
-        </div>
-        
-        {/* User profile section */}
-        <div className="mb-6 p-4 bg-accent/20 rounded-md">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 text-primary rounded-full p-2">
-              <User size={20} />
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white border-b border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 justify-between">
+            <div className="flex">
+              <div className="flex flex-shrink-0 items-center">
+                <Link to="/" className="text-xl font-bold text-blue-600">
+                  ShopZap
+                </Link>
+              </div>
+              <div className="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
+                <Link
+                  to="/dashboard"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/dashboard/products"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/products'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Products
+                </Link>
+                <Link
+                  to="/dashboard/orders"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/orders'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Orders
+                </Link>
+                <Link
+                  to="/dashboard/invoices"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/invoices'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Invoices
+                </Link>
+                <Link
+                  to="/dashboard/customize-store"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/customize-store'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <Palette className="mr-2 h-4 w-4" />
+                  Customize
+                </Link>
+                <Link
+                  to="/dashboard/instagram"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/instagram'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <Instagram className="mr-2 h-4 w-4" />
+                  Instagram
+                </Link>
+                <Link
+                  to="/dashboard/analytics"
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
+                    location.pathname === '/dashboard/analytics'
+                      ? 'border-b-2 border-blue-500 text-gray-900'
+                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Analytics
+                </Link>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium">{profile?.full_name || 'User'}</h3>
-              <p className="text-xs text-muted-foreground">Logged in</p>
+            <div className="flex items-center">
+              <div className="ml-3 relative">
+                <div>
+                  <button
+                    type="button"
+                    className="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    id="user-menu-button"
+                    aria-expanded="false"
+                    aria-haspopup="true"
+                    onClick={toggleMobileMenu}
+                  >
+                    <span className="sr-only">Open user menu</span>
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-500">
+                      <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div className="-mr-2 flex items-center sm:hidden">
+                {/* Mobile menu button */}
+                <button
+                  type="button"
+                  className="relative inline-flex items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  aria-controls="mobile-menu"
+                  aria-expanded="false"
+                  onClick={toggleMobileMenu}
+                >
+                  <span className="sr-only">Open main menu</span>
+                  {isMobileMenuOpen ? (
+                    <X className="block h-6 w-6" aria-hidden="true" />
+                  ) : (
+                    <Menu className="block h-6 w-6" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-        
-        <nav className="space-y-1 flex-1">
-          {navItems.map((item) => (
+
+        {/* Mobile menu */}
+        <div className={`sm:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
+          <div className="space-y-1 pt-2 pb-3">
             <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center py-2 px-4 rounded-md text-sm ${
-                isActive(item.path)
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-foreground hover:bg-accent/50'
+              to="/dashboard"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
-              {item.icon}
-              {item.label}
+              Dashboard
             </Link>
-          ))}
-        </nav>
-        
-        <div className="pt-4 border-t">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-100/30"
-            onClick={handleLogout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Log Out
-          </Button>
-        </div>
-      </aside>
-      
-      {/* Mobile navbar */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-10 bg-background border-b p-3">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="font-bold text-xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">ShopZap</div>
-          </Link>
-          <Button variant="outline" size="sm" onClick={() => {
-            const mobileMenu = document.getElementById('mobile-menu');
-            if (mobileMenu) mobileMenu.classList.toggle('hidden');
-          }}>
-            Menu
-          </Button>
-        </div>
-        <div id="mobile-menu" className="hidden mt-3 border rounded-md overflow-hidden shadow-lg">
-          {navItems.map((item) => (
             <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center py-2 px-4 ${isActive(item.path) ? 'bg-primary/10 text-primary' : 'hover:bg-accent/50'}`}
-              onClick={() => {
-                const mobileMenu = document.getElementById('mobile-menu');
-                if (mobileMenu) mobileMenu.classList.add('hidden');
-              }}
+              to="/dashboard/products"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/products'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+              }`}
             >
-              {item.icon}
-              {item.label}
+              Products
             </Link>
-          ))}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-100/30 py-2 px-4"
-            onClick={handleLogout}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Log Out
-          </Button>
+            <Link
+              to="/dashboard/orders"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/orders'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Orders
+            </Link>
+            <Link
+              to="/dashboard/invoices"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/invoices'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Invoices
+            </Link>
+            <Link
+              to="/dashboard/customize-store"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/customize-store'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Customize
+            </Link>
+            <Link
+              to="/dashboard/instagram"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/instagram'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+              }`}
+            >
+              Instagram
+            </Link>
+            <Link
+              to="/dashboard/analytics"
+              className={`block py-2 pl-3 pr-4 text-base font-medium ${
+                location.pathname === '/dashboard/analytics'
+                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
+              }`}
+            >
+              Analytics
+            </Link>
+          </div>
         </div>
-      </div>
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden pt-[60px] md:pt-0">
-        <main className="flex-1 overflow-y-auto">
+      </nav>
+
+      <main className="py-10">
+        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
