@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2 } from 'lucide-react';
+import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
 import { paymentConfig } from '@/config/payment';
 
 // Add Razorpay to window type
@@ -41,13 +42,45 @@ const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [storeInfo, setStoreInfo] = useState<any>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [isCheckingCart, setIsCheckingCart] = useState(true);
+
+  // Check cart and redirect if empty
+  useEffect(() => {
+    const checkCart = async () => {
+      setIsCheckingCart(true);
+      
+      // Wait a moment for cart to load
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (cartItems.length === 0) {
+        toast({
+          title: "Cart is empty",
+          description: "Redirecting to cart page...",
+          variant: "destructive",
+        });
+        
+        // Try to redirect to store cart if we have store context
+        try {
+          const storeContext = localStorage.getItem('shopzap_store_context');
+          if (storeContext) {
+            const parsed = JSON.parse(storeContext);
+            navigate(`/store/${parsed.storeName}/cart`);
+          } else {
+            navigate('/cart');
+          }
+        } catch {
+          navigate('/cart');
+        }
+        return;
+      }
+      
+      setIsCheckingCart(false);
+    };
+
+    checkCart();
+  }, [cartItems, navigate, toast]);
 
   useEffect(() => {
-    if (cartItems.length === 0) {
-      navigate('/cart');
-      return;
-    }
-
     const loadStoreInfo = async () => {
       if (cartItems.length > 0) {
         const { data: store } = await supabase
@@ -59,8 +92,10 @@ const Checkout = () => {
       }
     };
 
-    loadStoreInfo();
-  }, [cartItems, navigate]);
+    if (!isCheckingCart) {
+      loadStoreInfo();
+    }
+  }, [cartItems, isCheckingCart]);
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -321,8 +356,37 @@ const Checkout = () => {
     }
   };
 
+  // Show loading state while checking cart
+  if (isCheckingCart) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
+        <p className="mt-4 text-muted-foreground">Loading checkout...</p>
+      </div>
+    );
+  }
+
+  // Show empty cart message if no items (fallback - shouldn't reach here due to redirect)
   if (cartItems.length === 0) {
-    return null;
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <Card className="text-center py-16">
+          <CardContent>
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-400" />
+            <h2 className="text-xl font-semibold mb-2">No items in cart</h2>
+            <p className="text-gray-600 mb-6">Your cart is empty. Please add items before proceeding to checkout.</p>
+            <div className="space-x-4">
+              <Button onClick={() => navigate('/cart')}>
+                Go to Cart
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                Continue Shopping
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

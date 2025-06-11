@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,8 +25,13 @@ import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
+import ThankYou from "./pages/ThankYou";
+
+// Lazy loaded components
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+
+// Core e-commerce pages - CRITICAL ROUTES - DO NOT REMOVE
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -55,6 +61,13 @@ const GlobalCartWrapper = () => (
   </CartProvider>
 );
 
+// Checkout wrapper with CartProvider
+const CheckoutWrapper = () => (
+  <CartProvider>
+    <Checkout />
+  </CartProvider>
+);
+
 // Create a separate App component wrapper to ensure proper provider nesting
 const AppContent = () => (
   <Routes>
@@ -68,8 +81,19 @@ const AppContent = () => (
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
     
+    {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
     {/* Global cart route - handles both store-specific and general cart access */}
     <Route path="/cart" element={<GlobalCartWrapper />} />
+    
+    {/* Checkout route - CRITICAL FOR PAYMENTS */}
+    <Route path="/checkout" element={<CheckoutWrapper />} />
+    
+    {/* Order completion routes */}
+    <Route path="/order-success" element={<OrderSuccess />} />
+    <Route path="/thank-you" element={<ThankYou />} />
+    <Route path="/order" element={<OrderRedirect />} />
+    <Route path="/track-order" element={<OrderTracking />} />
+    {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */
     
     {/* Store routes wrapped with CartProvider */}
     <Route path="/store/:storeName" element={
@@ -99,16 +123,15 @@ const AppContent = () => (
         </ErrorBoundary>
       </StorePageWrapper>
     } />
-    
-    {/* Other cart/checkout related routes */}
-    <Route path="/checkout" element={
-      <CartProvider>
-        <Checkout />
-      </CartProvider>
+    <Route path="/store/:storeName/checkout" element={
+      <StorePageWrapper>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading checkout...</p></div>}>
+            <Checkout />
+          </Suspense>
+        </ErrorBoundary>
+      </StorePageWrapper>
     } />
-    <Route path="/order-success" element={<OrderSuccess />} />
-    <Route path="/order" element={<OrderRedirect />} />
-    <Route path="/track-order" element={<OrderTracking />} />
     
     {/* Protected routes */}
     <Route path="/onboarding" element={
