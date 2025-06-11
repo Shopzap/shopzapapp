@@ -3,11 +3,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import LazyComponentWrapper from '@/components/LazyComponentWrapper';
 
 // Import pages directly (no lazy loading for critical pages)
 import Index from '@/pages/Index';
-import Dashboard from '@/pages/Dashboard';
 import Auth from '@/pages/Auth';
 import Features from '@/pages/Features';
 import Pricing from '@/pages/Pricing';
@@ -17,9 +15,20 @@ import PrivacyPolicy from '@/pages/PrivacyPolicy';
 import Terms from '@/pages/Terms';
 import CookiePolicy from '@/pages/CookiePolicy';
 
+// Dashboard components
+import Dashboard from '@/pages/Dashboard';
+import ProductManager from '@/pages/ProductManager';
+import Orders from '@/pages/Orders';
+import CustomizeStore from '@/pages/CustomizeStore';
+import Analytics from '@/pages/Analytics';
+import Settings from '@/pages/Settings';
+import InstagramAutomation from '@/pages/InstagramAutomation';
+
 // Auth components
 import { AuthProvider } from '@/contexts/AuthContext';
 import { StoreProvider } from '@/contexts/StoreContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
 
 console.log('App.tsx: Starting to load');
 
@@ -57,8 +66,56 @@ function App() {
                 {/* Auth routes */}
                 <Route path="/auth" element={<Auth />} />
 
-                {/* Dashboard routes */}
-                <Route path="/dashboard" element={<Dashboard />} />
+                {/* Dashboard routes wrapped with DashboardLayout and ProtectedRoute */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/products" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <ProductManager />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/orders" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Orders />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/customize-store" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <CustomizeStore />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/instagram" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <InstagramAutomation />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/analytics" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Analytics />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard/settings" element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Settings />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                } />
                 
                 {/* Fallback route */}
                 <Route path="*" element={
