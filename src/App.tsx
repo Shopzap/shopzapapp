@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,7 @@ import Verify from "./pages/Verify";
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
 import ThankYou from "./pages/ThankYou";
+import Invoices from "./pages/Invoices";
 
 // Lazy loaded components
 const Storefront = lazy(() => import("./pages/Storefront"));

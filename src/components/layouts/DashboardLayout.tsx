@@ -1,10 +1,15 @@
+
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, Package, ShoppingCart, FileText, Palette, Instagram, TrendingUp, Menu, X } from 'lucide-react';
 
-const DashboardLayout: React.FC = ({ children }) => {
+interface DashboardLayoutProps {
+  children: React.ReactNode;
+}
+
+const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -181,7 +186,7 @@ const DashboardLayout: React.FC = ({ children }) => {
               className={`block py-2 pl-3 pr-4 text-base font-medium ${
                 location.pathname === '/dashboard/orders'
                   ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               Orders
@@ -191,7 +196,7 @@ const DashboardLayout: React.FC = ({ children }) => {
               className={`block py-2 pl-3 pr-4 text-base font-medium ${
                 location.pathname === '/dashboard/invoices'
                   ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               Invoices
@@ -201,7 +206,7 @@ const DashboardLayout: React.FC = ({ children }) => {
               className={`block py-2 pl-3 pr-4 text-base font-medium ${
                 location.pathname === '/dashboard/customize-store'
                   ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               Customize
@@ -211,7 +216,7 @@ const DashboardLayout: React.FC = ({ children }) => {
               className={`block py-2 pl-3 pr-4 text-base font-medium ${
                 location.pathname === '/dashboard/instagram'
                   ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               Instagram
