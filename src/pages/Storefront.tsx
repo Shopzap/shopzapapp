@@ -177,16 +177,8 @@ const Storefront: React.FC = () => {
     }
   }, [storeError, productsError, productsLoading, products]);
 
-  // Invalidate cache when returning from customization
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('Storefront: Window focused, invalidating store cache for fresh data');
-      queryClient.invalidateQueries({ queryKey: ['store-lookup', normalizedStoreName] });
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [queryClient, normalizedStoreName]);
+  // Remove the auto-invalidation on window focus to prevent automatic reloading
+  // This was causing the store to reload every time the user switched tabs
   
   // Show loading state while store is being fetched
   if (storeLoading && !cachedData) {

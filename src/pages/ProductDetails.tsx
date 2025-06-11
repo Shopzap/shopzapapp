@@ -23,23 +23,70 @@ const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
-  // Fetch store data
+  // Normalize the store name to lowercase for consistent querying
+  const normalizedStoreName = storeName?.toLowerCase();
+
+  // Fetch store data with improved error handling
   const { data: store, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-by-name', storeName],
+    queryKey: ['store-by-name', normalizedStoreName],
     queryFn: async () => {
-      if (!storeName) {
+      if (!normalizedStoreName) {
         throw new Error('No store name provided');
       }
       
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .ilike('name', storeName)
-        .single();
-      if (error) throw error;
-      return data;
+      console.log('ProductDetails: Fetching store data for identifier', normalizedStoreName);
+      
+      try {
+        // First, try to find by slug (new preferred method)
+        let { data: slugData, error: slugError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('slug', normalizedStoreName)
+          .maybeSingle();
+          
+        if (slugData && !slugError) {
+          console.log('ProductDetails: Store found by slug', slugData);
+          return slugData;
+        }
+        
+        // If not found by slug, try username (legacy support)
+        console.log('ProductDetails: Trying with username field', normalizedStoreName);
+        let { data: usernameData, error: usernameError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('username', normalizedStoreName)
+          .maybeSingle();
+          
+        if (usernameData && !usernameError) {
+          console.log('ProductDetails: Store found by username', usernameData);
+          return usernameData;
+        }
+        
+        // Finally, try name field as fallback using direct equality
+        console.log('ProductDetails: Final attempt with direct name match', normalizedStoreName);
+        let { data: directData, error: directError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('name', normalizedStoreName)
+          .maybeSingle();
+          
+        if (directData && !directError) {
+          console.log('ProductDetails: Store found by direct name match', directData);
+          return directData;
+        }
+        
+        console.error('ProductDetails: Store not found with any identifier', normalizedStoreName);
+        throw new Error(`Store "${storeName}" not found`);
+      } catch (err) {
+        console.error('ProductDetails: Exception in store fetch', err);
+        throw err;
+      }
     },
-    enabled: !!storeName,
+    enabled: !!normalizedStoreName,
+    retry: 2,
+    retryDelay: 1000,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   // Fetch product data
