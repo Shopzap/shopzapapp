@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -62,11 +61,11 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Error logging email attempt:', logError);
     }
 
-    // Check if MailerSend API key is available
-    const mailersendApiKey = Deno.env.get('MAILERSEND_API_KEY');
+    // Check if Resend API key is available
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
     
-    if (!mailersendApiKey) {
-      console.log('MailerSend API key not configured - email functionality disabled');
+    if (!resendApiKey) {
+      console.log('Resend API key not configured - email functionality disabled');
       return new Response(JSON.stringify({ 
         success: false, 
         message: 'Email service not configured' 
@@ -80,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Send email to buyer
-    const emailResult = await sendMailersendEmail({
+    const emailResult = await sendResendEmail({
       to: buyerEmail,
       subject: emailContent.buyerSubject,
       html: emailContent.buyerHtml,
@@ -92,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to seller for certain events (if provided)
     if (sellerEmail && (eventType === 'order_placed' || eventType === 'order_cancelled')) {
       const sellerContent = generateSellerEmailContent(eventType, orderData, orderId);
-      await sendMailersendEmail({
+      await sendResendEmail({
         to: sellerEmail,
         subject: sellerContent.subject,
         html: sellerContent.html,
@@ -128,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-async function sendMailersendEmail({
+async function sendResendEmail({
   to,
   subject,
   html,
@@ -143,29 +142,18 @@ async function sendMailersendEmail({
   eventType: string;
   supabaseClient: any;
 }) {
-  const mailersendApiKey = Deno.env.get('MAILERSEND_API_KEY');
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
   
   try {
-    const response = await fetch('https://api.mailersend.com/v1/email', {
+    const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${mailersendApiKey}`,
+        'Authorization': `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: {
-          email: 'noreply@shopzap.io',
-          name: 'ShopZap'
-        },
-        reply_to: [
-          {
-            email: 'support@shopzap.io',
-            name: 'ShopZap Support'
-          }
-        ],
-        to: [{
-          email: to
-        }],
+        from: 'orders@shopzap.io',
+        to: [to],
         subject: subject,
         html: html
       })
@@ -174,14 +162,14 @@ async function sendMailersendEmail({
     const result = await response.json();
 
     if (response.ok) {
-      console.log('Email sent successfully:', result);
+      console.log('Email sent successfully via Resend:', result);
       
       // Update log as successful
       await supabaseClient
         .from('email_logs')
         .update({
           status: 'sent',
-          mailersend_id: result.id,
+          mailersend_id: result.id, // Resend also provides an id
           updated_at: new Date().toISOString()
         })
         .eq('order_id', orderId)
@@ -189,7 +177,7 @@ async function sendMailersendEmail({
 
       return { success: true, data: result };
     } else {
-      console.error('MailerSend API error:', result);
+      console.error('Resend API error:', result);
       
       // Update log as failed
       await supabaseClient

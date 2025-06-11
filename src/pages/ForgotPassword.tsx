@@ -126,7 +126,7 @@ const ForgotPassword = () => {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <span className="mr-2">Sending Email</span>
+                    <span className="mr-2">Sending Email via Resend</span>
                     <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
                   </>
                 ) : (
