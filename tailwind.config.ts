@@ -21,6 +21,7 @@ export default {
     extend: {
       fontFamily: {
         'inter': ['Inter', 'sans-serif'],
+        'jakarta': ['Plus Jakarta Sans', 'sans-serif'],
         'poppins': ['Poppins', 'sans-serif'],
         'roboto': ['Roboto', 'sans-serif'],
         'playfair': ['Playfair Display', 'serif'],
@@ -80,6 +81,12 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      backgroundImage: {
+        'grid-pattern': 'linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, 0.1) 75%, rgba(255, 255, 255, 0.1) 76%, transparent 77%, transparent), linear-gradient(transparent 24%, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, 0.1) 75%, rgba(255, 255, 255, 0.1) 76%, transparent 77%, transparent)',
+      },
+      backgroundSize: {
+        'grid-pattern': '50px 50px',
       },
     },
   },
