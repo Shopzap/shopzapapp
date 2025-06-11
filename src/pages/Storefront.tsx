@@ -39,7 +39,7 @@ const Storefront: React.FC = () => {
   // Check cache first
   const cachedData = getCachedData(storeName);
   
-  // Fetch store data with enhanced logic for username/slug handling
+  // Fetch store data with improved error handling and query logic
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-lookup', normalizedStoreName],
     queryFn: async () => {
@@ -58,7 +58,7 @@ const Storefront: React.FC = () => {
           return { store: slugData, redirectNeeded: false };
         }
         
-        // If not found by slug, try username (legacy support)
+        // If not found by slug, try username (legacy support) with proper escaping
         console.log('Storefront: Trying with username field', normalizedStoreName);
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
@@ -71,17 +71,30 @@ const Storefront: React.FC = () => {
           return { store: usernameData, redirectNeeded: false };
         }
         
-        // Finally, try name field as fallback (case-insensitive)
-        console.log('Storefront: Trying with name field', normalizedStoreName);
+        // Finally, try name field as fallback using textSearch instead of ilike
+        console.log('Storefront: Trying with name field using textSearch', normalizedStoreName);
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
-          .ilike('name', normalizedStoreName)
+          .textSearch('name', normalizedStoreName)
           .maybeSingle();
           
         if (nameData && !nameError) {
           console.log('Storefront: Store found by name', nameData);
           return { store: nameData, redirectNeeded: false };
+        }
+        
+        // Last attempt: direct name equality check
+        console.log('Storefront: Final attempt with direct name match', normalizedStoreName);
+        let { data: directData, error: directError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('name', normalizedStoreName)
+          .maybeSingle();
+          
+        if (directData && !directError) {
+          console.log('Storefront: Store found by direct name match', directData);
+          return { store: directData, redirectNeeded: false };
         }
         
         console.error('Storefront: Store not found with any identifier', normalizedStoreName);
