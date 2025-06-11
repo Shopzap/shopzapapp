@@ -13,7 +13,7 @@ const FooterSection = () => {
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
                 <img 
-                  src="/lovable-uploads/1bd5b10d-b800-4ee3-a0ed-a0d3e99fd5d2.png" 
+                  src="/lovable-uploads/4ab17ded-ab2f-4611-bb24-50d3892724d0.png" 
                   alt="ShopZap Logo" 
                   className="h-8 w-auto"
                 />
