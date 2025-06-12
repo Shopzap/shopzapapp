@@ -40,74 +40,75 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Fetch product data with simplified query structure
-  const { data: product, isLoading, error } = useQuery<ProductData>({
+  // Simplified fetch function with explicit typing
+  const fetchProductData = async (): Promise<ProductData> => {
+    if (!storeName || !productSlug) {
+      throw new Error('Missing store name or product slug');
+    }
+
+    try {
+      // Get store data first
+      const { data: storeData, error: storeError } = await supabase
+        .from('stores')
+        .select('id, name')
+        .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
+        .maybeSingle();
+
+      if (storeError) {
+        console.error('Store query error:', storeError);
+        throw new Error(`Store query failed: ${storeError.message}`);
+      }
+
+      if (!storeData) {
+        throw new Error(`Store "${storeName}" not found`);
+      }
+
+      // Get product data
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('id, name, description, price, image_url, images, status, is_published, store_id')
+        .eq('store_id', storeData.id)
+        .eq('slug', productSlug)
+        .eq('status', 'active')
+        .eq('is_published', true)
+        .maybeSingle();
+
+      if (productError) {
+        console.error('Product query error:', productError);
+        throw new Error(`Product query failed: ${productError.message}`);
+      }
+
+      if (!productData) {
+        throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
+      }
+
+      // Return the combined data
+      return {
+        id: productData.id,
+        name: productData.name,
+        description: productData.description,
+        price: productData.price,
+        image_url: productData.image_url,
+        images: productData.images,
+        status: productData.status,
+        is_published: productData.is_published,
+        store_id: productData.store_id,
+        store_name: storeData.name
+      };
+    } catch (err: any) {
+      console.error('Error fetching product:', err);
+      setFetchError(err.message);
+      throw err;
+    }
+  };
+
+  // Use simplified query
+  const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', storeName, productSlug],
-    queryFn: async (): Promise<ProductData> => {
-      if (!storeName || !productSlug) {
-        throw new Error('Missing store name or product slug');
-      }
-
-      try {
-        // First get the store - explicitly type the result
-        const storeResult = await supabase
-          .from('stores')
-          .select('id, name')
-          .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
-          .maybeSingle();
-
-        if (storeResult.error) {
-          throw new Error(`Store query failed: ${storeResult.error.message}`);
-        }
-
-        if (!storeResult.data) {
-          throw new Error(`Store "${storeName}" not found`);
-        }
-
-        const storeData = storeResult.data;
-
-        // Then get the product - explicitly type the result
-        const productResult = await supabase
-          .from('products')
-          .select('id, name, description, price, image_url, images, status, is_published, store_id')
-          .eq('store_id', storeData.id)
-          .eq('slug', productSlug)
-          .eq('status', 'active')
-          .eq('is_published', true)
-          .maybeSingle();
-
-        if (productResult.error) {
-          throw new Error(`Product query failed: ${productResult.error.message}`);
-        }
-
-        if (!productResult.data) {
-          throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
-        }
-
-        const productData = productResult.data;
-
-        // Return simplified product object
-        return {
-          id: productData.id,
-          name: productData.name,
-          description: productData.description,
-          price: productData.price,
-          image_url: productData.image_url,
-          images: productData.images,
-          status: productData.status,
-          is_published: productData.is_published,
-          store_id: productData.store_id,
-          store_name: storeData.name
-        };
-      } catch (err: any) {
-        console.error('Error fetching product:', err);
-        setFetchError(err.message);
-        throw err;
-      }
-    },
+    queryFn: fetchProductData,
     enabled: !!storeName && !!productSlug,
-    retry: false, // We handle retries manually
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Use delayed loading
