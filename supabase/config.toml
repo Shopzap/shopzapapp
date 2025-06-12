@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.save-ig-automation]
 verify_jwt = true
+
+[functions.resend-webhook]
+verify_jwt = false
