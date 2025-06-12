@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
@@ -70,6 +71,45 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     });
 
     return Promise.all(uploadPromises);
+  };
+
+  // Function to generate slug from product name
+  const generateSlug = (name: string, counter?: number): string => {
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .trim()
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    
+    return counter ? `${baseSlug}-${counter}` : baseSlug;
+  };
+
+  // Function to check if slug exists and generate unique one
+  const getUniqueSlug = async (name: string, storeId: string): Promise<string> => {
+    let slug = generateSlug(name);
+    let counter = 1;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('slug', slug)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      if (!data) {
+        return slug;
+      }
+      
+      counter++;
+      slug = generateSlug(name, counter);
+    }
   };
 
   const onSubmit = async (data: any) => {
@@ -145,6 +185,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         console.log('Store found:', currentStoreId);
       }
 
+      // Generate unique slug
+      console.log('Generating unique slug...');
+      const slug = await getUniqueSlug(data.name, currentStoreId);
+      console.log('Generated slug:', slug);
+
       // Upload images
       console.log('Uploading images...');
       let uploadedImages: string[] = [];
@@ -161,7 +206,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
       }
       
-      // Insert product with images array
+      // Insert product with images array and slug
       console.log('Creating product in database...');
       const { error } = await supabase
         .from('products')
@@ -174,7 +219,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           store_id: currentStoreId,
           is_published: isPublished,
           images: uploadedImages,
-          image_url: uploadedImages[0] || null
+          image_url: uploadedImages[0] || null,
+          slug: slug
         });
         
       if (error) {

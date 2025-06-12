@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,9 +19,6 @@ type ProductCsvRow = {
   description?: string;
   price: number;
   image_url?: string;
-  category?: string;
-  sku?: string;
-  inventory_count?: number;
   status?: string;
 };
 
@@ -82,8 +80,6 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
           // Parse numeric fields
           if (header === 'price') {
             row[header] = parseFloat(value);
-          } else if (header === 'inventory_count') {
-            row[header] = parseInt(value);
           } else {
             row[header] = value;
           }
@@ -91,6 +87,45 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
         
         return row as ProductCsvRow;
       });
+  };
+
+  // Function to generate slug from product name
+  const generateSlug = (name: string, counter?: number): string => {
+    const baseSlug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .trim()
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+    
+    return counter ? `${baseSlug}-${counter}` : baseSlug;
+  };
+
+  // Function to check if slug exists and generate unique one
+  const getUniqueSlug = async (name: string, storeId: string): Promise<string> => {
+    let slug = generateSlug(name);
+    let counter = 1;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id')
+        .eq('store_id', storeId)
+        .eq('slug', slug)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      
+      if (!data) {
+        return slug;
+      }
+      
+      counter++;
+      slug = generateSlug(name, counter);
+    }
   };
 
   const handleUpload = async () => {
@@ -160,6 +195,9 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
         }
         
         try {
+          // Generate unique slug for this product
+          const slug = await getUniqueSlug(product.name, storeData.id);
+          
           const { error } = await supabase
             .from('products')
             .insert({
@@ -168,10 +206,8 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
               description: product.description,
               price: product.price,
               image_url: product.image_url,
-              category: product.category,
-              sku: product.sku,
-              inventory_count: product.inventory_count,
-              status: product.status || 'active'
+              status: product.status || 'active',
+              slug: slug
             });
             
           if (error) {
@@ -211,8 +247,8 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const headers = 'name,description,price,image_url,category,sku,inventory_count,status';
-    const sampleData = 'Example Product,This is a sample product description,19.99,https://example.com/image.jpg,Electronics,PROD-001,100,active';
+    const headers = 'name,description,price,image_url,status';
+    const sampleData = 'Example Product,This is a sample product description,19.99,https://example.com/image.jpg,active';
     const csvContent = `${headers}\n${sampleData}`;
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -244,7 +280,7 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>CSV Format Requirements</AlertTitle>
               <AlertDescription className="text-sm">
-                Your CSV file should include: name, description, price, image_url, category, sku, inventory_count, and status columns.
+                Your CSV file should include: name, description, price, image_url, and status columns.
                 Only name and price are required.
               </AlertDescription>
             </Alert>
