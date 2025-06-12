@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -132,8 +131,13 @@ const Checkout = () => {
         const errorMessage = data?.error || 'Failed to create payment order';
         
         // Handle specific authentication errors
-        if (data?.details?.includes('Authentication failed') || data?.code === 401) {
-          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. API keys may be incorrect. Please contact support.`);
+        if (data?.error?.includes('Authentication failed') || data?.error?.includes('API keys')) {
+          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Please contact support - API keys may be incorrect.`);
+        }
+        
+        // Handle configuration errors
+        if (data?.error?.includes('not configured')) {
+          throw new Error(`Payment gateway not configured${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Please contact support to set up payments.`);
         }
         
         throw new Error(errorMessage);
@@ -214,6 +218,10 @@ const Checkout = () => {
       // Use the key ID returned from the edge function or fallback to config
       const keyId = razorpayOrderData.keyId || paymentConfig.razorpay.keyId;
       
+      if (!keyId || keyId.includes('YOUR_')) {
+        throw new Error('Payment gateway not configured properly. Please contact support.');
+      }
+      
       const options = {
         key: keyId,
         amount: razorpayOrderData.amount,
@@ -271,8 +279,11 @@ const Checkout = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment';
       setPaymentError(errorMessage);
       
-      // Redirect to payment failed page
-      window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
+      toast({
+        title: "Payment Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
       setIsProcessing(false);
     }
   };
