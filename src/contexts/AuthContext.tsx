@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -138,9 +139,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       toast.success("Sign up successful! Please verify your email.");
       
-      // Force page reload for clean state
+      // Navigate to dashboard if session exists
       if (data.session) {
-        window.location.href = '/dashboard';
+        navigate('/dashboard');
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during sign up');
@@ -163,7 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Continue even if this fails
       }
       
-      // Fix: Remove redirectTo from options and use correctly formatted options
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -173,9 +173,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       toast.success("Successfully signed in!");
       
-      // Force page reload for clean state
+      // Navigate to dashboard if session exists
       if (data.session) {
-        window.location.href = '/dashboard';
+        navigate('/dashboard');
       }
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during sign in');
@@ -201,8 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       toast.success("Successfully signed out");
       
-      // Force page reload
-      window.location.href = '/';
+      // Navigate to home page
+      navigate('/');
     } catch (error: any) {
       toast.error(error.message || 'An error occurred during sign out');
     }
@@ -234,3 +234,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

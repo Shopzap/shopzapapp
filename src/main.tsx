@@ -1,4 +1,5 @@
 
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
@@ -20,6 +21,16 @@ import OrderTracking from "./pages/OrderTracking";
 import FixOrder from "./pages/FixOrder";
 
 const queryClient = new QueryClient();
+
+// Wrapper component to provide Auth and Store contexts inside Router
+const AppWrapper = () => (
+  <AuthProvider>
+    <StoreProvider>
+      <RouterProvider router={router} />
+      <Toaster />
+    </StoreProvider>
+  </AuthProvider>
+);
 
 const router = createBrowserRouter([
   {
@@ -76,12 +87,8 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <StoreProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </StoreProvider>
-      </AuthProvider>
+      <AppWrapper />
     </QueryClientProvider>
   </React.StrictMode>,
 )
+
