@@ -1,31 +1,29 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useLocation, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import ModernStorefront from "@/components/storefront/ModernStorefront";
-import StoreNotFound from "@/components/storefront/StoreNotFound";
-import StorefrontLoader from "@/components/storefront/StorefrontLoader";
-import ProductGridSkeleton from "@/components/storefront/ProductGridSkeleton";
+import StoreNotFound from "@/components/fallbacks/StoreNotFound";
+import StorefrontSkeleton from "@/components/skeletons/StorefrontSkeleton";
 import { useStoreCache, preloadCriticalResources } from "@/components/storefront/StoreCacheManager";
 import { Tables } from "@/integrations/supabase/types";
 import { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
+import { useDelayedLoading } from "@/hooks/useDelayedLoading";
+import { useSmartRetry } from "@/hooks/useSmartRetry";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Storefront: React.FC = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
   const { getCachedData, setCachedData } = useStoreCache(storeName || '');
+  const [fetchError, setFetchError] = useState<string | null>(null);
   
   // Preload critical resources on component mount
   useEffect(() => {
     preloadCriticalResources();
   }, []);
-
-  useEffect(() => {
-    console.log('Storefront: Current path', location.pathname);
-    console.log('Storefront: storeName from params', storeName);
-  }, [location, storeName]);
 
   // Normalize the store name to lowercase for consistent querying
   const normalizedStoreName = storeName?.toLowerCase();
@@ -38,6 +36,16 @@ const Storefront: React.FC = () => {
 
   // Check cache first
   const cachedData = getCachedData(storeName);
+  
+  // Smart retry hook
+  const { retry, canRetry, isRetrying } = useSmartRetry({
+    maxRetries: 2,
+    retryDelay: 1000,
+    onRetry: () => {
+      setFetchError(null);
+      queryClient.invalidateQueries({ queryKey: ['store-lookup', normalizedStoreName] });
+    }
+  });
   
   // Fetch store data with improved error handling and query logic
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
@@ -58,8 +66,7 @@ const Storefront: React.FC = () => {
           return { store: slugData, redirectNeeded: false };
         }
         
-        // If not found by slug, try username (legacy support) with proper escaping
-        console.log('Storefront: Trying with username field', normalizedStoreName);
+        // If not found by slug, try username (legacy support)
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
@@ -71,12 +78,11 @@ const Storefront: React.FC = () => {
           return { store: usernameData, redirectNeeded: false };
         }
         
-        // Finally, try name field as fallback using textSearch instead of ilike
-        console.log('Storefront: Trying with name field using textSearch', normalizedStoreName);
+        // Finally, try name field as fallback
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
-          .textSearch('name', normalizedStoreName)
+          .eq('name', normalizedStoreName)
           .maybeSingle();
           
         if (nameData && !nameError) {
@@ -84,29 +90,16 @@ const Storefront: React.FC = () => {
           return { store: nameData, redirectNeeded: false };
         }
         
-        // Last attempt: direct name equality check
-        console.log('Storefront: Final attempt with direct name match', normalizedStoreName);
-        let { data: directData, error: directError } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('name', normalizedStoreName)
-          .maybeSingle();
-          
-        if (directData && !directError) {
-          console.log('Storefront: Store found by direct name match', directData);
-          return { store: directData, redirectNeeded: false };
-        }
-        
         console.error('Storefront: Store not found with any identifier', normalizedStoreName);
         throw new Error(`Store "${storeName}" not found`);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Storefront: Exception in store fetch', err);
+        setFetchError(err.message);
         throw err;
       }
     },
     enabled: !!normalizedStoreName && !cachedData,
-    retry: 2,
-    retryDelay: 1000,
+    retry: false, // We handle retries manually
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
     initialData: cachedData ? { store: cachedData.store, redirectNeeded: false } : undefined,
@@ -155,6 +148,12 @@ const Storefront: React.FC = () => {
     initialData: cachedData?.products,
   });
 
+  // Use delayed loading for better UX
+  const { shouldShowLoading, hasTimedOut } = useDelayedLoading(
+    storeLoading || productsLoading, 
+    { delay: 300, timeout: 8000 }
+  );
+
   // Cache data when both store and products are loaded
   useEffect(() => {
     if (store && products && !cachedData) {
@@ -162,38 +161,24 @@ const Storefront: React.FC = () => {
     }
   }, [store, products, storeName, setCachedData, cachedData]);
   
-  // Handle errors and loading states
-  useEffect(() => {
-    if (storeError) {
-      console.error('Storefront: Store error detected', storeError);
-    }
-    
-    if (productsError) {
-      console.error('Storefront: Products error detected', productsError);
-    }
-    
-    if (!productsLoading && products) {
-      console.log(`Storefront: Final product count for display: ${products.length}`);
-    }
-  }, [storeError, productsError, productsLoading, products]);
-
-  // Remove the auto-invalidation on window focus to prevent automatic reloading
-  // This was causing the store to reload every time the user switched tabs
-  
-  // Show loading state while store is being fetched
-  if (storeLoading && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+  // Show skeleton loading only after delay
+  if (shouldShowLoading && !cachedData) {
+    return <StorefrontSkeleton />;
   }
-  
-  // Show error page if store not found ONLY after loading is complete
-  if (storeError || (!store && !storeLoading && !cachedData)) {
-    console.error('Storefront: Rendering error page due to store error');
-    return <StoreNotFound storeName={storeName} />;
+
+  // Show timeout or error fallback
+  if (hasTimedOut || (storeError && !store && !cachedData)) {
+    return (
+      <StoreNotFound 
+        storeName={storeName} 
+        onRetry={canRetry ? retry : undefined}
+      />
+    );
   }
   
   // Don't render content until store data is available
   if (!store && !cachedData) {
-    return <StorefrontLoader storeName={storeName} />;
+    return <StorefrontSkeleton />;
   }
 
   // Use cached data if available
@@ -205,7 +190,6 @@ const Storefront: React.FC = () => {
   
   // Process theme data with enhanced color system
   const themeData = storeDataFinal.theme && typeof storeDataFinal.theme === 'object' ? storeDataFinal.theme as any : {};
-  console.log('Storefront: Processing theme data:', themeData);
 
   // Get color palette for fallbacks
   const colorPaletteId = themeData.color_palette || 'urban-modern';
@@ -234,40 +218,15 @@ const Storefront: React.FC = () => {
       whatsapp_url: themeData.whatsapp_url || ''
     }
   };
-  
-  console.log('Storefront: Enhanced store with applied customization:', {
-    name: enhancedStore.name,
-    username: enhancedStore.username,
-    slug: enhancedStore.slug,
-    productCount: safeProducts.length,
-    storeId: enhancedStore.id,
-    customizationApplied: {
-      primary: enhancedStore.primaryColor,
-      text: enhancedStore.textColor,
-      button: enhancedStore.buttonColor,
-      buttonText: enhancedStore.buttonTextColor,
-      accent: enhancedStore.accentColor,
-      font: enhancedStore.font_style
-    }
-  });
-
-  // Show skeleton loading for products if they're still loading
-  if (productsLoading && !cachedData) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          <ProductGridSkeleton count={8} />
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <ModernStorefront 
-      store={enhancedStore} 
-      products={safeProducts} 
-      isLoading={productsLoading && !cachedData}
-    />
+    <ErrorBoundary>
+      <ModernStorefront 
+        store={enhancedStore} 
+        products={safeProducts} 
+        isLoading={shouldShowLoading && !cachedData}
+      />
+    </ErrorBoundary>
   );
 };
 

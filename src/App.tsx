@@ -41,7 +41,7 @@ import Tutorials from "./pages/Tutorials";
 import StoreThemes from "./pages/StoreThemes";
 import EmbedButton from "./pages/EmbedButton";
 
-// Lazy loaded components
+// Lazy loaded components with better fallbacks
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 
@@ -51,77 +51,99 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import OrderRedirect from "./pages/OrderRedirect";
 
-// Auth components
+// Enhanced components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
 import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
+import ResponsiveLayout from "./components/ResponsiveLayout";
+import StorefrontSkeleton from "./components/skeletons/StorefrontSkeleton";
+import ProductDetailsSkeleton from "./components/skeletons/ProductDetailsSkeleton";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: 2,
       staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      refetchOnWindowFocus: false, // Prevent excessive refetching
     },
   },
 });
 
 // Store pages wrapper with CartProvider
 const StorePageWrapper = ({ children }: { children: React.ReactNode }) => (
-  <CartProvider>
-    {children}
-  </CartProvider>
+  <ErrorBoundary>
+    <CartProvider>
+      <ResponsiveLayout>
+        {children}
+      </ResponsiveLayout>
+    </CartProvider>
+  </ErrorBoundary>
 );
 
 // Global cart page wrapper with CartProvider
 const GlobalCartWrapper = () => (
-  <CartProvider>
-    <Cart />
-  </CartProvider>
+  <ErrorBoundary>
+    <CartProvider>
+      <ResponsiveLayout>
+        <Cart />
+      </ResponsiveLayout>
+    </CartProvider>
+  </ErrorBoundary>
 );
 
 // Checkout wrapper with CartProvider
 const CheckoutWrapper = () => (
-  <CartProvider>
-    <Checkout />
-  </CartProvider>
+  <ErrorBoundary>
+    <CartProvider>
+      <ResponsiveLayout>
+        <Checkout />
+      </ResponsiveLayout>
+    </CartProvider>
+  </ErrorBoundary>
 );
 
-// Loading component
-const LoadingFallback = ({ text = "Loading..." }: { text?: string }) => (
-  <div className="min-h-screen flex flex-col items-center justify-center">
-    <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
-    <p className="mt-4 text-muted-foreground">{text}</p>
-  </div>
+// Enhanced loading fallback components
+const StorefrontFallback = () => (
+  <ResponsiveLayout>
+    <StorefrontSkeleton />
+  </ResponsiveLayout>
+);
+
+const ProductDetailsFallback = () => (
+  <ResponsiveLayout>
+    <ProductDetailsSkeleton />
+  </ResponsiveLayout>
 );
 
 // Create a separate App component wrapper to ensure proper provider nesting
 const AppContent = () => (
   <Routes>
-    {/* Public routes */}
-    <Route path="/" element={<Index />} />
-    <Route path="/pricing" element={<Pricing />} />
-    <Route path="/features" element={<Features />} />
+    {/* Public routes with responsive wrapper */}
+    <Route path="/" element={<ResponsiveLayout><Index /></ResponsiveLayout>} />
+    <Route path="/pricing" element={<ResponsiveLayout><Pricing /></ResponsiveLayout>} />
+    <Route path="/features" element={<ResponsiveLayout><Features /></ResponsiveLayout>} />
 
     {/* Legal and info pages */}
-    <Route path="/terms" element={<Terms />} />
-    <Route path="/privacy" element={<Privacy />} />
-    <Route path="/refund" element={<RefundPolicy />} />
-    <Route path="/shipping" element={<ShippingPolicy />} />
-    <Route path="/pricing-policy" element={<PricingPolicy />} />
-    <Route path="/contact" element={<Contact />} />
-    <Route path="/blog" element={<Blog />} />
-    <Route path="/help" element={<Help />} />
-    <Route path="/tutorials" element={<Tutorials />} />
-    <Route path="/store-themes" element={<StoreThemes />} />
-    <Route path="/embed-button" element={<EmbedButton />} />
+    <Route path="/terms" element={<ResponsiveLayout><Terms /></ResponsiveLayout>} />
+    <Route path="/privacy" element={<ResponsiveLayout><Privacy /></ResponsiveLayout>} />
+    <Route path="/refund" element={<ResponsiveLayout><RefundPolicy /></ResponsiveLayout>} />
+    <Route path="/shipping" element={<ResponsiveLayout><ShippingPolicy /></ResponsiveLayout>} />
+    <Route path="/pricing-policy" element={<ResponsiveLayout><PricingPolicy /></ResponsiveLayout>} />
+    <Route path="/contact" element={<ResponsiveLayout><Contact /></ResponsiveLayout>} />
+    <Route path="/blog" element={<ResponsiveLayout><Blog /></ResponsiveLayout>} />
+    <Route path="/help" element={<ResponsiveLayout><Help /></ResponsiveLayout>} />
+    <Route path="/tutorials" element={<ResponsiveLayout><Tutorials /></ResponsiveLayout>} />
+    <Route path="/store-themes" element={<ResponsiveLayout><StoreThemes /></ResponsiveLayout>} />
+    <Route path="/embed-button" element={<ResponsiveLayout><EmbedButton /></ResponsiveLayout>} />
 
     {/* Auth routes */}
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/verify" element={<Verify />} /> 
-    <Route path="/auth-callback" element={<AuthCallback />} />
+    <Route path="/auth" element={<ResponsiveLayout><Auth /></ResponsiveLayout>} />
+    <Route path="/verify" element={<ResponsiveLayout><Verify /></ResponsiveLayout>} /> 
+    <Route path="/auth-callback" element={<ResponsiveLayout><AuthCallback /></ResponsiveLayout>} />
     
     {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
     {/* Global cart route - handles both store-specific and general cart access */}
@@ -131,65 +153,57 @@ const AppContent = () => (
     <Route path="/checkout" element={<CheckoutWrapper />} />
     
     {/* Order completion routes */}
-    <Route path="/order-success" element={<OrderSuccess />} />
-    <Route path="/thank-you" element={<ThankYou />} />
-    <Route path="/order" element={<OrderRedirect />} />
-    <Route path="/track-order" element={<OrderTracking />} />
-    <Route path="/track-order/:orderId" element={<OrderTracking />} />
+    <Route path="/order-success" element={<ResponsiveLayout><OrderSuccess /></ResponsiveLayout>} />
+    <Route path="/thank-you" element={<ResponsiveLayout><ThankYou /></ResponsiveLayout>} />
+    <Route path="/order" element={<ResponsiveLayout><OrderRedirect /></ResponsiveLayout>} />
+    <Route path="/track-order" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
+    <Route path="/track-order/:orderId" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
     {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */}
     
-    {/* Store routes wrapped with CartProvider */}
+    {/* Store routes wrapped with CartProvider and proper error handling */}
     <Route path="/store/:storeName" element={
       <StorePageWrapper>
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback text="Loading store..." />}>
-            <Storefront />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={<StorefrontFallback />}>
+          <Storefront />
+        </Suspense>
       </StorePageWrapper>
     } />
     <Route path="/store/:storeName/product/:productSlug" element={
       <StorePageWrapper>
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback text="Loading product..." />}>
-            <ProductDetails />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={<ProductDetailsFallback />}>
+          <ProductDetails />
+        </Suspense>
       </StorePageWrapper>
     } />
     <Route path="/store/:storeName/cart" element={
       <StorePageWrapper>
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback text="Loading cart..." />}>
-            <Cart />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={<StorefrontFallback />}>
+          <Cart />
+        </Suspense>
       </StorePageWrapper>
     } />
     <Route path="/store/:storeName/checkout" element={
       <StorePageWrapper>
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback text="Loading checkout..." />}>
-            <Checkout />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={<StorefrontFallback />}>
+          <Checkout />
+        </Suspense>
       </StorePageWrapper>
     } />
     
-    {/* Protected routes */}
+    {/* Protected routes with responsive wrapper */}
     <Route path="/onboarding" element={
       <ProtectedRoute>
-        <Onboarding />
+        <ResponsiveLayout><Onboarding /></ResponsiveLayout>
       </ProtectedRoute>
     } />
     <Route path="/store-builder" element={
       <ProtectedRoute>
-        <StoreBuilder />
+        <ResponsiveLayout><StoreBuilder /></ResponsiveLayout>
       </ProtectedRoute>
     } />
     <Route path="/embed-generator" element={
       <ProtectedRoute>
-        <EmbedGenerator />
+        <ResponsiveLayout><EmbedGenerator /></ResponsiveLayout>
       </ProtectedRoute>
     } />
     <Route path="/dashboard/*" element={
@@ -209,29 +223,29 @@ const AppContent = () => (
       </ProtectedRoute>
     } />
 
-    {/* Catch-all route - must be last */}
-    <Route path="*" element={<NotFound />} />
+    {/* Enhanced 404 route - must be last */}
+    <Route path="*" element={<ResponsiveLayout><NotFound /></ResponsiveLayout>} />
   </Routes>
 );
 
-// Main App component with properly nested providers
+// Main App component with properly nested providers and global error boundary
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <StoreProvider>
-              <ErrorBoundary>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <StoreProvider>
                 <AppContent />
-              </ErrorBoundary>
-              <Toaster />
-              <Sonner />
-            </StoreProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+                <Toaster />
+                <Sonner />
+              </StoreProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
