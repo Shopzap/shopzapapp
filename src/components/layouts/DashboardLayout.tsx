@@ -1,9 +1,10 @@
-
 import React, { useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, Package, ShoppingCart, FileText, Palette, Instagram, TrendingUp, Menu, X } from 'lucide-react';
+import { BarChart3, Package, ShoppingCart, FileText, Palette, Instagram, TrendingUp, Menu, X, LogOut, User, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -121,21 +122,31 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
             <div className="flex items-center">
               <div className="ml-3 relative">
-                <div>
-                  <button
-                    type="button"
-                    className="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    id="user-menu-button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                    onClick={toggleMobileMenu}
-                  >
-                    <span className="sr-only">Open user menu</span>
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-500">
-                      <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
-                    </span>
-                  </button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                      <span className="sr-only">Open user menu</span>
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-500">
+                        <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
+                      </span>
+                      <ChevronDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-4 py-2">
+                      <p className="text-sm font-medium">{user?.email}</p>
+                      <p className="text-xs text-gray-500">Logged in</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="-mr-2 flex items-center sm:hidden">
                 {/* Mobile menu button */}
