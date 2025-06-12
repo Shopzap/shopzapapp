@@ -1,12 +1,13 @@
+
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Tables } from '@/integrations/supabase/types';
-import AddToCartButton from './AddToCartButton';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, Heart, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
+import ProductCardActions from './ProductCardActions';
+import ProductCardImage from './ProductCardImage';
+import ProductCardContent from './ProductCardContent';
+import ProductCardListView from './ProductCardListView';
 
 interface StorefrontProductCardProps {
   product: Tables<'products'>;
@@ -81,153 +82,38 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow mb-4">
-        <div className="flex flex-col sm:flex-row">
-          <div className="w-full sm:w-48 h-32 sm:h-32 flex-shrink-0">
-            <img
-              src={imageUrl}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <CardContent className="flex-1 p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start h-full">
-              <div className="flex-1 mb-4 sm:mb-0">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
-                  {product.name}
-                </h3>
-                {product.description && (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3 sm:line-clamp-2">
-                    {product.description}
-                  </p>
-                )}
-                <div className="flex items-center space-x-2 mb-3">
-                  <span className="text-xl sm:text-2xl font-bold text-gray-900">
-                    {formatPrice(Number(product.price))}
-                  </span>
-                  <Badge variant="secondary" className="text-xs">
-                    {product.status}
-                  </Badge>
-                  {product.inventory_count !== undefined && product.inventory_count <= 5 && (
-                    <Badge variant="destructive" className="text-xs">
-                      Only {product.inventory_count} left
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-row sm:flex-col gap-2 sm:ml-6">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleViewDetails}
-                  className="flex items-center gap-2 flex-1 sm:flex-none"
-                >
-                  <Eye className="h-4 w-4" />
-                  View Details
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleWishlist}
-                  className={`flex-1 sm:flex-none ${isWishlisted ? 'text-red-500' : ''}`}
-                >
-                  <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleShare}
-                  className="flex-1 sm:flex-none"
-                >
-                  <Share2 className="h-4 w-4" />
-                </Button>
-                <div className="flex-1 sm:flex-none">
-                  <AddToCartButton product={product} />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </div>
-      </Card>
+      <ProductCardListView
+        product={product}
+        isWishlisted={isWishlisted}
+        onWishlist={handleWishlist}
+        onShare={handleShare}
+        onViewDetails={handleViewDetails}
+        formatPrice={formatPrice}
+        imageUrl={imageUrl}
+      />
     );
   }
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group h-full">
       <div className="aspect-square overflow-hidden relative">
-        <img
-          src={imageUrl}
-          alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        <ProductCardImage
+          imageUrl={imageUrl}
+          productName={product.name}
+          inventoryCount={product.inventory_count}
         />
-        {/* Action buttons overlay */}
-        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleWishlist}
-            className={`p-2 ${isWishlisted ? 'text-red-500' : ''}`}
-          >
-            <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleShare}
-            className="p-2"
-          >
-            <Share2 className="h-4 w-4" />
-          </Button>
-        </div>
-        {/* Stock indicator */}
-        {product.inventory_count !== undefined && product.inventory_count <= 5 && (
-          <div className="absolute bottom-2 left-2">
-            <Badge variant="destructive" className="text-xs">
-              Only {product.inventory_count} left
-            </Badge>
-          </div>
-        )}
+        <ProductCardActions
+          isWishlisted={isWishlisted}
+          onWishlist={handleWishlist}
+          onShare={handleShare}
+          onViewDetails={handleViewDetails}
+        />
       </div>
-      <CardContent className="p-3 sm:p-4 flex flex-col h-full">
-        <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 line-clamp-2 flex-grow">
-          {product.name}
-        </h3>
-        {product.description && (
-          <p className="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2">
-            {product.description}
-          </p>
-        )}
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <span className="text-lg sm:text-xl font-bold text-gray-900">
-            {formatPrice(Number(product.price))}
-          </span>
-          <Badge variant="secondary" className="text-xs">
-            {product.status}
-          </Badge>
-        </div>
-        {/* Display inventory count */}
-        {product.inventory_count !== undefined && (
-          <div className="mb-3">
-            <span className="text-xs text-gray-600">
-              {product.inventory_count > 0 
-                ? `${product.inventory_count} in stock` 
-                : 'Out of stock'}
-            </span>
-          </div>
-        )}
-        <div className="flex flex-col gap-2 mt-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleViewDetails}
-            className="w-full flex items-center justify-center gap-2"
-          >
-            <Eye className="h-4 w-4" />
-            View Details
-          </Button>
-          <AddToCartButton product={product} />
-        </div>
-      </CardContent>
+      <ProductCardContent
+        product={product}
+        onViewDetails={handleViewDetails}
+        formatPrice={formatPrice}
+      />
     </Card>
   );
 };
