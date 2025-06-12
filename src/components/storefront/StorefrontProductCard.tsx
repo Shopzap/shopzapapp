@@ -39,12 +39,14 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
     }
   };
 
-  const handleWishlist = () => {
+  const handleWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsWishlisted(!isWishlisted);
     toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
   };
 
-  const handleShare = async () => {
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     const productUrl = `${window.location.origin}/store/${storeSlug}/product/${productSlug}`;
     
     if (navigator.share) {
@@ -108,6 +110,11 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
                   <Badge variant="secondary" className="text-xs">
                     {product.status}
                   </Badge>
+                  {product.inventory_count !== undefined && product.inventory_count <= 5 && (
+                    <Badge variant="destructive" className="text-xs">
+                      Only {product.inventory_count} left
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="flex flex-row sm:flex-col gap-2 sm:ml-6">
@@ -118,7 +125,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
                   className="flex items-center gap-2 flex-1 sm:flex-none"
                 >
                   <Eye className="h-4 w-4" />
-                  <span className="hidden sm:inline">View</span>
+                  View Details
                 </Button>
                 <Button
                   variant="ghost"
@@ -174,6 +181,14 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
             <Share2 className="h-4 w-4" />
           </Button>
         </div>
+        {/* Stock indicator */}
+        {product.inventory_count !== undefined && product.inventory_count <= 5 && (
+          <div className="absolute bottom-2 left-2">
+            <Badge variant="destructive" className="text-xs">
+              Only {product.inventory_count} left
+            </Badge>
+          </div>
+        )}
       </div>
       <CardContent className="p-3 sm:p-4 flex flex-col h-full">
         <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-2 line-clamp-2 flex-grow">
@@ -192,6 +207,16 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
             {product.status}
           </Badge>
         </div>
+        {/* Display inventory count */}
+        {product.inventory_count !== undefined && (
+          <div className="mb-3">
+            <span className="text-xs text-gray-600">
+              {product.inventory_count > 0 
+                ? `${product.inventory_count} in stock` 
+                : 'Out of stock'}
+            </span>
+          </div>
+        )}
         <div className="flex flex-col gap-2 mt-auto">
           <Button
             variant="outline"
