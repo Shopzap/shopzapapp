@@ -13,6 +13,9 @@ interface OrderEmailData {
   orderNumber?: string;
   trackingNumber?: string;
   estimatedDelivery?: string;
+  buyerPhone?: string;
+  buyerAddress?: string;
+  orderDate?: string;
 }
 
 export const emailService = {

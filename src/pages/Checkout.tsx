@@ -1,34 +1,59 @@
-
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { useCart } from '@/hooks/useCart';
+import React, { useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
-import { paymentConfig } from '@/config/payment';
+import { ordersApi } from '@/services/api';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { emailService } from '@/services/emailService';
 
-// Add Razorpay to window type
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
+interface FormData {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  paymentMethod: string;
+}
+
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+}
+
+interface OrderItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
 }
 
 const Checkout = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { items: cartItems, clearCart, getTotalPrice } = useCart();
   const { toast } = useToast();
-
-  const [customerInfo, setCustomerInfo] = useState({
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const [formData, setFormData] = useState<FormData>({
     fullName: '',
     email: '',
     phone: '',
@@ -39,635 +64,509 @@ const Checkout = () => {
     paymentMethod: 'cod'
   });
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [storeInfo, setStoreInfo] = useState<any>(null);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [isCheckingCart, setIsCheckingCart] = useState(true);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check cart and redirect if empty
-  useEffect(() => {
-    const checkCart = async () => {
-      setIsCheckingCart(true);
-      
-      // Wait a moment for cart to load
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (cartItems.length === 0) {
-        toast({
-          title: "Cart is empty",
-          description: "Redirecting to cart page...",
-          variant: "destructive",
-        });
-        
-        // Try to redirect to store cart if we have store context
-        try {
-          const storeContext = localStorage.getItem('shopzap_store_context');
-          if (storeContext) {
-            const parsed = JSON.parse(storeContext);
-            navigate(`/store/${parsed.storeName}/cart`);
-          } else {
-            navigate('/cart');
-          }
-        } catch {
-          navigate('/cart');
-        }
-        return;
-      }
-      
-      setIsCheckingCart(false);
-    };
-
-    checkCart();
-  }, [cartItems, navigate, toast]);
-
-  useEffect(() => {
-    const loadStoreInfo = async () => {
-      if (cartItems.length > 0) {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('id', cartItems[0].product.store_id)
-          .single();
-        setStoreInfo(store);
-      }
-    };
-
-    if (!isCheckingCart) {
-      loadStoreInfo();
+  // Get order items from location state or use mock data
+  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
+    {
+      id: 1,
+      name: 'Wireless Earbuds',
+      price: 1999,
+      quantity: 1,
+      image: 'https://placehold.co/80x80'
+    },
+    {
+      id: 2,
+      name: 'Phone Case',
+      price: 499,
+      quantity: 2,
+      image: 'https://placehold.co/80x80'
     }
-  }, [cartItems, isCheckingCart]);
+  ]);
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
+  const subtotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const shipping = 0; // Free shipping
+  const total = subtotal + shipping;
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number';
+    }
+    
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required';
+    }
+    
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+    
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required';
+    }
+    
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = 'ZIP code is required';
+    } else if (!/^\d{6}$/.test(formData.zipCode)) {
+      newErrors.zipCode = 'Please enter a valid 6-digit ZIP code';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
+    }
+  };
+
+  const handlePaymentMethodChange = (value: string) => {
+    setFormData({
+      ...formData,
+      paymentMethod: value
     });
   };
 
-  const createRazorpayOrder = async (amount: number) => {
-    try {
-      console.log('Creating Razorpay order for amount:', amount);
-      
-      const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
-        body: {
-          amount,
-          currency: 'INR',
-          receipt: `order_${Date.now()}`,
-          isTestMode: paymentConfig.isTestMode
-        }
-      });
-
-      console.log('Razorpay order response:', { data, error });
-
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(error.message || 'Failed to connect to payment service');
-      }
-
-      if (!data?.success) {
-        console.error('Razorpay order creation failed:', data);
-        const errorMessage = data?.error || 'Failed to create payment order';
-        
-        // Handle specific authentication errors
-        if (data?.details?.includes('Authentication failed') || data?.code === 401) {
-          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. API keys may be incorrect. Please contact support.`);
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in createRazorpayOrder:', error);
-      throw error;
-    }
-  };
-
-  const createOrderAfterPayment = async (paymentData: any) => {
-    try {
-      // Create order after successful payment
-      const orderData = {
-        storeId: cartItems[0].product.store_id,
-        buyerName: customerInfo.fullName,
-        buyerEmail: customerInfo.email,
-        buyerPhone: customerInfo.phone,
-        buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-        totalPrice: getTotalPrice(),
-        paymentMethod: 'online',
-        paymentStatus: 'paid',
-        paymentGateway: 'razorpay',
-        razorpayPaymentId: paymentData.razorpay_payment_id,
-        razorpayOrderId: paymentData.razorpay_order_id,
-        razorpaySignature: paymentData.razorpay_signature,
-        items: cartItems.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          priceAtPurchase: Number(item.product.price)
-        }))
-      };
-
-      const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: {
-          razorpay_order_id: paymentData.razorpay_order_id,
-          razorpay_payment_id: paymentData.razorpay_payment_id,
-          razorpay_signature: paymentData.razorpay_signature,
-          orderData
-        }
-      });
-
-      if (error || !data?.success) {
-        throw new Error(data?.error || 'Failed to verify payment');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error creating order after payment:', error);
-      throw error;
-    }
-  };
-
-  const handleRazorpayPayment = async () => {
-    setPaymentError(null);
-    
-    const scriptLoaded = await loadRazorpayScript();
-    
-    if (!scriptLoaded) {
-      const error = "Payment gateway failed to load. Please check your internet connection and try again.";
-      setPaymentError(error);
+  const updateQuantity = (itemId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      // Remove item if quantity is 0
+      setOrderItems(orderItems.filter(item => item.id !== itemId));
       toast({
-        title: "Error",
-        description: error,
-        variant: "destructive",
+        title: "Item Removed",
+        description: "Item has been removed from your cart.",
       });
       return;
     }
-
-    try {
-      setIsProcessing(true);
-      
-      // Create Razorpay order
-      const razorpayOrderData = await createRazorpayOrder(getTotalPrice());
-      
-      // Use the key ID returned from the edge function or fallback to config
-      const keyId = razorpayOrderData.keyId || paymentConfig.razorpay.keyId;
-      
-      const options = {
-        key: keyId,
-        amount: razorpayOrderData.amount,
-        currency: razorpayOrderData.currency,
-        name: storeInfo?.name || 'ShopZap Store',
-        description: `Order from ${storeInfo?.name || 'ShopZap Store'}${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}`,
-        order_id: razorpayOrderData.razorpayOrderId,
-        handler: async function (response: any) {
-          try {
-            console.log('Payment successful:', response);
-            
-            // Verify payment and create order
-            const orderResult = await createOrderAfterPayment(response);
-            
-            // Clear cart and redirect to thank you page with payment ID
-            clearCart();
-            
-            // Redirect to thank-you page with payment ID
-            window.location.href = `/thank-you?payment_id=${response.razorpay_payment_id}&order_id=${orderResult.orderId}`;
-          } catch (error) {
-            console.error('Payment verification error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'Payment verification failed';
-            setPaymentError(errorMessage);
-            
-            // Redirect to payment failed page
-            window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
-          } finally {
-            setIsProcessing(false);
-          }
-        },
-        prefill: {
-          name: customerInfo.fullName,
-          email: customerInfo.email,
-          contact: customerInfo.phone
-        },
-        theme: {
-          color: storeInfo?.theme?.primary_color || '#3B82F6'
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-            toast({
-              title: "Payment Cancelled",
-              description: `Payment was cancelled${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Your order has not been placed.`,
-              variant: "destructive",
-            });
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error('Error creating Razorpay order:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment';
-      setPaymentError(errorMessage);
-      
-      // Redirect to payment failed page
-      window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
-      setIsProcessing(false);
-    }
+    
+    setOrderItems(orderItems.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    ));
   };
 
-  const createCODOrder = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert({
-          store_id: cartItems[0].product.store_id,
-          buyer_name: customerInfo.fullName,
-          buyer_email: customerInfo.email,
-          buyer_phone: customerInfo.phone,
-          buyer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-          total_price: getTotalPrice(),
-          payment_method: 'cod',
-          payment_status: 'pending',
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Create order items
-      const orderItems = cartItems.map(item => ({
-        order_id: data.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        price_at_purchase: Number(item.product.price)
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      return { orderId: data.id };
-    } catch (error) {
-      console.error('Error creating COD order:', error);
-      throw error;
-    }
-  };
-
-  const retryPayment = () => {
-    setPaymentError(null);
-    handleRazorpayPayment();
+  const removeItem = (itemId: number) => {
+    setOrderItems(orderItems.filter(item => item.id !== itemId));
+    toast({
+      title: "Item Removed",
+      description: "Item has been removed from your cart.",
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPaymentError(null);
-    setIsProcessing(true);
+    
+    if (!validateForm()) {
+      toast({
+        title: "Please fix the errors",
+        description: "Check all required fields and correct any errors.",
+        variant: "destructive"
+      });
+      return;
+    }
 
+    if (orderItems.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before checking out.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      if (customerInfo.paymentMethod === 'online') {
-        // For online payment, trigger Razorpay
-        await handleRazorpayPayment();
-      } else {
-        // For COD, create order directly
-        const orderResult = await createCODOrder();
+      // Create order in database
+      const orderData = {
+        storeId: 'demo-store-id', // This should come from context/props
+        buyerName: formData.fullName,
+        buyerEmail: formData.email,
+        buyerPhone: formData.phone,
+        buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+        totalPrice: total,
+        items: orderItems.map(item => ({
+          productId: `product-${item.id}`, // This should be the actual product ID
+          quantity: item.quantity,
+          priceAtPurchase: item.price
+        }))
+      };
 
-        clearCart();
-        
-        // Redirect to thank-you page with order ID
-        window.location.href = `/thank-you?order_id=${orderResult.orderId}`;
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
       }
-    } catch (error) {
-      console.error('Order creation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'There was an error creating your order. Please try again.';
+
+      const result = await response.json();
       
-      setPaymentError(errorMessage);
+      // Send order confirmation emails
+      try {
+        await emailService.sendOrderPlacedEmail(
+          result.orderId,
+          formData.email,
+          {
+            buyerName: formData.fullName,
+            storeName: 'Demo Store', // This should come from context/props
+            items: orderItems.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price
+            })),
+            totalPrice: total,
+            buyerPhone: formData.phone,
+            buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+            orderDate: new Date().toLocaleDateString('en-IN')
+          },
+          'seller@demostore.com' // This should come from store data
+        );
+        
+        console.log('Order confirmation emails sent successfully');
+      } catch (emailError) {
+        console.error('Email sending failed (order still created):', emailError);
+        // Don't throw error - order was created successfully
+      }
+      
+      // Navigate to order success page with real order details
+      navigate('/order-success', {
+        state: {
+          orderId: result.orderId,
+          orderItems,
+          total,
+          customerInfo: formData,
+          estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+        }
+      });
+    } catch (error) {
+      console.error('Order creation failed:', error);
       toast({
         title: "Order Failed",
-        description: errorMessage,
-        variant: "destructive",
+        description: "There was an error creating your order. Please try again.",
+        variant: "destructive"
       });
     } finally {
-      setIsProcessing(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Show loading state while checking cart
-  if (isCheckingCart) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
-        <p className="mt-4 text-muted-foreground">Loading checkout...</p>
-      </div>
-    );
-  }
-
-  // Show empty cart message if no items (fallback - shouldn't reach here due to redirect)
-  if (cartItems.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <Card className="text-center py-16">
-          <CardContent>
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-orange-400" />
-            <h2 className="text-xl font-semibold mb-2">No items in cart</h2>
-            <p className="text-gray-600 mb-6">Your cart is empty. Please add items before proceeding to checkout.</p>
-            <div className="space-x-4">
-              <Button onClick={() => navigate('/cart')}>
-                Go to Cart
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/')}>
-                Continue Shopping
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => navigate('/cart')} className="mb-4">
+    <div className="container mx-auto px-4 py-8">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/cart">Cart</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Checkout</BreadcrumbPage>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <span className="text-muted-foreground">Confirmation</span>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Back to Cart Button */}
+      <Button variant="ghost" asChild className="mb-6">
+        <Link to="/cart">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Cart
-        </Button>
-        <h1 className="text-3xl font-bold">Checkout</h1>
-        <p className="text-muted-foreground">Review your order and complete your purchase</p>
-        {paymentConfig.isTestMode && (
-          <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-            <p className="text-orange-800 text-sm">
-              <strong>TEST MODE:</strong> Use test card 4111 1111 1111 1111, any future expiry, CVV 123
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Checkout Form */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Information</CardTitle>
-              <CardDescription>Enter your details for order delivery</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <Input
-                      id="fullName"
-                      value={customerInfo.fullName}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, fullName: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerInfo.email}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="phone">Phone Number *</Label>
-                  <Input
-                    id="phone"
-                    value={customerInfo.phone}
-                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
-                    required
+          Return to Cart
+        </Link>
+      </Button>
+      
+      <h1 className="text-2xl md:text-3xl font-bold mb-6">Checkout</h1>
+      
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Customer Information Form */}
+        <div className="w-full lg:w-2/3">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
+            
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input 
+                    id="fullName" 
+                    name="fullName" 
+                    value={formData.fullName} 
+                    onChange={handleInputChange}
+                    className={errors.fullName ? 'border-red-500' : ''}
+                    required 
                   />
+                  {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
                 </div>
-
-                <div>
-                  <Label htmlFor="address">Address *</Label>
-                  <Textarea
-                    id="address"
-                    value={customerInfo.address}
-                    onChange={(e) => setCustomerInfo(prev => ({ ...prev, address: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="city">City *</Label>
-                    <Input
-                      id="city"
-                      value={customerInfo.city}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, city: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="state">State *</Label>
-                    <Input
-                      id="state"
-                      value={customerInfo.state}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, state: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="zipCode">ZIP Code *</Label>
-                    <Input
-                      id="zipCode"
-                      value={customerInfo.zipCode}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, zipCode: e.target.value }))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Payment Method Selection */}
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Payment Method</CardTitle>
-                    <CardDescription>Choose your preferred payment option</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <RadioGroup
-                      value={customerInfo.paymentMethod}
-                      onValueChange={(value) => setCustomerInfo(prev => ({ ...prev, paymentMethod: value }))}
-                    >
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                        <RadioGroupItem value="cod" id="cod" />
-                        <Label htmlFor="cod" className="flex items-center cursor-pointer flex-1">
-                          <Truck className="mr-2 h-4 w-4" />
-                          Cash on Delivery
-                          <Badge variant="secondary" className="ml-auto">Free</Badge>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                        <RadioGroupItem value="online" id="online" />
-                        <Label htmlFor="online" className="flex items-center cursor-pointer flex-1">
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Online Payment (Razorpay)
-                          <Badge variant="default" className="ml-auto">Secure</Badge>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </CardContent>
-                </Card>
-
-                {/* Payment Error Display */}
-                {paymentError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-red-800 font-medium">Payment Error</h4>
-                        <p className="text-red-600 text-sm mt-1">{paymentError}</p>
-                        {paymentConfig.isTestMode && (
-                          <p className="text-orange-600 text-xs mt-2">
-                            <strong>Note:</strong> You are in TEST MODE. Make sure your Razorpay test API keys are correctly configured.
-                          </p>
-                        )}
-                      </div>
-                      {customerInfo.paymentMethod === 'online' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={retryPayment}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                              Retrying...
-                            </>
-                          ) : (
-                            'Retry Payment'
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  size="lg"
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      {customerInfo.paymentMethod === 'online' ? (
-                        <>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          Pay ₹{getTotalPrice().toLocaleString()} Now
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          Place Order
-                        </>
-                      )}
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Order Summary */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Summary</CardTitle>
-              <CardDescription>{cartItems.length} items in your cart</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {cartItems.map((item) => (
-                  <div key={item.product.id} className="flex justify-between items-center">
-                    <div className="flex items-center space-x-3">
-                      <img 
-                        src={item.product.image_url || 'https://placehold.co/50x50'} 
-                        alt={item.product.name}
-                        className="w-12 h-12 rounded object-cover"
-                      />
-                      <div>
-                        <p className="font-medium">{item.product.name}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                      </div>
-                    </div>
-                    <p className="font-semibold">₹{(Number(item.product.price) * item.quantity).toLocaleString()}</p>
-                  </div>
-                ))}
-                
-                <Separator />
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>₹{getTotalPrice().toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
-                  </div>
-                  <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
-                    <span>Total</span>
-                    <span>₹{getTotalPrice().toLocaleString()}</span>
-                  </div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input 
+                    id="email" 
+                    name="email" 
+                    type="email" 
+                    value={formData.email} 
+                    onChange={handleInputChange}
+                    className={errors.email ? 'border-red-500' : ''}
+                    required 
+                  />
+                  {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Store Information */}
-          {storeInfo && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Store Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-3 mb-4">
-                  {storeInfo.logo_image && (
-                    <img 
-                      src={storeInfo.logo_image} 
-                      alt={storeInfo.name}
-                      className="w-12 h-12 rounded object-cover"
-                    />
-                  )}
-                  <div>
-                    <h3 className="font-semibold">{storeInfo.name}</h3>
-                    <p className="text-sm text-muted-foreground">{storeInfo.description}</p>
+              
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input 
+                  id="phone" 
+                  name="phone" 
+                  value={formData.phone} 
+                  onChange={handleInputChange}
+                  className={errors.phone ? 'border-red-500' : ''}
+                  placeholder="10-digit phone number"
+                  required 
+                />
+                {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
+              </div>
+              
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="address">Shipping Address *</Label>
+                <Textarea 
+                  id="address" 
+                  name="address" 
+                  value={formData.address} 
+                  onChange={handleInputChange}
+                  className={errors.address ? 'border-red-500' : ''}
+                  placeholder="Street address, apartment, suite, etc."
+                  required 
+                />
+                {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City *</Label>
+                  <Input 
+                    id="city" 
+                    name="city" 
+                    value={formData.city} 
+                    onChange={handleInputChange}
+                    className={errors.city ? 'border-red-500' : ''}
+                    required 
+                  />
+                  {errors.city && <p className="text-red-500 text-sm">{errors.city}</p>}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="state">State *</Label>
+                  <Input 
+                    id="state" 
+                    name="state" 
+                    value={formData.state} 
+                    onChange={handleInputChange}
+                    className={errors.state ? 'border-red-500' : ''}
+                    required 
+                  />
+                  {errors.state && <p className="text-red-500 text-sm">{errors.state}</p>}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="zipCode">ZIP Code *</Label>
+                  <Input 
+                    id="zipCode" 
+                    name="zipCode" 
+                    value={formData.zipCode} 
+                    onChange={handleInputChange}
+                    className={errors.zipCode ? 'border-red-500' : ''}
+                    placeholder="6-digit ZIP code"
+                    required 
+                  />
+                  {errors.zipCode && <p className="text-red-500 text-sm">{errors.zipCode}</p>}
+                </div>
+              </div>
+              
+              <div className="space-y-2 mb-6">
+                <Label>Payment Method *</Label>
+                <RadioGroup 
+                  value={formData.paymentMethod} 
+                  onValueChange={handlePaymentMethodChange}
+                  className="mt-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="cod" id="cod" />
+                    <Label htmlFor="cod">Cash on Delivery</Label>
                   </div>
-                </div>
-                <div className="flex space-x-4">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/store/${storeInfo.username}`}>
-                      Visit Store
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/store/${storeInfo.username}/about`}>
-                      About Store
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="upi" id="upi" />
+                    <Label htmlFor="upi">UPI / PhonePe / GPay</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="card" id="card" />
+                    <Label htmlFor="card">Credit/Debit Card</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="wallet" id="wallet" />
+                    <Label htmlFor="wallet">Digital Wallet</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div className="lg:hidden mb-8">
+                <OrderSummary 
+                  orderItems={orderItems} 
+                  subtotal={subtotal} 
+                  shipping={shipping} 
+                  total={total}
+                  updateQuantity={updateQuantity}
+                  removeItem={removeItem}
+                />
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isSubmitting || orderItems.length === 0}
+              >
+                {isSubmitting ? 'Processing Order...' : `Place Order - ₹${total.toLocaleString()}`}
+              </Button>
+            </form>
+          </div>
+        </div>
+        
+        {/* Order Summary - Hidden on mobile, shown in form */}
+        <div className="hidden lg:block lg:w-1/3">
+          <OrderSummary 
+            orderItems={orderItems} 
+            subtotal={subtotal} 
+            shipping={shipping} 
+            total={total}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+          />
         </div>
       </div>
+    </div>
+  );
+};
+
+// Enhanced Order Summary Component with quantity controls
+interface OrderSummaryProps {
+  orderItems: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  total: number;
+  updateQuantity: (itemId: number, newQuantity: number) => void;
+  removeItem: (itemId: number) => void;
+}
+
+const OrderSummary: React.FC<OrderSummaryProps> = ({ orderItems, subtotal, shipping, total, updateQuantity, removeItem }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+      <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+      
+      <div className="space-y-4 mb-4">
+        {orderItems.map((item) => (
+          <div key={item.id} className="flex items-start gap-3 p-3 border rounded-lg">
+            <img 
+              src={item.image} 
+              alt={item.name} 
+              className="w-16 h-16 object-cover rounded-md flex-shrink-0" 
+            />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium text-sm">{item.name}</h3>
+              <p className="text-sm text-gray-600">₹{item.price.toLocaleString()}</p>
+              
+              {/* Quantity Controls */}
+              <div className="flex items-center gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Minus className="h-3 w-3" />
+                </Button>
+                <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeItem(item.id)}
+                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <p className="font-medium text-sm">₹{(item.price * item.quantity).toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+      
+      {orderItems.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>Your cart is empty</p>
+          <Button asChild className="mt-4">
+            <Link to="/store/demo">Continue Shopping</Link>
+          </Button>
+        </div>
+      )}
+      
+      {orderItems.length > 0 && (
+        <div className="border-t pt-4 space-y-2">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Subtotal</span>
+            <span>₹{subtotal.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Shipping</span>
+            <span className="text-green-600">FREE</span>
+          </div>
+          <div className="flex justify-between font-bold text-lg border-t pt-2">
+            <span>Total</span>
+            <span>₹{total.toLocaleString()}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
