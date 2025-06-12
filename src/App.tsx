@@ -28,6 +28,19 @@ import OrderTracking from "./pages/OrderTracking";
 import ThankYou from "./pages/ThankYou";
 import Invoices from "./pages/Invoices";
 
+// Legal pages
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import RefundPolicy from "./pages/RefundPolicy";
+import ShippingPolicy from "./pages/ShippingPolicy";
+import PricingPolicy from "./pages/PricingPolicy";
+import Contact from "./pages/Contact";
+import Blog from "./pages/Blog";
+import Help from "./pages/Help";
+import Tutorials from "./pages/Tutorials";
+import StoreThemes from "./pages/StoreThemes";
+import EmbedButton from "./pages/EmbedButton";
+
 // Lazy loaded components
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
@@ -76,6 +89,19 @@ const AppContent = () => (
     <Route path="/" element={<Index />} />
     <Route path="/pricing" element={<Pricing />} />
     <Route path="/features" element={<Features />} />
+
+    {/* Legal and info pages */}
+    <Route path="/terms" element={<Terms />} />
+    <Route path="/privacy" element={<Privacy />} />
+    <Route path="/refund" element={<RefundPolicy />} />
+    <Route path="/shipping" element={<ShippingPolicy />} />
+    <Route path="/pricing-policy" element={<PricingPolicy />} />
+    <Route path="/contact" element={<Contact />} />
+    <Route path="/blog" element={<Blog />} />
+    <Route path="/help" element={<Help />} />
+    <Route path="/tutorials" element={<Tutorials />} />
+    <Route path="/store-themes" element={<StoreThemes />} />
+    <Route path="/embed-button" element={<EmbedButton />} />
 
     {/* Auth routes */}
     <Route path="/auth" element={<Auth />} />
