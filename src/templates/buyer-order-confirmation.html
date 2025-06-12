@@ -1,0 +1,341 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - ShopZap</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            line-height: 1.6;
+            color: #222;
+            background-color: #f8f9fa;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #7b3fe4 0%, #9b59e6 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .header-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .greeting {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #222;
+        }
+        
+        .order-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        
+        .order-id {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .store-name {
+            font-size: 16px;
+            color: #7b3fe4;
+            font-weight: 500;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 25px 0 15px 0;
+            color: #222;
+        }
+        
+        .order-summary {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        
+        .order-summary-header {
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .order-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .item-details {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .item-meta {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .item-total {
+            font-weight: 600;
+            color: #222;
+        }
+        
+        .total-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .total-row:last-child {
+            margin-bottom: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #7b3fe4;
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: center;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 140px;
+        }
+        
+        .btn-primary {
+            background-color: #7b3fe4;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #6b2ed4;
+        }
+        
+        .btn-secondary {
+            background-color: white;
+            color: #7b3fe4;
+            border: 2px solid #7b3fe4;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .support-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .support-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .support-text {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .support-email {
+            color: #7b3fe4;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .footer {
+            background-color: #222;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .footer-links {
+            margin-bottom: 15px;
+        }
+        
+        .footer-link {
+            color: #ccc;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        
+        .footer-link:hover {
+            color: white;
+        }
+        
+        @media (max-width: 600px) {
+            .content {
+                padding: 20px 15px;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                flex: none;
+                width: 100%;
+            }
+            
+            .order-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">ShopZap</div>
+            <div class="header-subtitle">Your order has been confirmed!</div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">Hi {{buyer_name}},</div>
+            
+            <p style="margin-bottom: 20px; color: #666;">
+                Thank you for your order! We're excited to get your items to you. Here's a summary of your order:
+            </p>
+            
+            <div class="order-info">
+                <div class="order-id">Order ID: <span style="color: #7b3fe4;">#{{order_id}}</span></div>
+                <div class="store-name">Thank you for shopping with {{store_name}}</div>
+            </div>
+            
+            <div class="section-title">Order Summary</div>
+            <div class="order-summary">
+                <div class="order-summary-header">Items Ordered</div>
+                {{#each items}}
+                <div class="order-item">
+                    <div class="item-details">
+                        <div class="item-name">{{name}}</div>
+                        <div class="item-meta">Qty: {{quantity}} × ₹{{unit_price}}</div>
+                    </div>
+                    <div class="item-total">₹{{total_price}}</div>
+                </div>
+                {{/each}}
+            </div>
+            
+            <div class="total-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₹{{subtotal}}</span>
+                </div>
+                <div class="total-row">
+                    <span>Shipping:</span>
+                    <span style="color: #28a745;">Free</span>
+                </div>
+                <div class="total-row">
+                    <span>Total Amount:</span>
+                    <span>₹{{total_amount}}</span>
+                </div>
+            </div>
+            
+            <div class="cta-buttons">
+                <a href="{{invoice_link}}" class="btn btn-primary">View Invoice</a>
+                <a href="{{tracking_link}}" class="btn btn-secondary">Track Order</a>
+                <a href="{{return_or_reorder_link}}" class="btn btn-secondary">Reorder</a>
+            </div>
+            
+            <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                <h3 style="color: #0066cc; margin-bottom: 10px;">What's Next?</h3>
+                <p style="color: #666; margin-bottom: 10px;">• We'll send you shipping updates via email</p>
+                <p style="color: #666; margin-bottom: 10px;">• Expected delivery: 3-7 business days</p>
+                <p style="color: #666;">• You can track your order anytime using the link above</p>
+            </div>
+            
+            <div class="support-section">
+                <div class="support-title">Need Help?</div>
+                <div class="support-text">If you have any questions about your order, feel free to contact our support team.</div>
+                <a href="mailto:support@shopzap.io" class="support-email">support@shopzap.io</a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-links">
+                <a href="https://shopzap.io/help" class="footer-link">Help Center</a>
+                <a href="https://shopzap.io/privacy" class="footer-link">Privacy Policy</a>
+                <a href="https://shopzap.io/terms" class="footer-link">Terms of Service</a>
+            </div>
+            <div>© 2025 ShopZap.io | All rights reserved</div>
+        </div>
+    </div>
+</body>
+</html>
