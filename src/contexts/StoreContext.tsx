@@ -53,7 +53,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .from('stores')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('Error fetching store:', error);

@@ -73,7 +73,7 @@ const StoreBuilder = () => {
         .from('stores')
         .select('username')
         .eq('username', cleanUsername)
-        .single();
+        .maybeSingle();
       
       if (existingStore) {
         toast({
