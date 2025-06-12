@@ -49,21 +49,25 @@ const ProductDetails: React.FC = () => {
       }
 
       try {
-        // First get the store
-        const storeQuery = await supabase
+        // First get the store - explicitly type the result
+        const storeResult = await supabase
           .from('stores')
           .select('id, name')
           .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
           .maybeSingle();
 
-        if (storeQuery.error || !storeQuery.data) {
+        if (storeResult.error) {
+          throw new Error(`Store query failed: ${storeResult.error.message}`);
+        }
+
+        if (!storeResult.data) {
           throw new Error(`Store "${storeName}" not found`);
         }
 
-        const storeData = storeQuery.data;
+        const storeData = storeResult.data;
 
-        // Then get the product with explicit column selection
-        const productQuery = await supabase
+        // Then get the product - explicitly type the result
+        const productResult = await supabase
           .from('products')
           .select('id, name, description, price, image_url, images, status, is_published, store_id')
           .eq('store_id', storeData.id)
@@ -72,15 +76,15 @@ const ProductDetails: React.FC = () => {
           .eq('is_published', true)
           .maybeSingle();
 
-        if (productQuery.error) {
-          throw productQuery.error;
+        if (productResult.error) {
+          throw new Error(`Product query failed: ${productResult.error.message}`);
         }
 
-        if (!productQuery.data) {
+        if (!productResult.data) {
           throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
         }
 
-        const productData = productQuery.data;
+        const productData = productResult.data;
 
         // Return simplified product object
         return {
