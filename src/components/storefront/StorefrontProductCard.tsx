@@ -25,17 +25,16 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   // Extract store slug from current path
   const storeSlug = location.pathname.split('/store/')[1]?.split('/')[0];
   
-  // Create product slug from product name - make it more URL-friendly
-  const productSlug = product.name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .trim(); // Remove leading/trailing whitespace
+  // Use the product slug directly from the database
+  const productSlug = product.slug;
   
   const handleViewDetails = () => {
-    if (storeSlug) {
+    if (storeSlug && productSlug) {
+      console.log('Navigating to product:', { storeSlug, productSlug });
       navigate(`/store/${storeSlug}/product/${productSlug}`);
+    } else {
+      console.error('Missing store slug or product slug:', { storeSlug, productSlug });
+      toast.error('Unable to navigate to product details');
     }
   };
 

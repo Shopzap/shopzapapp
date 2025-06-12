@@ -27,18 +27,20 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Simplified fetch function
+  // Improved fetch function with proper store and product slug filtering
   const fetchProductData = async () => {
     if (!storeName || !productSlug) {
       throw new Error('Missing store name or product slug');
     }
 
     try {
-      // Get store data first
+      console.log('Fetching product:', { storeName, productSlug });
+
+      // First, get the store by name, slug, or username
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
-        .select('id, name')
-        .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
+        .select('id, name, slug')
+        .or(`slug.eq.${storeName},username.eq.${storeName},name.ilike.${storeName}`)
         .maybeSingle();
 
       if (storeError) {
@@ -47,13 +49,31 @@ const ProductDetails: React.FC = () => {
       }
 
       if (!storeData) {
+        console.error('Store not found:', storeName);
         throw new Error(`Store "${storeName}" not found`);
       }
 
-      // Get product data
+      console.log('Store found:', storeData);
+
+      // Then get the product by slug within that store
       const { data: productData, error: productError } = await supabase
         .from('products')
-        .select('id, name, description, price, image_url, images, status, is_published, store_id, slug')
+        .select(`
+          id, 
+          name, 
+          description, 
+          price, 
+          image_url, 
+          images, 
+          status, 
+          is_published, 
+          store_id, 
+          slug,
+          inventory_count,
+          payment_method,
+          created_at,
+          updated_at
+        `)
         .eq('store_id', storeData.id)
         .eq('slug', productSlug)
         .eq('status', 'active')
@@ -66,8 +86,11 @@ const ProductDetails: React.FC = () => {
       }
 
       if (!productData) {
+        console.error('Product not found:', { productSlug, storeId: storeData.id });
         throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
       }
+
+      console.log('Product found:', productData);
 
       // Return the combined data
       return {
@@ -81,7 +104,7 @@ const ProductDetails: React.FC = () => {
     }
   };
 
-  // Use simplified query without complex typing
+  // Use query with proper error handling
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', storeName, productSlug],
     queryFn: fetchProductData,
@@ -136,7 +159,7 @@ const ProductDetails: React.FC = () => {
     return <ProductDetailsSkeleton />;
   }
 
-  // Show error or timeout fallback
+  // Show error or timeout fallback with improved 404 UI
   if (hasTimedOut || (error && !product)) {
     return (
       <ProductNotFound
