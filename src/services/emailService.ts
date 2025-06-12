@@ -24,17 +24,15 @@ export const emailService = {
     sellerEmail?: string
   ) {
     try {
-      console.log(`Attempting to send ${eventType} email for order ${orderId} via send-order-email function`);
+      console.log(`Attempting to send ${eventType} email for order ${orderId} via Resend`);
       
       const { data, error } = await supabase.functions.invoke('send-order-email', {
         body: {
-          buyerEmail,
-          buyerName: orderData.buyerName,
           orderId,
-          products: orderData.items,
-          totalAmount: orderData.totalPrice,
-          storeName: orderData.storeName,
-          sellerEmail
+          eventType,
+          buyerEmail,
+          sellerEmail,
+          orderData
         }
       });
 
@@ -45,10 +43,10 @@ export const emailService = {
         return { success: false, error: error.message };
       }
 
-      console.log('Email sent successfully via send-order-email function:', data);
+      console.log('Email sent successfully via Resend:', data);
       return { success: true, data };
     } catch (error) {
-      console.error('Failed to send email via send-order-email function:', error);
+      console.error('Failed to send email via Resend:', error);
       // Don't throw error for email failures - just log them
       return { success: false, error: error.message };
     }

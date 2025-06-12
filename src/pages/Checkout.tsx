@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -131,13 +132,8 @@ const Checkout = () => {
         const errorMessage = data?.error || 'Failed to create payment order';
         
         // Handle specific authentication errors
-        if (data?.error?.includes('Authentication failed') || data?.error?.includes('API keys')) {
-          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Please contact support - API keys may be incorrect.`);
-        }
-        
-        // Handle configuration errors
-        if (data?.error?.includes('not configured')) {
-          throw new Error(`Payment gateway not configured${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. Please contact support to set up payments.`);
+        if (data?.details?.includes('Authentication failed') || data?.code === 401) {
+          throw new Error(`Payment gateway authentication failed${paymentConfig.isTestMode ? ' (TEST MODE)' : ''}. API keys may be incorrect. Please contact support.`);
         }
         
         throw new Error(errorMessage);
@@ -218,10 +214,6 @@ const Checkout = () => {
       // Use the key ID returned from the edge function or fallback to config
       const keyId = razorpayOrderData.keyId || paymentConfig.razorpay.keyId;
       
-      if (!keyId || keyId.includes('YOUR_')) {
-        throw new Error('Payment gateway not configured properly. Please contact support.');
-      }
-      
       const options = {
         key: keyId,
         amount: razorpayOrderData.amount,
@@ -279,11 +271,8 @@ const Checkout = () => {
       const errorMessage = error instanceof Error ? error.message : 'Failed to initialize payment';
       setPaymentError(errorMessage);
       
-      toast({
-        title: "Payment Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      // Redirect to payment failed page
+      window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
       setIsProcessing(false);
     }
   };
@@ -321,37 +310,6 @@ const Checkout = () => {
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
-
-      // Send order confirmation email
-      console.log('Sending email for COD order:', data.id);
-      try {
-        const emailResponse = await fetch('https://fyftegalhvigtrieldan.supabase.co/functions/v1/send-order-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZnRlZ2FsaHZpZ3RyaWVsZGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyODQyMjcsImV4cCI6MjA2Mjg2MDIyN30.5iVSqFm7E3c_EcmvGXlVw0rBlnxVY1rCR3y12-AXdAo`
-          },
-          body: JSON.stringify({
-            buyerEmail: customerInfo.email,
-            buyerName: customerInfo.fullName,
-            orderId: data.id,
-            products: cartItems.map(item => ({
-              name: item.product.name,
-              quantity: item.quantity,
-              price: Number(item.product.price)
-            })),
-            totalAmount: getTotalPrice(),
-            storeName: storeInfo?.name || 'ShopZap Store',
-            sellerEmail: storeInfo?.business_email
-          })
-        });
-
-        const emailResult = await emailResponse.json();
-        console.log('Email sent successfully:', emailResult);
-      } catch (emailError) {
-        console.error('Failed to send email, but order created successfully:', emailError);
-        // Don't throw error - email failure shouldn't break order creation
-      }
 
       return { orderId: data.id };
     } catch (error) {
