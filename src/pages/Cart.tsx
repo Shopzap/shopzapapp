@@ -51,34 +51,23 @@ const Cart = () => {
       }
       
       try {
-        // First, try to find by slug (new preferred method)
-        let { data: slugData, error: slugError } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('slug', normalizedStoreName)
-          .single();
-          
-        if (slugData && !slugError) {
-          return { store: slugData, redirectNeeded: false };
-        }
-        
-        // If not found by slug, try username (legacy support)
+        // First, try to find by username (preferred method)
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
           .eq('username', normalizedStoreName)
-          .single();
+          .maybeSingle();
           
         if (usernameData && !usernameError) {
-          return { store: usernameData, redirectNeeded: true };
+          return { store: usernameData, redirectNeeded: false };
         }
         
-        // Finally, try name field as fallback
+        // If not found by username, try name field as fallback
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')
           .eq('name', normalizedStoreName)
-          .single();
+          .maybeSingle();
           
         if (nameData && !nameError) {
           return { store: nameData, redirectNeeded: false };
@@ -106,8 +95,8 @@ const Cart = () => {
   };
 
   const handleCheckout = () => {
-    if (store?.slug) {
-      navigate(`/store/${store.slug}/checkout`);
+    if (store?.username) {
+      navigate(`/store/${store.username}/checkout`);
     } else if (storeName) {
       navigate(`/store/${storeName}/checkout`);
     } else {
@@ -117,9 +106,9 @@ const Cart = () => {
   };
 
   const handleContinueShopping = () => {
-    // Use slug if available, otherwise fall back to storeName
-    if (store?.slug) {
-      navigate(`/store/${store.slug}`);
+    // Use username if available, otherwise fall back to storeName
+    if (store?.username) {
+      navigate(`/store/${store.username}`);
     } else if (storeName || fallbackStoreName) {
       navigate(`/store/${storeName || fallbackStoreName}`);
     } else {
