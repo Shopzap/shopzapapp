@@ -1,229 +1,255 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { ArrowUp, DollarSign } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const PricingPolicy = () => {
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const sections = [
+    { id: 'overview', title: 'Overview' },
+    { id: 'seller-pricing', title: 'Seller Pricing Control' },
+    { id: 'platform-fees', title: 'Platform Fees' },
+    { id: 'payment-processing', title: 'Payment Processing' },
+    { id: 'price-variations', title: 'Price Variations' },
+    { id: 'promotional-pricing', title: 'Promotional Pricing' },
+    { id: 'currency-support', title: 'Currency Support' },
+    { id: 'price-changes', title: 'Price Changes' },
+    { id: 'contact', title: 'Contact Information' },
+  ];
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-white">
+      {/* SEO Meta Tags */}
+      <title>Pricing Policy - ShopZap.io | Product Pricing Information</title>
+      <meta name="description" content="Learn about ShopZap.io's pricing policy. Prices are set by sellers and may vary by region and availability. ShopZap doesn't control discounts." />
+      
       <Navbar />
+      
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-12 max-w-4xl">
-          <h1 className="text-4xl font-bold mb-8 text-center">Pricing Policy</h1>
-          <p className="text-muted-foreground text-center mb-8">Last updated: {new Date().toLocaleDateString()}</p>
-          
-          <div className="prose prose-lg max-w-none">
-            <h2>1. Overview</h2>
-            <p>
-              This Pricing Policy outlines the fee structure, billing terms, and pricing practices for ShopZap.io platform services. Our transparent pricing ensures you understand all costs associated with using our e-commerce platform.
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          {/* Header Section */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <DollarSign className="w-8 h-8 text-primary" />
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+                📄 Pricing Policy
+              </h1>
+            </div>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Understanding how pricing works on the ShopZap.io platform
             </p>
+            <p className="text-gray-500 mt-4">Last updated: {new Date().toLocaleDateString()}</p>
+          </div>
 
-            <h2>2. Platform Subscription Plans</h2>
-            
-            <h3>2.1 Free Plan</h3>
-            <ul>
-              <li>Cost: ₹0/month</li>
-              <li>Up to 10 products</li>
-              <li>Basic store customization</li>
-              <li>WhatsApp integration</li>
-              <li>Standard support</li>
-              <li>ShopZap branding included</li>
-            </ul>
+          <div className="flex gap-8">
+            {/* Desktop Navigation Sidebar */}
+            <div className="hidden lg:block w-64 sticky top-24 self-start">
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="font-bold text-gray-900 mb-4">Quick Navigation</h3>
+                <nav className="space-y-2">
+                  {sections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => scrollToSection(section.id)}
+                      className="block w-full text-left text-sm text-gray-600 hover:text-primary transition-colors py-1 px-2 rounded hover:bg-white"
+                    >
+                      {section.title}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </div>
 
-            <h3>2.2 Starter Plan</h3>
-            <ul>
-              <li>Cost: ₹299/month or ₹2,999/year (save 17%)</li>
-              <li>Up to 100 products</li>
-              <li>Advanced customization</li>
-              <li>Remove ShopZap branding</li>
-              <li>Priority support</li>
-              <li>Basic analytics</li>
-            </ul>
+            {/* Main Content */}
+            <div className="flex-1 max-w-4xl">
+              <div className="prose prose-lg max-w-none">
+                <section id="overview" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">1. Overview</h2>
+                  <p className="text-gray-700 leading-relaxed">
+                    This Pricing Policy explains how product pricing works on the ShopZap.io platform. As a marketplace platform, we enable sellers to set their own prices while providing transparent information to buyers about pricing practices.
+                  </p>
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
+                    <p className="text-yellow-800 font-medium">
+                      Important: Prices may vary depending on seller, region, and availability. ShopZap doesn't control discounts or offer MRP guarantees.
+                    </p>
+                  </div>
+                </section>
 
-            <h3>2.3 Growth Plan</h3>
-            <ul>
-              <li>Cost: ₹599/month or ₹5,999/year (save 17%)</li>
-              <li>Up to 500 products</li>
-              <li>Custom domain support</li>
-              <li>Advanced analytics</li>
-              <li>Multiple payment gateways</li>
-              <li>Bulk upload features</li>
-            </ul>
+                <section id="seller-pricing" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">2. Seller Pricing Control</h2>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">2.1 Price Setting Authority</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    All product prices on ShopZap.io are set and controlled by individual sellers. ShopZap does not:
+                  </p>
+                  <ul className="text-gray-700 leading-relaxed space-y-2 ml-6 mb-6">
+                    <li>• Set or control product prices</li>
+                    <li>• Guarantee specific price points</li>
+                    <li>• Provide MRP (Maximum Retail Price) guarantees</li>
+                    <li>• Control promotional discounts or offers</li>
+                  </ul>
 
-            <h3>2.4 Enterprise Plan</h3>
-            <ul>
-              <li>Cost: ₹1,299/month or ₹12,999/year (save 17%)</li>
-              <li>Unlimited products</li>
-              <li>White-label solution</li>
-              <li>Dedicated account manager</li>
-              <li>Custom integrations</li>
-              <li>24/7 priority support</li>
-            </ul>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">2.2 Seller Responsibilities</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">Sellers are responsible for:</p>
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <ul className="text-gray-700 space-y-2">
+                      <li>• Setting competitive and fair prices</li>
+                      <li>• Updating prices in real-time</li>
+                      <li>• Honoring displayed prices at checkout</li>
+                      <li>• Providing accurate product descriptions</li>
+                      <li>• Clearly stating any additional charges</li>
+                    </ul>
+                  </div>
+                </section>
 
-            <h2>3. Transaction Fees</h2>
-            
-            <h3>3.1 Payment Processing Fees</h3>
-            <p>
-              Payment processing fees are charged per successful transaction:
-            </p>
-            <ul>
-              <li>UPI/Digital Wallets: 0.9% + ₹1 per transaction</li>
-              <li>Credit/Debit Cards: 1.9% + ₹3 per transaction</li>
-              <li>Net Banking: 1.2% + ₹2 per transaction</li>
-              <li>International Cards: 3.5% + ₹5 per transaction</li>
-            </ul>
+                <section id="platform-fees" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">3. Platform Fees</h2>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">3.1 Subscription Fees</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">ShopZap charges sellers subscription fees for platform usage:</p>
+                  <div className="grid md:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-bold text-gray-900 mb-2">Free Plan</h4>
+                      <p className="text-gray-700 text-sm">Basic features, limited products</p>
+                    </div>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-bold text-gray-900 mb-2">Pro Plan</h4>
+                      <p className="text-gray-700 text-sm">Advanced features, unlimited products</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <h4 className="font-bold text-gray-900 mb-2">Enterprise</h4>
+                      <p className="text-gray-700 text-sm">Custom solutions, priority support</p>
+                    </div>
+                  </div>
 
-            <h3>3.2 Platform Commission</h3>
-            <ul>
-              <li>Free Plan: 2% per transaction</li>
-              <li>Starter Plan: 1.5% per transaction</li>
-              <li>Growth Plan: 1% per transaction</li>
-              <li>Enterprise Plan: 0.5% per transaction</li>
-            </ul>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">3.2 Transaction Fees</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    Payment processing fees are handled by our payment partners:
+                  </p>
+                  <ul className="text-gray-700 leading-relaxed space-y-2 ml-6">
+                    <li>• Credit/Debit cards: 2-3% per transaction</li>
+                    <li>• UPI payments: 0-1% per transaction</li>
+                    <li>• Net banking: 1-2% per transaction</li>
+                    <li>• Digital wallets: 1-2% per transaction</li>
+                  </ul>
+                </section>
 
-            <h2>4. Additional Services</h2>
-            
-            <h3>4.1 Premium Features</h3>
-            <ul>
-              <li>Custom Theme Development: ₹5,000 - ₹25,000</li>
-              <li>Advanced SEO Setup: ₹2,500</li>
-              <li>Professional Product Photography: ₹500 per product</li>
-              <li>Store Migration Service: ₹1,500</li>
-              <li>Training & Onboarding: ₹3,000</li>
-            </ul>
+                <section id="price-variations" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">5. Price Variations</h2>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">5.1 Factors Affecting Pricing</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">Product prices may vary based on:</p>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h4 className="font-bold text-gray-900 mb-3">Geographic Factors</h4>
+                      <ul className="text-gray-700 text-sm space-y-1">
+                        <li>• Shipping costs to different regions</li>
+                        <li>• Local taxes and duties</li>
+                        <li>• Regional demand and supply</li>
+                        <li>• Currency exchange rates</li>
+                      </ul>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-lg">
+                      <h4 className="font-bold text-gray-900 mb-3">Market Factors</h4>
+                      <ul className="text-gray-700 text-sm space-y-1">
+                        <li>• Product availability</li>
+                        <li>• Seasonal demand</li>
+                        <li>• Bulk order quantities</li>
+                        <li>• Seller competition</li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
 
-            <h3>4.2 Marketing Services</h3>
-            <ul>
-              <li>Google Ads Management: 15% of ad spend + ₹3,000/month</li>
-              <li>Social Media Marketing: ₹5,000 - ₹15,000/month</li>
-              <li>WhatsApp Business API: ₹2,000/month</li>
-              <li>Email Marketing: ₹1,000/month (up to 5,000 contacts)</li>
-            </ul>
+                <section id="promotional-pricing" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">6. Promotional Pricing</h2>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">6.1 Seller-Controlled Discounts</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">Sellers may offer various promotional pricing:</p>
+                  <ul className="text-gray-700 leading-relaxed space-y-2 ml-6 mb-6">
+                    <li>• Seasonal sales and discounts</li>
+                    <li>• Bulk order pricing</li>
+                    <li>• First-time buyer discounts</li>
+                    <li>• Loyalty program benefits</li>
+                    <li>• Flash sales and limited-time offers</li>
+                  </ul>
 
-            <h2>5. Billing and Payment Terms</h2>
-            
-            <h3>5.1 Billing Cycle</h3>
-            <ul>
-              <li>Monthly plans: Billed every 30 days</li>
-              <li>Annual plans: Billed yearly with discount</li>
-              <li>Payment due immediately upon billing</li>
-              <li>Auto-renewal unless cancelled</li>
-            </ul>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">6.2 Platform Promotions</h3>
+                  <p className="text-gray-700 leading-relaxed">
+                    ShopZap may occasionally run platform-wide promotional campaigns in partnership with sellers, but all pricing decisions remain with individual sellers.
+                  </p>
+                </section>
 
-            <h3>5.2 Accepted Payment Methods</h3>
-            <ul>
-              <li>Credit/Debit Cards (Visa, Mastercard, RuPay)</li>
-              <li>UPI (GPay, PhonePe, Paytm)</li>
-              <li>Net Banking</li>
-              <li>Digital Wallets</li>
-            </ul>
+                <section id="price-changes" className="mb-8 pb-8 border-b border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">8. Price Changes</h2>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">8.1 Real-Time Updates</h3>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    Sellers can update their prices in real-time through the ShopZap dashboard. Price changes take effect immediately on the platform.
+                  </p>
 
-            <h3>5.3 Late Payment Policy</h3>
-            <ul>
-              <li>Grace period: 7 days after due date</li>
-              <li>Service suspension after 10 days</li>
-              <li>Account termination after 30 days</li>
-              <li>Late fee: ₹500 for delayed payments</li>
-            </ul>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">8.2 Price Protection</h3>
+                  <div className="bg-green-50 border-l-4 border-green-400 p-4">
+                    <p className="text-green-800 font-medium">
+                      Once you add items to your cart, the price is locked for 30 minutes to complete your purchase.
+                    </p>
+                  </div>
+                </section>
 
-            <h2>6. Price Changes</h2>
-            
-            <h3>6.1 Subscription Price Changes</h3>
-            <ul>
-              <li>30 days advance notice for price increases</li>
-              <li>Existing customers grandfathered for 6 months</li>
-              <li>Option to cancel before new pricing takes effect</li>
-              <li>Price reductions effective immediately</li>
-            </ul>
-
-            <h3>6.2 Transaction Fee Changes</h3>
-            <ul>
-              <li>Subject to payment gateway partner changes</li>
-              <li>15 days notice for fee structure updates</li>
-              <li>Transparent communication of all changes</li>
-            </ul>
-
-            <h2>7. Discounts and Promotions</h2>
-            
-            <h3>7.1 Available Discounts</h3>
-            <ul>
-              <li>Annual payment discount: 17% off monthly rate</li>
-              <li>Student discount: 50% off for verified students</li>
-              <li>Startup discount: 30% off first year for startups</li>
-              <li>Volume discount: Custom pricing for enterprise</li>
-            </ul>
-
-            <h3>7.2 Promotional Offers</h3>
-            <ul>
-              <li>Free trial periods for new users</li>
-              <li>Seasonal promotional campaigns</li>
-              <li>Referral bonuses and credits</li>
-              <li>Loyalty rewards for long-term customers</li>
-            </ul>
-
-            <h2>8. Refund and Cancellation</h2>
-            <p>
-              Please refer to our detailed <Link to="/refund" className="text-primary hover:underline">Refund & Cancellation Policy</Link> for information about refunds, cancellations, and related terms.
-            </p>
-
-            <h2>9. Tax Information</h2>
-            
-            <h3>9.1 Indian Tax (GST)</h3>
-            <ul>
-              <li>All prices inclusive of 18% GST</li>
-              <li>GST invoice provided for all transactions</li>
-              <li>GSTIN: [COMPANY_GSTIN]</li>
-              <li>Tax calculation based on registered address</li>
-            </ul>
-
-            <h3>9.2 International Taxes</h3>
-            <ul>
-              <li>Local taxes may apply based on jurisdiction</li>
-              <li>Customer responsible for compliance</li>
-              <li>VAT/Sales tax as per local regulations</li>
-            </ul>
-
-            <h2>10. Pricing Transparency</h2>
-            
-            <h3>10.1 No Hidden Fees</h3>
-            <ul>
-              <li>All fees clearly disclosed upfront</li>
-              <li>No setup or activation charges</li>
-              <li>No contract cancellation penalties</li>
-              <li>Transparent pricing calculator available</li>
-            </ul>
-
-            <h3>10.2 Cost Breakdown</h3>
-            <p>
-              Detailed cost breakdown available in your dashboard:
-            </p>
-            <ul>
-              <li>Subscription fees</li>
-              <li>Transaction charges</li>
-              <li>Additional service costs</li>
-              <li>Tax implications</li>
-            </ul>
-
-            <h2>11. Contact Information</h2>
-            <p>
-              For pricing-related questions or custom quotes:
-            </p>
-            <p>
-              Email: [SALES_EMAIL]<br/>
-              Phone: [SALES_PHONE]<br/>
-              Business Hours: Monday to Friday, 9 AM to 6 PM IST<br/>
-              Address: [COMPANY_ADDRESS]
-            </p>
-
-            <h2>12. Policy Updates</h2>
-            <p>
-              This pricing policy may be updated to reflect service improvements, market changes, or regulatory requirements. Significant changes will be communicated 30 days in advance.
-            </p>
+                <section id="contact" className="mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">9. Contact Information</h2>
+                  <p className="text-gray-700 leading-relaxed mb-4">
+                    For pricing-related questions or concerns:
+                  </p>
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <p className="text-gray-700">
+                      <strong>Email:</strong> support@shopzap.io<br/>
+                      <strong>Phone:</strong> +91 7798997439<br/>
+                      <strong>Business Hours:</strong> Monday to Friday, 9 AM to 6 PM IST<br/>
+                      <strong>Website:</strong> https://shopzap.io
+                    </p>
+                  </div>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
       </main>
+
       <Footer />
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 bg-primary text-white p-3 rounded-full shadow-lg hover:bg-primary/90 transition-all duration-300 z-50"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 };
