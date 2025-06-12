@@ -42,6 +42,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       name: '',
       description: '',
       price: '',
+      inventory_count: '',
       status: 'active',
       payment_method: 'online'
     }
@@ -206,7 +207,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
       }
       
-      // Insert product with images array and slug
+      // Insert product with images array, slug, and inventory_count
       console.log('Creating product in database...');
       const { error } = await supabase
         .from('products')
@@ -214,6 +215,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           name: data.name,
           description: data.description,
           price: parseFloat(data.price),
+          inventory_count: data.inventory_count ? parseInt(data.inventory_count) : 0,
           status: data.status,
           payment_method: data.payment_method,
           store_id: currentStoreId,
@@ -277,19 +279,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               />
             </div>
 
-            <div>
-              <Label htmlFor="price">Price (₹)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                {...register('price', { 
-                  required: 'Price is required',
-                  min: { value: 0, message: 'Price must be positive' }
-                })}
-                placeholder="0.00"
-              />
-              {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="price">Price (₹)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  {...register('price', { 
+                    required: 'Price is required',
+                    min: { value: 0, message: 'Price must be positive' }
+                  })}
+                  placeholder="0.00"
+                />
+                {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="inventory_count">Inventory Count</Label>
+                <Input
+                  id="inventory_count"
+                  type="number"
+                  {...register('inventory_count')}
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
             </div>
 
             <MultiImageUploader

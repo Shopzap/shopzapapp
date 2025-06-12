@@ -1,167 +1,177 @@
 
 import React from 'react';
-import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Heart, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import StoreHeader from '@/components/storefront/StoreHeader';
-import ProductImageGallery from '@/components/storefront/ProductImageGallery';
-import CTAButtons from '@/components/storefront/CTAButtons';
+import { ArrowLeft, Package, CreditCard, Truck } from 'lucide-react';
+import ProductImageCarousel from './ProductImageCarousel';
 
 interface ProductDetailsContentProps {
   product: {
     id: string;
     name: string;
-    description: string | null;
+    description?: string;
     price: number;
-    image_url: string | null;
+    image_url?: string;
     images?: string[];
+    inventory_count?: number;
     status: string;
-    stores?: {
-      id: string;
-      name: string;
-      logo_image: string | null;
-      tagline: string | null;
-      primary_color?: string;
-    };
+    payment_method?: string;
+    store_name?: string;
   };
   handleBuyNow: () => void;
   handleBack: () => void;
-  onAddToCart?: () => void;
 }
 
 const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
   product,
   handleBuyNow,
   handleBack,
-  onAddToCart
 }) => {
-  const { storeName } = useParams<{ storeName: string }>();
-
-  const formatPrice = (amount: number) => {
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(price);
   };
 
-  // Prepare images array
-  const productImages = product.images && product.images.length > 0 
+  const getPaymentMethodText = (method?: string) => {
+    switch (method) {
+      case 'cash': return 'Cash on Delivery Only';
+      case 'online': return 'Online Payment Only';
+      case 'both': return 'Online Payment & Cash on Delivery';
+      default: return 'Payment method not specified';
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge variant="default" className="bg-green-500">Available</Badge>;
+      case 'inactive':
+        return <Badge variant="secondary">Unavailable</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const images = product.images && product.images.length > 0 
     ? product.images 
     : product.image_url 
     ? [product.image_url] 
     : [];
 
-  // Store data for header
-  const store = product.stores ? {
-    ...product.stores,
-    primary_color: product.stores.primary_color || '#6c5ce7'
-  } : null;
+  const isOutOfStock = product.inventory_count === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {store && <StoreHeader store={store} />}
-      
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Back button */}
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            className="mb-6 flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Store
-          </Button>
+        <Button
+          variant="ghost"
+          className="mb-6 flex items-center gap-2"
+          onClick={handleBack}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
 
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* Product Images */}
-            <div className="space-y-4">
-              <ProductImageGallery 
-                images={productImages}
-                productName={product.name}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Product Images */}
+          <div className="space-y-4">
+            {images.length > 0 ? (
+              <ProductImageCarousel images={images} productName={product.name} />
+            ) : (
+              <div className="bg-accent rounded-lg overflow-hidden flex items-center justify-center h-[400px]">
+                <div className="text-muted-foreground">No image available</div>
+              </div>
+            )}
+          </div>
+
+          {/* Product Details */}
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold">{product.name}</h1>
+              <div className="flex items-center gap-2 mt-2">
+                {getStatusBadge(product.status)}
+                {isOutOfStock && (
+                  <Badge variant="destructive">Out of Stock</Badge>
+                )}
+              </div>
             </div>
 
-            {/* Product Info */}
-            <div className="space-y-6">
+            <div className="text-3xl font-bold text-primary">
+              {formatPrice(product.price)}
+            </div>
+
+            {product.description && (
               <div>
-                <Badge variant="secondary" className="mb-2">
-                  {product.status}
-                </Badge>
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  {product.name}
-                </h1>
-                <div className="text-3xl font-bold text-primary mb-6">
-                  {formatPrice(Number(product.price))}
-                </div>
+                <h3 className="text-lg font-medium mb-2">Description</h3>
+                <p className="text-muted-foreground leading-relaxed">{product.description}</p>
               </div>
+            )}
 
-              {/* Description */}
-              {product.description && (
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Description</h3>
-                  <div className="prose prose-sm max-w-none text-gray-700">
-                    {product.description.split('\n').map((paragraph, index) => (
-                      <p key={index} className="mb-2">
-                        {paragraph}
-                      </p>
-                    ))}
+            {/* Product Details Grid */}
+            <div className="grid grid-cols-1 gap-4">
+              {product.inventory_count !== undefined && (
+                <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Stock Available</p>
+                    <p className="text-sm text-muted-foreground">
+                      {product.inventory_count} units in stock
+                    </p>
                   </div>
                 </div>
               )}
 
-              {/* CTA Buttons */}
-              <CTAButtons
-                onAddToCart={onAddToCart}
-                onBuyNow={handleBuyNow}
-                price={Number(product.price)}
-                className="sticky bottom-4 bg-white p-4 rounded-lg shadow-lg border"
-              />
-
-              {/* Additional Actions */}
-              <div className="flex items-center gap-4 pt-6 border-t">
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Heart className="w-4 h-4" />
-                  Add to Wishlist
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Share
-                </Button>
-              </div>
-
-              {/* Store Info */}
-              {store && (
-                <div className="bg-white p-6 rounded-lg border">
-                  <h4 className="font-semibold mb-2">Sold by</h4>
-                  <div className="flex items-center gap-3">
-                    {store.logo_image ? (
-                      <img 
-                        src={store.logo_image} 
-                        alt={store.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                        style={{ backgroundColor: store.primary_color }}
-                      >
-                        {store.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium">{store.name}</p>
-                      {store.tagline && (
-                        <p className="text-sm text-gray-600">{store.tagline}</p>
-                      )}
-                    </div>
+              {product.payment_method && (
+                <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Payment Options</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getPaymentMethodText(product.payment_method)}
+                    </p>
                   </div>
                 </div>
+              )}
+
+              <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
+                <Truck className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Delivery</p>
+                  <p className="text-sm text-muted-foreground">
+                    Free delivery available
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Buy Now Button */}
+            <div className="space-y-4">
+              <Button 
+                size="lg" 
+                className="w-full" 
+                onClick={handleBuyNow}
+                disabled={isOutOfStock || product.status !== 'active'}
+              >
+                {isOutOfStock ? 'Out of Stock' : 'Buy Now'}
+              </Button>
+              
+              {isOutOfStock && (
+                <p className="text-sm text-muted-foreground text-center">
+                  This item is currently out of stock
+                </p>
               )}
             </div>
+
+            {/* Store Info */}
+            {product.store_name && (
+              <div className="border-t pt-6">
+                <p className="text-sm text-muted-foreground">
+                  Sold by <span className="font-medium text-foreground">{product.store_name}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

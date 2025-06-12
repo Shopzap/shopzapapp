@@ -18,6 +18,7 @@ type ProductCsvRow = {
   name: string;
   description?: string;
   price: number;
+  inventory_count?: number;
   image_url?: string;
   status?: string;
 };
@@ -205,6 +206,7 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
               name: product.name,
               description: product.description,
               price: product.price,
+              inventory_count: product.inventory_count || 0,
               image_url: product.image_url,
               status: product.status || 'active',
               slug: slug
@@ -247,8 +249,8 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const headers = 'name,description,price,image_url,status';
-    const sampleData = 'Example Product,This is a sample product description,19.99,https://example.com/image.jpg,active';
+    const headers = 'name,description,price,inventory_count,image_url,status';
+    const sampleData = 'Example Product,This is a sample product description,19.99,50,https://example.com/image.jpg,active';
     const csvContent = `${headers}\n${sampleData}`;
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -280,7 +282,7 @@ const CsvUploadModal: React.FC<CsvUploadModalProps> = ({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>CSV Format Requirements</AlertTitle>
               <AlertDescription className="text-sm">
-                Your CSV file should include: name, description, price, image_url, and status columns.
+                Your CSV file should include: name, description, price, inventory_count, image_url, and status columns.
                 Only name and price are required.
               </AlertDescription>
             </Alert>

@@ -486,6 +486,7 @@ export type Database = {
           id: string
           image_url: string | null
           images: string[] | null
+          inventory_count: number | null
           is_published: boolean | null
           name: string
           payment_method: string | null
@@ -502,6 +503,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          inventory_count?: number | null
           is_published?: boolean | null
           name: string
           payment_method?: string | null
@@ -518,6 +520,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          inventory_count?: number | null
           is_published?: boolean | null
           name?: string
           payment_method?: string | null
