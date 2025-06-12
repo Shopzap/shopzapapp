@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -25,9 +24,6 @@ interface OrderEmailRequest {
     orderNumber?: string;
     trackingNumber?: string;
     estimatedDelivery?: string;
-    buyerPhone?: string;
-    buyerAddress?: string;
-    orderDate?: string;
   };
 }
 
@@ -47,19 +43,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing email request for order ${orderId}, event: ${eventType}`);
 
-    // Log email attempt for buyer
-    const { error: buyerLogError } = await supabaseClient
+    // Generate email content based on event type
+    const emailContent = generateEmailContent(eventType, orderData, orderId);
+    
+    // Log email attempt
+    const { error: logError } = await supabaseClient
       .from('email_logs')
       .insert({
         to_email: buyerEmail,
-        subject: `Order ${eventType.replace('_', ' ')} - ${orderData.storeName}`,
+        subject: emailContent.buyerSubject,
         status: 'attempted',
         event_type: eventType,
         order_id: orderId
       });
 
-    if (buyerLogError) {
-      console.error('Error logging buyer email attempt:', buyerLogError);
+    if (logError) {
+      console.error('Error logging email attempt:', logError);
     }
 
     // Check if Resend API key is available
@@ -79,55 +78,32 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Generate email content based on event type
-    const buyerEmailContent = generateBuyerEmailContent(eventType, orderData, orderId);
-    
     // Send email to buyer
-    const buyerEmailResult = await sendResendEmail({
+    const emailResult = await sendResendEmail({
       to: buyerEmail,
-      subject: buyerEmailContent.subject,
-      html: buyerEmailContent.html,
+      subject: emailContent.buyerSubject,
+      html: emailContent.buyerHtml,
       orderId,
       eventType,
-      recipient: 'buyer',
       supabaseClient
     });
 
-    // Send email to seller for order_placed event
-    let sellerEmailResult = { success: true };
-    if (sellerEmail && eventType === 'order_placed') {
-      // Log email attempt for seller
-      const { error: sellerLogError } = await supabaseClient
-        .from('email_logs')
-        .insert({
-          to_email: sellerEmail,
-          subject: `New Order Received: ${orderId.slice(-8)} from ${orderData.buyerName}`,
-          status: 'attempted',
-          event_type: 'seller_order_received',
-          order_id: orderId
-        });
-
-      if (sellerLogError) {
-        console.error('Error logging seller email attempt:', sellerLogError);
-      }
-
-      const sellerContent = generateSellerEmailContent(orderData, orderId);
-      sellerEmailResult = await sendResendEmail({
+    // Send email to seller for certain events (if provided)
+    if (sellerEmail && (eventType === 'order_placed' || eventType === 'order_cancelled')) {
+      const sellerContent = generateSellerEmailContent(eventType, orderData, orderId);
+      await sendResendEmail({
         to: sellerEmail,
         subject: sellerContent.subject,
         html: sellerContent.html,
         orderId,
-        eventType: 'seller_order_received',
-        recipient: 'seller',
+        eventType: `seller_${eventType}`,
         supabaseClient
       });
     }
 
     return new Response(JSON.stringify({ 
-      success: buyerEmailResult.success && sellerEmailResult.success,
-      buyerEmail: buyerEmailResult,
-      sellerEmail: sellerEmailResult,
-      message: 'Email processing completed'
+      success: emailResult.success,
+      message: emailResult.success ? 'Email sent successfully' : 'Email failed but order processed'
     }), {
       status: 200,
       headers: {
@@ -157,7 +133,6 @@ async function sendResendEmail({
   html,
   orderId,
   eventType,
-  recipient,
   supabaseClient
 }: {
   to: string;
@@ -165,7 +140,6 @@ async function sendResendEmail({
   html: string;
   orderId: string;
   eventType: string;
-  recipient: 'buyer' | 'seller';
   supabaseClient: any;
 }) {
   const resendApiKey = Deno.env.get('RESEND_API_KEY');
@@ -188,23 +162,22 @@ async function sendResendEmail({
     const result = await response.json();
 
     if (response.ok) {
-      console.log(`${recipient} email sent successfully via Resend:`, result);
+      console.log('Email sent successfully via Resend:', result);
       
       // Update log as successful
       await supabaseClient
         .from('email_logs')
         .update({
           status: 'sent',
-          mailersend_id: result.id,
+          mailersend_id: result.id, // Resend also provides an id
           updated_at: new Date().toISOString()
         })
         .eq('order_id', orderId)
-        .eq('to_email', to)
         .eq('event_type', eventType);
 
       return { success: true, data: result };
     } else {
-      console.error(`${recipient} Resend API error:`, result);
+      console.error('Resend API error:', result);
       
       // Update log as failed
       await supabaseClient
@@ -215,13 +188,12 @@ async function sendResendEmail({
           updated_at: new Date().toISOString()
         })
         .eq('order_id', orderId)
-        .eq('to_email', to)
         .eq('event_type', eventType);
 
       return { success: false, error: result.message || 'Email API error' };
     }
   } catch (error: any) {
-    console.error(`${recipient} email sending error:`, error);
+    console.error('Email sending error:', error);
     
     // Update log as failed
     await supabaseClient
@@ -232,18 +204,15 @@ async function sendResendEmail({
         updated_at: new Date().toISOString()
       })
       .eq('order_id', orderId)
-      .eq('to_email', to)
       .eq('event_type', eventType);
 
     return { success: false, error: error.message };
   }
 }
 
-function generateBuyerEmailContent(eventType: string, orderData: any, orderId: string) {
+function generateEmailContent(eventType: string, orderData: any, orderId: string) {
   const baseUrl = Deno.env.get('SITE_URL') || 'https://shopzap.io';
-  const trackingUrl = `${baseUrl}/track?order=${orderId}`;
-  const correctionUrl = `${baseUrl}/fix-order/${orderId}`;
-  const invoiceUrl = `${baseUrl}/invoice/${orderId}`;
+  const trackingUrl = `${baseUrl}/track-order/${orderId}`;
   const storeUrl = `${baseUrl}/store/${orderData.storeName}`;
   
   const itemsHtml = orderData.items.map((item: any) => `
@@ -256,8 +225,6 @@ function generateBuyerEmailContent(eventType: string, orderData: any, orderId: s
       <td style="padding: 12px 8px; text-align: right; font-weight: 500; color: #333;">₹${(item.quantity * item.price).toFixed(2)}</td>
     </tr>
   `).join('');
-
-  const orderDate = orderData.orderDate || new Date().toLocaleDateString('en-IN');
 
   const baseTemplate = `
     <!DOCTYPE html>
@@ -281,13 +248,7 @@ function generateBuyerEmailContent(eventType: string, orderData: any, orderId: s
             
             <!-- Order Details -->
             <div style="margin: 30px 0;">
-              <h3 style="color: #333; margin: 0 0 20px 0; font-size: 18px; font-weight: 600;">📦 Order Details</h3>
-              <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-                <p style="margin: 5px 0; color: #666;"><strong>Order ID:</strong> ${orderId}</p>
-                <p style="margin: 5px 0; color: #666;"><strong>Order Date:</strong> ${orderDate}</p>
-                <p style="margin: 5px 0; color: #666;"><strong>Total Amount:</strong> ₹${orderData.totalPrice.toFixed(2)}</p>
-              </div>
-              
+              <h3 style="color: #333; margin: 0 0 20px 0; font-size: 18px; font-weight: 600;">Order Details</h3>
               <div style="background: #f8f9fa; border-radius: 8px; overflow: hidden; border: 1px solid #e9ecef;">
                 <table style="width: 100%; border-collapse: collapse;">
                   <thead>
@@ -311,12 +272,8 @@ function generateBuyerEmailContent(eventType: string, orderData: any, orderId: s
             
             <!-- Action Buttons -->
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${trackingUrl}" style="display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">🔗 Track Your Order</a>
-              <a href="${invoiceUrl}" style="display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">🧾 Download Invoice</a>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${correctionUrl}" style="display: inline-block; background: #ffc107; color: #212529; padding: 10px 25px; text-decoration: none; border-radius: 6px; font-weight: 500; font-size: 14px;">🔁 Need to fix address? Click here (within 24 hours)</a>
+              <a href="${trackingUrl}" style="display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">Track Your Order</a>
+              <a href="${storeUrl}" style="display: inline-block; background: #6c757d; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 0 10px 10px 0;">Visit Store</a>
             </div>
           </div>
           
@@ -333,23 +290,77 @@ function generateBuyerEmailContent(eventType: string, orderData: any, orderId: s
   switch (eventType) {
     case 'order_placed':
       return {
-        subject: `Thank you ${orderData.buyerName}, your order at ${orderData.storeName} is confirmed! 🛒`,
-        html: baseTemplate.replace('{{CONTENT}}', `
+        buyerSubject: `✅ Order Confirmation - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
           <div style="text-align: center; margin-bottom: 25px;">
             <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-              <h2 style="margin: 0; font-size: 22px;">Hi ${orderData.buyerName},</h2>
-              <p style="margin: 10px 0 0 0; font-size: 16px;">Thank you for shopping with ${orderData.storeName} on ShopZap! 🎉</p>
+              <h2 style="margin: 0; font-size: 22px;">🎉 Thank you for your order, ${orderData.buyerName}!</h2>
             </div>
             <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">We've received your order and it's being processed. You'll receive updates as your order moves through our system.</p>
-            <p style="color: #333; margin: 15px 0 0 0; font-weight: 500;">We'll notify you once your order is out for delivery. Thank you again!</p>
+            ${orderData.estimatedDelivery ? `<p style="color: #333; margin: 15px 0 0 0; font-weight: 500;"><strong>📅 Estimated Delivery:</strong> ${orderData.estimatedDelivery}</p>` : ''}
+          </div>
+        `)
+      };
+      
+    case 'order_confirmed':
+      return {
+        buyerSubject: `✅ Order Confirmed - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">✅ Your order has been confirmed!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Great news, ${orderData.buyerName}! Your order has been confirmed and is now being prepared for shipment.</p>
+          </div>
+        `)
+      };
+      
+    case 'order_shipped':
+      return {
+        buyerSubject: `🚚 Order Shipped - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #cce5ff; color: #004085; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">🚚 Your order is on the way!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, your order has been shipped and is on its way to you.</p>
+            ${orderData.trackingNumber ? `<p style="color: #333; margin: 15px 0 0 0; font-weight: 500;"><strong>📦 Tracking Number:</strong> ${orderData.trackingNumber}</p>` : ''}
+          </div>
+        `)
+      };
+      
+    case 'order_delivered':
+      return {
+        buyerSubject: `✅ Order Delivered - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">🎉 Your order has been delivered!</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, your order has been successfully delivered. We hope you enjoy your purchase!</p>
+            <p style="color: #666; margin: 15px 0 0 0; font-size: 14px;">If you have any issues with your order, please don't hesitate to contact the seller.</p>
+          </div>
+        `)
+      };
+      
+    case 'order_cancelled':
+      return {
+        buyerSubject: `❌ Order Cancelled - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
+          <div style="text-align: center; margin-bottom: 25px;">
+            <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 22px;">❌ Your order has been cancelled</h2>
+            </div>
+            <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, unfortunately your order has been cancelled.</p>
+            <p style="color: #666; margin: 15px 0 0 0; font-size: 14px;">If you have any questions about this cancellation, please contact the seller directly.</p>
           </div>
         `)
       };
       
     default:
       return {
-        subject: `📦 Order Update - ${orderData.storeName} (#${orderId.slice(-8)})`,
-        html: baseTemplate.replace('{{CONTENT}}', `
+        buyerSubject: `📦 Order Update - ${orderData.storeName} (#${orderId.slice(-8)})`,
+        buyerHtml: baseTemplate.replace('{{CONTENT}}', `
           <div style="text-align: center; margin-bottom: 25px;">
             <h2 style="color: #333; margin: 0 0 15px 0; font-size: 22px;">📦 Order Update</h2>
             <p style="color: #666; margin: 0; font-size: 16px; line-height: 1.5;">Hi ${orderData.buyerName}, there's been an update to your order.</p>
@@ -359,63 +370,91 @@ function generateBuyerEmailContent(eventType: string, orderData: any, orderId: s
   }
 }
 
-function generateSellerEmailContent(orderData: any, orderId: string) {
+function generateSellerEmailContent(eventType: string, orderData: any, orderId: string) {
   const baseUrl = Deno.env.get('SITE_URL') || 'https://shopzap.io';
-  const dashboardUrl = `${baseUrl}/dashboard/orders/${orderId}`;
+  const dashboardUrl = `${baseUrl}/dashboard/orders`;
   
-  const itemsHtml = orderData.items.map((item: any) => 
-    `<li style="margin: 5px 0;">${item.name} - ₹${item.price} × ${item.quantity}</li>`
-  ).join('');
-
-  return {
-    subject: `🎉 New Order Received: ${orderId.slice(-8)} from ${orderData.buyerName}`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>New Order - ShopZap</title>
-        </head>
-        <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: #28a745; padding: 20px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">🎉 New Order Received!</h1>
-            </div>
-            <div style="padding: 30px 20px;">
-              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">Hi ${orderData.storeName},</p>
-              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">You have received a new order via ShopZap:</p>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin: 0 0 15px 0; color: #333;">🧾 Order Details</h3>
-                <p style="margin: 5px 0; color: #666;"><strong>Order ID:</strong> ${orderId}</p>
-                <p style="margin: 5px 0; color: #666;"><strong>👤 Buyer:</strong> ${orderData.buyerName}</p>
-                ${orderData.buyerPhone ? `<p style="margin: 5px 0; color: #666;"><strong>📞 Phone:</strong> ${orderData.buyerPhone}</p>` : ''}
-                ${orderData.buyerAddress ? `<p style="margin: 5px 0; color: #666;"><strong>📍 Address:</strong> ${orderData.buyerAddress}</p>` : ''}
-                <p style="margin: 5px 0; color: #666;"><strong>💰 Total Amount:</strong> ₹${orderData.totalPrice.toFixed(2)}</p>
+  switch (eventType) {
+    case 'order_placed':
+      return {
+        subject: `🛒 New Order Received - ${orderData.buyerName} (#${orderId.slice(-8)})`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>New Order - ShopZap</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background: #28a745; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">🛒 New Order Received!</h1>
+                </div>
+                <div style="padding: 30px 20px;">
+                  <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">You have received a new order from <strong>${orderData.buyerName}</strong>.</p>
+                  
+                  <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 15px 0; color: #333;">Order Summary</h3>
+                    <p style="margin: 5px 0; color: #666;"><strong>Order ID:</strong> #${orderId.slice(-8)}</p>
+                    <p style="margin: 5px 0; color: #666;"><strong>Total Amount:</strong> ₹${orderData.totalPrice.toFixed(2)}</p>
+                    <p style="margin: 5px 0; color: #666;"><strong>Items:</strong> ${orderData.items.length} item(s)</p>
+                  </div>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">View Order Details</a>
+                  </div>
+                </div>
+                <div style="background: #f8f9fa; padding: 15px; text-align: center; border-top: 1px solid #e9ecef;">
+                  <p style="margin: 0; color: #6c757d; font-size: 14px;">Manage your orders at ShopZap Dashboard</p>
+                </div>
               </div>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin: 0 0 15px 0; color: #333;">🛍️ Products:</h3>
-                <ul style="margin: 0; padding-left: 20px; color: #666;">
-                  ${itemsHtml}
-                </ul>
+            </body>
+          </html>
+        `
+      };
+      
+    case 'order_cancelled':
+      return {
+        subject: `❌ Order Cancelled - ${orderData.buyerName} (#${orderId.slice(-8)})`,
+        html: `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Order Cancelled - ShopZap</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                <div style="background: #dc3545; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">❌ Order Cancelled</h1>
+                </div>
+                <div style="padding: 30px 20px;">
+                  <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">The order from <strong>${orderData.buyerName}</strong> has been cancelled.</p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">View Orders</a>
+                  </div>
+                </div>
               </div>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 500;">📦 View Order in Dashboard</a>
-              </div>
-              
-              <p style="color: #666; font-size: 14px; margin: 20px 0 0 0;">Make sure to confirm or process the order within your SLA.</p>
-            </div>
-            <div style="background: #f8f9fa; padding: 15px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="margin: 0; color: #6c757d; font-size: 14px;">Best regards,<br>Team ShopZap</p>
-            </div>
+            </body>
+          </html>
+        `
+      };
+      
+    default:
+      return {
+        subject: `📦 Order Update - ${orderData.buyerName} (#${orderId.slice(-8)})`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2>📦 Order Update</h2>
+            <p>There's been an update to the order from <strong>${orderData.buyerName}</strong>.</p>
+            <a href="${dashboardUrl}" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View Orders</a>
           </div>
-        </body>
-      </html>
-    `
-  };
+        `
+      };
+  }
 }
 
 serve(handler);
