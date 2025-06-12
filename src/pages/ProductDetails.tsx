@@ -27,7 +27,7 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Fetch product data
+  // Fetch product data with simplified query structure
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', storeName, productSlug],
     queryFn: async () => {
@@ -37,13 +37,13 @@ const ProductDetails: React.FC = () => {
 
       try {
         // First get the store
-        const { data: store, error: storeError } = await supabase
+        const { data: storeData, error: storeError } = await supabase
           .from('stores')
           .select('id, name')
           .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
           .maybeSingle();
 
-        if (storeError || !store) {
+        if (storeError || !storeData) {
           throw new Error(`Store "${storeName}" not found`);
         }
 
@@ -51,7 +51,7 @@ const ProductDetails: React.FC = () => {
         const { data: productData, error: productError } = await supabase
           .from('products')
           .select('*')
-          .eq('store_id', store.id)
+          .eq('store_id', storeData.id)
           .eq('slug', productSlug)
           .eq('status', 'active')
           .eq('is_published', true)
@@ -65,9 +65,10 @@ const ProductDetails: React.FC = () => {
           throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
         }
 
+        // Return simplified product object
         return {
           ...productData,
-          store_name: store.name
+          store_name: storeData.name
         };
       } catch (err: any) {
         console.error('Error fetching product:', err);
