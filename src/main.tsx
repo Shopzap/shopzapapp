@@ -18,6 +18,10 @@ import Orders from "./pages/Orders";
 import Analytics from "./pages/Analytics";
 import OrderTracking from "./pages/OrderTracking";
 import FixOrder from "./pages/FixOrder";
+import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
+import Verify from "./pages/Verify";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +86,22 @@ const router = createBrowserRouter([
       {
         path: "fix-order/:orderId",
         element: <FixOrder />,
+      },
+      {
+        path: "auth",
+        element: <Auth />,
+      },
+      {
+        path: "auth-callback",
+        element: <AuthCallback />,
+      },
+      {
+        path: "verify",
+        element: <Verify />,
+      },
+      {
+        path: "forgot-password",
+        element: <ForgotPassword />,
       },
       {
         path: "invoice/:orderId",
