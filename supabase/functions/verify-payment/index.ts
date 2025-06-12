@@ -134,6 +134,55 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(itemsError.message);
     }
 
+    // Get store info for email
+    const { data: store } = await supabaseClient
+      .from('stores')
+      .select('name, business_email')
+      .eq('id', orderData.storeId)
+      .single();
+
+    // Get product names for email
+    const { data: products } = await supabaseClient
+      .from('products')
+      .select('id, name, price')
+      .in('id', orderData.items.map(item => item.productId));
+
+    // Send order confirmation email
+    console.log('Sending email for online payment order:', newOrder.id);
+    try {
+      const emailProducts = orderData.items.map(item => {
+        const product = products?.find(p => p.id === item.productId);
+        return {
+          name: product?.name || 'Product',
+          quantity: item.quantity,
+          price: item.priceAtPurchase
+        };
+      });
+
+      const emailResponse = await fetch('https://fyftegalhvigtrieldan.supabase.co/functions/v1/send-order-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+        },
+        body: JSON.stringify({
+          buyerEmail: orderData.buyerEmail,
+          buyerName: orderData.buyerName,
+          orderId: newOrder.id,
+          products: emailProducts,
+          totalAmount: orderData.totalPrice,
+          storeName: store?.name || 'ShopZap Store',
+          sellerEmail: store?.business_email
+        })
+      });
+
+      const emailResult = await emailResponse.json();
+      console.log('Email sent successfully:', emailResult);
+    } catch (emailError) {
+      console.error('Failed to send email, but order created successfully:', emailError);
+      // Don't throw error - email failure shouldn't break order creation
+    }
+
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Order created successfully after ShopZap payment verification:`, newOrder.id);
 
     return new Response(JSON.stringify({ 

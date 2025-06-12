@@ -311,6 +311,37 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Send order confirmation email
+      console.log('Sending email for COD order:', data.id);
+      try {
+        const emailResponse = await fetch('https://fyftegalhvigtrieldan.supabase.co/functions/v1/send-order-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZnRlZ2FsaHZpZ3RyaWVsZGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcyODQyMjcsImV4cCI6MjA2Mjg2MDIyN30.5iVSqFm7E3c_EcmvGXlVw0rBlnxVY1rCR3y12-AXdAo`
+          },
+          body: JSON.stringify({
+            buyerEmail: customerInfo.email,
+            buyerName: customerInfo.fullName,
+            orderId: data.id,
+            products: cartItems.map(item => ({
+              name: item.product.name,
+              quantity: item.quantity,
+              price: Number(item.product.price)
+            })),
+            totalAmount: getTotalPrice(),
+            storeName: storeInfo?.name || 'ShopZap Store',
+            sellerEmail: storeInfo?.business_email
+          })
+        });
+
+        const emailResult = await emailResponse.json();
+        console.log('Email sent successfully:', emailResult);
+      } catch (emailError) {
+        console.error('Failed to send email, but order created successfully:', emailError);
+        // Don't throw error - email failure shouldn't break order creation
+      }
+
       return { orderId: data.id };
     } catch (error) {
       console.error('Error creating COD order:', error);
