@@ -11,7 +11,7 @@ import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const ProductDetails: React.FC = () => {
-  const { storeName, productSlug } = useParams<{ 
+  const { storeName: storeSlug, productSlug } = useParams<{ 
     storeName: string; 
     productSlug: string; 
   }>();
@@ -29,18 +29,21 @@ const ProductDetails: React.FC = () => {
 
   // Improved fetch function with proper store and product slug filtering
   const fetchProductData = async () => {
-    if (!storeName || !productSlug) {
-      throw new Error('Missing store name or product slug');
+    if (!storeSlug || !productSlug) {
+      throw new Error('Missing store slug or product slug');
     }
 
     try {
-      console.log('Fetching product:', { storeName, productSlug });
+      console.log('Fetching product:', { storeSlug, productSlug });
 
-      // First, get the store by name, slug, or username
+      // Normalize the store slug to lowercase for consistent matching
+      const normalizedStoreSlug = storeSlug.toLowerCase().trim();
+
+      // First, get the store by slug (primary), then fallback to username or name
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id, name, slug')
-        .or(`slug.eq.${storeName},username.eq.${storeName},name.ilike.${storeName}`)
+        .or(`slug.eq.${normalizedStoreSlug},username.eq.${normalizedStoreSlug},name.ilike.${storeSlug}`)
         .maybeSingle();
 
       if (storeError) {
@@ -49,8 +52,8 @@ const ProductDetails: React.FC = () => {
       }
 
       if (!storeData) {
-        console.error('Store not found:', storeName);
-        throw new Error(`Store "${storeName}" not found`);
+        console.error('Store not found:', storeSlug);
+        throw new Error(`Store "${storeSlug}" not found`);
       }
 
       console.log('Store found:', storeData);
@@ -87,7 +90,7 @@ const ProductDetails: React.FC = () => {
 
       if (!productData) {
         console.error('Product not found:', { productSlug, storeId: storeData.id });
-        throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
+        throw new Error(`Product "${productSlug}" not found in store "${storeSlug}"`);
       }
 
       console.log('Product found:', productData);
@@ -106,9 +109,9 @@ const ProductDetails: React.FC = () => {
 
   // Use query with proper error handling
   const { data: product, isLoading, error } = useQuery({
-    queryKey: ['product', storeName, productSlug],
+    queryKey: ['product', storeSlug, productSlug],
     queryFn: fetchProductData,
-    enabled: !!storeName && !!productSlug,
+    enabled: !!storeSlug && !!productSlug,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -140,8 +143,8 @@ const ProductDetails: React.FC = () => {
 
   // Handle back navigation
   const handleBack = () => {
-    if (storeName) {
-      navigate(`/store/${storeName}`);
+    if (storeSlug) {
+      navigate(`/store/${storeSlug}`);
     } else {
       navigate('/');
     }
@@ -149,10 +152,10 @@ const ProductDetails: React.FC = () => {
 
   // Redirect if missing params
   useEffect(() => {
-    if (!storeName || !productSlug) {
+    if (!storeSlug || !productSlug) {
       navigate('/', { replace: true });
     }
-  }, [storeName, productSlug, navigate]);
+  }, [storeSlug, productSlug, navigate]);
 
   // Show skeleton loading
   if (shouldShowLoading) {
@@ -164,7 +167,7 @@ const ProductDetails: React.FC = () => {
     return (
       <ProductNotFound
         productName={productSlug}
-        storeName={storeName}
+        storeName={storeSlug}
         onRetry={canRetry ? retry : undefined}
       />
     );
