@@ -136,6 +136,58 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Order created successfully after ShopZap payment verification:`, newOrder.id);
 
+    // Get store information for email
+    const { data: storeData } = await supabaseClient
+      .from('stores')
+      .select('name, business_email, user_id')
+      .eq('id', orderData.storeId)
+      .single();
+
+    // Get product information for email
+    const { data: productData } = await supabaseClient
+      .from('products')
+      .select('id, name, price')
+      .in('id', orderData.items.map(item => item.productId));
+
+    // Prepare email data
+    if (orderData.buyerEmail && storeData) {
+      console.log('sending email');
+      
+      const emailProducts = orderData.items.map(item => {
+        const product = productData?.find(p => p.id === item.productId);
+        return {
+          name: product?.name || 'Product',
+          quantity: item.quantity,
+          price: item.priceAtPurchase
+        };
+      });
+
+      try {
+        // Send order confirmation email
+        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-order-email', {
+          body: {
+            buyerEmail: orderData.buyerEmail,
+            buyerName: orderData.buyerName,
+            orderId: newOrder.id,
+            products: emailProducts,
+            totalAmount: orderData.totalPrice,
+            storeName: storeData.name,
+            sellerEmail: storeData.business_email
+          }
+        });
+
+        if (emailError) {
+          console.error('Failed to send order confirmation email:', emailError);
+          // Don't fail the order creation due to email issues
+        } else {
+          console.log('Order confirmation email sent successfully:', emailData);
+        }
+      } catch (emailError) {
+        console.error('Error sending order confirmation email:', emailError);
+        // Don't fail the order creation due to email issues
+      }
+    }
+
     return new Response(JSON.stringify({ 
       success: true,
       message: `Payment verified and order created successfully with ShopZap.io account${isTestMode ? ' (TEST MODE)' : ''}`,

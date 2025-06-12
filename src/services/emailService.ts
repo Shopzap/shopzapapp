@@ -28,18 +28,22 @@ export const emailService = {
       
       const { data, error } = await supabase.functions.invoke('send-order-email', {
         body: {
-          orderId,
-          eventType,
           buyerEmail,
-          sellerEmail,
-          orderData
+          buyerName: orderData.buyerName,
+          orderId,
+          products: orderData.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          totalAmount: orderData.totalPrice,
+          storeName: orderData.storeName,
+          sellerEmail
         }
       });
 
       if (error) {
         console.error('Email service error:', error);
-        // Don't throw error for email failures - just log them
-        // This prevents email issues from breaking the order flow
         return { success: false, error: error.message };
       }
 
@@ -47,7 +51,6 @@ export const emailService = {
       return { success: true, data };
     } catch (error) {
       console.error('Failed to send email via Resend:', error);
-      // Don't throw error for email failures - just log them
       return { success: false, error: error.message };
     }
   },

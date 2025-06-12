@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useCart } from '@/hooks/useCart';
@@ -14,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import { CreditCard, Truck, ArrowLeft, ShoppingCart, Loader2, AlertCircle } from 'lucide-react';
 import { paymentConfig } from '@/config/payment';
+import { emailService } from '@/services/emailService';
 
 // Add Razorpay to window type
 declare global {
@@ -148,6 +148,8 @@ const Checkout = () => {
 
   const createOrderAfterPayment = async (paymentData: any) => {
     try {
+      console.log('sending email');
+      
       // Create order after successful payment
       const orderData = {
         storeId: cartItems[0].product.store_id,
@@ -156,12 +158,6 @@ const Checkout = () => {
         buyerPhone: customerInfo.phone,
         buyerAddress: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
         totalPrice: getTotalPrice(),
-        paymentMethod: 'online',
-        paymentStatus: 'paid',
-        paymentGateway: 'razorpay',
-        razorpayPaymentId: paymentData.razorpay_payment_id,
-        razorpayOrderId: paymentData.razorpay_order_id,
-        razorpaySignature: paymentData.razorpay_signature,
         items: cartItems.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -185,6 +181,77 @@ const Checkout = () => {
       return data;
     } catch (error) {
       console.error('Error creating order after payment:', error);
+      throw error;
+    }
+  };
+
+  const createCODOrder = async () => {
+    try {
+      console.log('sending email');
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .insert({
+          store_id: cartItems[0].product.store_id,
+          buyer_name: customerInfo.fullName,
+          buyer_email: customerInfo.email,
+          buyer_phone: customerInfo.phone,
+          buyer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
+          total_price: getTotalPrice(),
+          payment_method: 'cod',
+          payment_status: 'pending',
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: data.id,
+        product_id: item.product.id,
+        quantity: item.quantity,
+        price_at_purchase: Number(item.product.price)
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Send order confirmation email for COD orders
+      if (customerInfo.email && storeInfo) {
+        try {
+          const emailProducts = cartItems.map(item => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: Number(item.product.price)
+          }));
+
+          await emailService.sendOrderPlacedEmail(
+            data.id,
+            customerInfo.email,
+            {
+              buyerName: customerInfo.fullName,
+              storeName: storeInfo.name,
+              items: emailProducts,
+              totalPrice: getTotalPrice()
+            },
+            storeInfo.business_email
+          );
+
+          console.log('COD order confirmation email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send COD order confirmation email:', emailError);
+          // Don't fail the order creation due to email issues
+        }
+      }
+
+      return { orderId: data.id };
+    } catch (error) {
+      console.error('Error creating COD order:', error);
       throw error;
     }
   };
@@ -274,47 +341,6 @@ const Checkout = () => {
       // Redirect to payment failed page
       window.location.href = `/payment-failed?reason=${encodeURIComponent(errorMessage)}`;
       setIsProcessing(false);
-    }
-  };
-
-  const createCODOrder = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert({
-          store_id: cartItems[0].product.store_id,
-          buyer_name: customerInfo.fullName,
-          buyer_email: customerInfo.email,
-          buyer_phone: customerInfo.phone,
-          buyer_address: `${customerInfo.address}, ${customerInfo.city}, ${customerInfo.state} ${customerInfo.zipCode}`,
-          total_price: getTotalPrice(),
-          payment_method: 'cod',
-          payment_status: 'pending',
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Create order items
-      const orderItems = cartItems.map(item => ({
-        order_id: data.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        price_at_purchase: Number(item.product.price)
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      return { orderId: data.id };
-    } catch (error) {
-      console.error('Error creating COD order:', error);
-      throw error;
     }
   };
 
