@@ -10,6 +10,19 @@ import { useDelayedLoading } from '@/hooks/useDelayedLoading';
 import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
+interface ProductData {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  images: string[] | null;
+  status: string;
+  is_published: boolean;
+  store_id: string;
+  store_name: string;
+}
+
 const ProductDetails: React.FC = () => {
   const { storeName, productSlug } = useParams<{ 
     storeName: string; 
@@ -28,9 +41,9 @@ const ProductDetails: React.FC = () => {
   });
 
   // Fetch product data with simplified query structure
-  const { data: product, isLoading, error } = useQuery({
+  const { data: product, isLoading, error } = useQuery<ProductData>({
     queryKey: ['product', storeName, productSlug],
-    queryFn: async () => {
+    queryFn: async (): Promise<ProductData> => {
       if (!storeName || !productSlug) {
         throw new Error('Missing store name or product slug');
       }
@@ -47,10 +60,10 @@ const ProductDetails: React.FC = () => {
           throw new Error(`Store "${storeName}" not found`);
         }
 
-        // Then get the product
+        // Then get the product with explicit column selection
         const { data: productData, error: productError } = await supabase
           .from('products')
-          .select('*')
+          .select('id, name, description, price, image_url, images, status, is_published, store_id')
           .eq('store_id', storeData.id)
           .eq('slug', productSlug)
           .eq('status', 'active')
@@ -67,7 +80,15 @@ const ProductDetails: React.FC = () => {
 
         // Return simplified product object
         return {
-          ...productData,
+          id: productData.id,
+          name: productData.name,
+          description: productData.description,
+          price: productData.price,
+          image_url: productData.image_url,
+          images: productData.images,
+          status: productData.status,
+          is_published: productData.is_published,
+          store_id: productData.store_id,
           store_name: storeData.name
         };
       } catch (err: any) {
