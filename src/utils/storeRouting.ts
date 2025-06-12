@@ -4,34 +4,18 @@ import { supabase } from '@/integrations/supabase/client';
 interface StoreRouteData {
   store: any;
   redirectNeeded: boolean;
-  finalSlug: string;
+  finalUsername: string;
 }
 
 /**
- * Resolves store routing by checking slug, username, and name fields
+ * Resolves store routing by checking username and name fields
  * Returns store data and whether a redirect is needed
  */
 export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteData> => {
   const normalizedIdentifier = identifier.toLowerCase();
   
   try {
-    // First, try to find by slug (new preferred method)
-    let { data: slugData, error: slugError } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('slug', normalizedIdentifier)
-      .single();
-      
-    if (slugData && !slugError) {
-      console.log('Store found by slug', slugData);
-      return { 
-        store: slugData, 
-        redirectNeeded: false, 
-        finalSlug: slugData.slug 
-      };
-    }
-    
-    // If not found by slug, try username (legacy support)
+    // First, try to find by username (preferred method)
     let { data: usernameData, error: usernameError } = await supabase
       .from('stores')
       .select('*')
@@ -39,15 +23,15 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
       .single();
       
     if (usernameData && !usernameError) {
-      console.log('Store found by username, redirect needed', usernameData);
+      console.log('Store found by username', usernameData);
       return { 
         store: usernameData, 
-        redirectNeeded: true, 
-        finalSlug: usernameData.slug || usernameData.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')
+        redirectNeeded: false, 
+        finalUsername: usernameData.username 
       };
     }
     
-    // Finally, try name field as fallback
+    // If not found by username, try name field as fallback
     let { data: nameData, error: nameError } = await supabase
       .from('stores')
       .select('*')
@@ -55,11 +39,11 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
       .single();
       
     if (nameData && !nameError) {
-      console.log('Store found by name', nameData);
+      console.log('Store found by name, redirect needed', nameData);
       return { 
         store: nameData, 
-        redirectNeeded: false, 
-        finalSlug: nameData.slug || nameData.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')
+        redirectNeeded: true, 
+        finalUsername: nameData.username || nameData.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '')
       };
     }
     
@@ -71,11 +55,11 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
 };
 
 /**
- * Generates the correct store URL based on the store's slug
+ * Generates the correct store URL based on the store's username
  */
 export const getStoreUrl = (store: any, path: string = '', includeOrigin: boolean = true): string => {
-  const slug = store.slug || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-');
-  const storeUrl = `/store/${slug}${path}`;
+  const username = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
+  const storeUrl = `/store/${username}${path}`;
   
   if (includeOrigin) {
     return `${window.location.origin}${storeUrl}`;
@@ -87,24 +71,24 @@ export const getStoreUrl = (store: any, path: string = '', includeOrigin: boolea
 /**
  * Checks if the current URL matches the preferred store URL format
  */
-export const shouldRedirectToSlug = (currentIdentifier: string, store: any): boolean => {
-  const preferredSlug = store.slug || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-');
-  return currentIdentifier.toLowerCase() !== preferredSlug.toLowerCase();
+export const shouldRedirectToUsername = (currentIdentifier: string, store: any): boolean => {
+  const preferredUsername = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
+  return currentIdentifier.toLowerCase() !== preferredUsername.toLowerCase();
 };
 
 /**
  * Generates a redirect path for legacy URLs
  */
 export const generateRedirectPath = (currentPath: string, store: any): string => {
-  const preferredSlug = store.slug || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-');
+  const preferredUsername = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
   
   // Extract the current store identifier from the path
   const pathParts = currentPath.split('/');
   const storeIndex = pathParts.findIndex(part => part === 'store');
   
   if (storeIndex !== -1 && pathParts[storeIndex + 1]) {
-    // Replace the store identifier with the preferred slug
-    pathParts[storeIndex + 1] = preferredSlug;
+    // Replace the store identifier with the preferred username
+    pathParts[storeIndex + 1] = preferredUsername;
     return pathParts.join('/');
   }
   
@@ -118,14 +102,14 @@ export const preserveStoreContext = (store: any, currentPath: string): void => {
   const storeContext = {
     storeId: store.id,
     storeName: store.name,
-    storeSlug: store.slug,
+    storeUsername: store.username,
     originalPath: currentPath,
     timestamp: Date.now()
   };
   
   localStorage.setItem('shopzap_store_context', JSON.stringify(storeContext));
-  localStorage.setItem('currentStore', store.slug || store.name.toLowerCase());
-  localStorage.setItem('lastVisitedStore', store.slug || store.name.toLowerCase());
+  localStorage.setItem('currentStore', store.username || store.name.toLowerCase());
+  localStorage.setItem('lastVisitedStore', store.username || store.name.toLowerCase());
 };
 
 /**
@@ -139,4 +123,46 @@ export const getStoredStoreContext = (): any => {
     console.error('Error parsing stored store context:', error);
     return null;
   }
+};
+
+/**
+ * Extract store username from hostname (for subdomain support)
+ */
+export const extractUsernameFromHostname = (hostname: string): string | null => {
+  // Check if it's a subdomain of shopzap.io
+  if (hostname.endsWith('.shopzap.io') && hostname !== 'shopzap.io') {
+    const subdomain = hostname.replace('.shopzap.io', '');
+    return subdomain;
+  }
+  return null;
+};
+
+/**
+ * Determine if we're on a subdomain
+ */
+export const isSubdomain = (): boolean => {
+  const hostname = window.location.hostname;
+  return hostname.endsWith('.shopzap.io') && hostname !== 'shopzap.io';
+};
+
+/**
+ * Get the current store context from URL or subdomain
+ */
+export const getCurrentStoreContext = (): { username: string | null; isSubdomain: boolean } => {
+  const hostname = window.location.hostname;
+  const pathname = window.location.pathname;
+  
+  // Check for subdomain first
+  const subdomainUsername = extractUsernameFromHostname(hostname);
+  if (subdomainUsername) {
+    return { username: subdomainUsername, isSubdomain: true };
+  }
+  
+  // Check for path-based routing
+  const pathMatch = pathname.match(/^\/store\/([^\/]+)/);
+  if (pathMatch) {
+    return { username: pathMatch[1], isSubdomain: false };
+  }
+  
+  return { username: null, isSubdomain: false };
 };

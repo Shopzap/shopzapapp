@@ -25,12 +25,12 @@ const StoreBuilder = () => {
     const name = e.target.value;
     setStoreName(name);
     
-    // Generate clean slug from store name
-    const slug = name.toLowerCase()
+    // Generate clean username from store name (lowercase, no spaces, no special chars)
+    const username = name.toLowerCase()
       .replace(/[^\w\s]/gi, '')
-      .replace(/\s+/g, '-');
+      .replace(/\s+/g, '');
     
-    setStoreUsername(slug);
+    setStoreUsername(username);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,21 +50,34 @@ const StoreBuilder = () => {
       
       const userId = user.id;
       
-      // Clean store name for the URL
-      let cleanStoreName = storeName.trim().toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '-');
+      // Clean store name for display
+      const cleanStoreName = storeName.trim();
       
-      // Check if store name already exists
+      // Clean username for URL (lowercase, no spaces, no special chars)
+      const cleanUsername = storeUsername.toLowerCase()
+        .replace(/[^\w]/gi, '')
+        .trim();
+      
+      if (!cleanUsername) {
+        toast({
+          title: "Invalid username",
+          description: "Please enter a valid store name to generate username",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check if username already exists
       const { data: existingStore, error: checkError } = await supabase
         .from('stores')
-        .select('name')
-        .eq('name', cleanStoreName)
+        .select('username')
+        .eq('username', cleanUsername)
         .single();
       
       if (existingStore) {
         toast({
-          title: "Store name already taken",
+          title: "Username already taken",
           description: "Please choose a different store name",
           variant: "destructive"
         });
@@ -72,14 +85,13 @@ const StoreBuilder = () => {
         return;
       }
       
-      // Create store with the clean name
+      // Create store with the clean name and username
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
             name: cleanStoreName,
-            username: storeUsername,
-            slug: cleanStoreName, // Add the required slug field
+            username: cleanUsername,
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -102,7 +114,7 @@ const StoreBuilder = () => {
       
       toast({
         title: "Store created successfully!",
-        description: `Your store is now available at shopzap.io/store/${cleanStoreName}`,
+        description: `Your store is now available at shopzap.io/store/${cleanUsername}`,
       });
       
       // Redirect to dashboard
@@ -175,14 +187,14 @@ const StoreBuilder = () => {
                     <Input
                       id="storeUrl"
                       className="rounded-l-none"
-                      placeholder="your-store-name" 
+                      placeholder="your-store-username" 
                       value={storeUsername}
                       onChange={(e) => setStoreUsername(e.target.value)}
                       required
                     />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Choose a unique name for your store URL
+                    Choose a unique username for your store URL (automatically generated from store name)
                   </p>
                 </div>
                 

@@ -54,19 +54,7 @@ const Storefront: React.FC = () => {
       console.log('Storefront: Fetching store data for identifier', normalizedStoreName);
       
       try {
-        // First, try to find by slug (new preferred method)
-        let { data: slugData, error: slugError } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('slug', normalizedStoreName)
-          .maybeSingle();
-          
-        if (slugData && !slugError) {
-          console.log('Storefront: Store found by slug', slugData);
-          return { store: slugData, redirectNeeded: false };
-        }
-        
-        // If not found by slug, try username (legacy support)
+        // First, try to find by username (preferred method)
         let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
@@ -78,7 +66,7 @@ const Storefront: React.FC = () => {
           return { store: usernameData, redirectNeeded: false };
         }
         
-        // Finally, try name field as fallback
+        // If not found by username, try name field as fallback
         let { data: nameData, error: nameError } = await supabase
           .from('stores')
           .select('*')

@@ -22,18 +22,18 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   const location = useLocation();
   const [isWishlisted, setIsWishlisted] = useState(false);
   
-  // Extract store slug from current path
-  const storeSlug = location.pathname.split('/store/')[1]?.split('/')[0];
+  // Extract store username from current path
+  const storeUsername = location.pathname.split('/store/')[1]?.split('/')[0];
   
   // Use the product slug directly from the database
   const productSlug = product.slug;
   
   const handleViewDetails = () => {
-    if (storeSlug && productSlug) {
-      console.log('Navigating to product:', { storeSlug, productSlug });
-      navigate(`/store/${storeSlug}/product/${productSlug}`);
+    if (storeUsername && productSlug) {
+      console.log('Navigating to product:', { storeUsername, productSlug });
+      navigate(`/store/${storeUsername}/product/${productSlug}`);
     } else {
-      console.error('Missing store slug or product slug:', { storeSlug, productSlug });
+      console.error('Missing store username or product slug:', { storeUsername, productSlug });
       toast.error('Unable to navigate to product details');
     }
   };
@@ -46,7 +46,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const productUrl = `${window.location.origin}/store/${storeSlug}/product/${productSlug}`;
+    const productUrl = `${window.location.origin}/store/${storeUsername}/product/${productSlug}`;
     
     if (navigator.share) {
       try {
