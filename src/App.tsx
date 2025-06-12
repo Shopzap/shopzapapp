@@ -59,7 +59,14 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Store pages wrapper with CartProvider
 const StorePageWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -80,6 +87,14 @@ const CheckoutWrapper = () => (
   <CartProvider>
     <Checkout />
   </CartProvider>
+);
+
+// Loading component
+const LoadingFallback = ({ text = "Loading..." }: { text?: string }) => (
+  <div className="min-h-screen flex flex-col items-center justify-center">
+    <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div>
+    <p className="mt-4 text-muted-foreground">{text}</p>
+  </div>
 );
 
 // Create a separate App component wrapper to ensure proper provider nesting
@@ -120,13 +135,14 @@ const AppContent = () => (
     <Route path="/thank-you" element={<ThankYou />} />
     <Route path="/order" element={<OrderRedirect />} />
     <Route path="/track-order" element={<OrderTracking />} />
+    <Route path="/track-order/:orderId" element={<OrderTracking />} />
     {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */}
     
     {/* Store routes wrapped with CartProvider */}
     <Route path="/store/:storeName" element={
       <StorePageWrapper>
         <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+          <Suspense fallback={<LoadingFallback text="Loading store..." />}>
             <Storefront />
           </Suspense>
         </ErrorBoundary>
@@ -135,7 +151,7 @@ const AppContent = () => (
     <Route path="/store/:storeName/product/:productSlug" element={
       <StorePageWrapper>
         <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+          <Suspense fallback={<LoadingFallback text="Loading product..." />}>
             <ProductDetails />
           </Suspense>
         </ErrorBoundary>
@@ -144,7 +160,7 @@ const AppContent = () => (
     <Route path="/store/:storeName/cart" element={
       <StorePageWrapper>
         <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading cart...</p></div>}>
+          <Suspense fallback={<LoadingFallback text="Loading cart..." />}>
             <Cart />
           </Suspense>
         </ErrorBoundary>
@@ -153,7 +169,7 @@ const AppContent = () => (
     <Route path="/store/:storeName/checkout" element={
       <StorePageWrapper>
         <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading checkout...</p></div>}>
+          <Suspense fallback={<LoadingFallback text="Loading checkout..." />}>
             <Checkout />
           </Suspense>
         </ErrorBoundary>
@@ -199,22 +215,24 @@ const AppContent = () => (
 );
 
 // Main App component with properly nested providers
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <StoreProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-            <Toaster />
-            <Sonner />
-          </StoreProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <StoreProvider>
+              <ErrorBoundary>
+                <AppContent />
+              </ErrorBoundary>
+              <Toaster />
+              <Sonner />
+            </StoreProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
