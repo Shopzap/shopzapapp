@@ -490,6 +490,7 @@ export type Database = {
           name: string
           payment_method: string | null
           price: number
+          slug: string
           status: string
           store_id: string
           updated_at: string | null
@@ -505,6 +506,7 @@ export type Database = {
           name: string
           payment_method?: string | null
           price?: number
+          slug: string
           status?: string
           store_id: string
           updated_at?: string | null
@@ -520,6 +522,7 @@ export type Database = {
           name?: string
           payment_method?: string | null
           price?: number
+          slug?: string
           status?: string
           store_id?: string
           updated_at?: string | null

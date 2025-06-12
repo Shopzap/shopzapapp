@@ -10,19 +10,6 @@ import { useDelayedLoading } from '@/hooks/useDelayedLoading';
 import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-interface ProductData {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  images: string[] | null;
-  status: string;
-  is_published: boolean;
-  store_id: string;
-  store_name: string;
-}
-
 const ProductDetails: React.FC = () => {
   const { storeName, productSlug } = useParams<{ 
     storeName: string; 
@@ -40,8 +27,8 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Simplified fetch function with explicit typing
-  const fetchProductData = async (): Promise<ProductData> => {
+  // Simplified fetch function
+  const fetchProductData = async () => {
     if (!storeName || !productSlug) {
       throw new Error('Missing store name or product slug');
     }
@@ -66,7 +53,7 @@ const ProductDetails: React.FC = () => {
       // Get product data
       const { data: productData, error: productError } = await supabase
         .from('products')
-        .select('id, name, description, price, image_url, images, status, is_published, store_id')
+        .select('id, name, description, price, image_url, images, status, is_published, store_id, slug')
         .eq('store_id', storeData.id)
         .eq('slug', productSlug)
         .eq('status', 'active')
@@ -84,15 +71,7 @@ const ProductDetails: React.FC = () => {
 
       // Return the combined data
       return {
-        id: productData.id,
-        name: productData.name,
-        description: productData.description,
-        price: productData.price,
-        image_url: productData.image_url,
-        images: productData.images,
-        status: productData.status,
-        is_published: productData.is_published,
-        store_id: productData.store_id,
+        ...productData,
         store_name: storeData.name
       };
     } catch (err: any) {
@@ -102,7 +81,7 @@ const ProductDetails: React.FC = () => {
     }
   };
 
-  // Use simplified query
+  // Use simplified query without complex typing
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', storeName, productSlug],
     queryFn: fetchProductData,
