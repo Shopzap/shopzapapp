@@ -86,6 +86,34 @@ const ProductDetails: React.FC = () => {
     timeout: 8000
   });
 
+  // Handle Buy Now action
+  const handleBuyNow = () => {
+    if (product) {
+      const orderItem = {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        image: product.image_url || 'https://placehold.co/80x80'
+      };
+      
+      navigate('/checkout', { 
+        state: { 
+          orderItems: [orderItem]
+        } 
+      });
+    }
+  };
+
+  // Handle back navigation
+  const handleBack = () => {
+    if (storeName) {
+      navigate(`/store/${storeName}`);
+    } else {
+      navigate('/');
+    }
+  };
+
   // Redirect if missing params
   useEffect(() => {
     if (!storeName || !productSlug) {
@@ -113,7 +141,11 @@ const ProductDetails: React.FC = () => {
   if (product) {
     return (
       <ErrorBoundary>
-        <ProductDetailsContent product={product} />
+        <ProductDetailsContent 
+          product={product} 
+          handleBuyNow={handleBuyNow}
+          handleBack={handleBack}
+        />
       </ErrorBoundary>
     );
   }
