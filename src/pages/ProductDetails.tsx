@@ -50,18 +50,20 @@ const ProductDetails: React.FC = () => {
 
       try {
         // First get the store
-        const { data: storeData, error: storeError } = await supabase
+        const storeQuery = await supabase
           .from('stores')
           .select('id, name')
           .or(`slug.eq.${storeName},username.eq.${storeName},name.eq.${storeName}`)
           .maybeSingle();
 
-        if (storeError || !storeData) {
+        if (storeQuery.error || !storeQuery.data) {
           throw new Error(`Store "${storeName}" not found`);
         }
 
+        const storeData = storeQuery.data;
+
         // Then get the product with explicit column selection
-        const { data: productData, error: productError } = await supabase
+        const productQuery = await supabase
           .from('products')
           .select('id, name, description, price, image_url, images, status, is_published, store_id')
           .eq('store_id', storeData.id)
@@ -70,13 +72,15 @@ const ProductDetails: React.FC = () => {
           .eq('is_published', true)
           .maybeSingle();
 
-        if (productError) {
-          throw productError;
+        if (productQuery.error) {
+          throw productQuery.error;
         }
 
-        if (!productData) {
+        if (!productQuery.data) {
           throw new Error(`Product "${productSlug}" not found in store "${storeName}"`);
         }
+
+        const productData = productQuery.data;
 
         // Return simplified product object
         return {
