@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createStoreUsername } from '@/utils/slugHelpers';
 
 const StoreBuilder = () => {
   const { toast } = useToast();
@@ -25,11 +26,8 @@ const StoreBuilder = () => {
     const name = e.target.value;
     setStoreName(name);
     
-    // Generate clean username from store name (lowercase, no spaces, no special chars)
-    const username = name.toLowerCase()
-      .replace(/[^\w\s]/gi, '')
-      .replace(/\s+/g, '');
-    
+    // Generate clean username from store name
+    const username = createStoreUsername(name);
     setStoreUsername(username);
   };
   
@@ -53,10 +51,8 @@ const StoreBuilder = () => {
       // Clean store name for display
       const cleanStoreName = storeName.trim();
       
-      // Clean username for URL (lowercase, no spaces, no special chars)
-      const cleanUsername = storeUsername.toLowerCase()
-        .replace(/[^\w]/gi, '')
-        .trim();
+      // Clean username for URL (no suffixes)
+      const cleanUsername = createStoreUsername(cleanStoreName);
       
       if (!cleanUsername) {
         toast({

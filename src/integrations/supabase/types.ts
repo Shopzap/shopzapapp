@@ -637,6 +637,10 @@ export type Database = {
         Args: { username: string }
         Returns: boolean
       }
+      generate_slug: {
+        Args: { input_text: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

@@ -133,7 +133,7 @@ const ProductDetails: React.FC = () => {
         image: product.image_url || 'https://placehold.co/80x80'
       };
       
-      navigate('/checkout', { 
+      navigate(`/store/${storeUsername}/checkout`, { 
         state: { 
           orderItems: [orderItem]
         } 

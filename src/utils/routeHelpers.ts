@@ -1,5 +1,5 @@
 
-// Utility functions for the new path-based routing system
+// Utility functions for the new clean URL routing system
 
 // Reserved paths that should not be treated as store slugs
 export const RESERVED_PATHS = [
@@ -39,11 +39,11 @@ export const slugToProductName = (slug: string): string => {
  * Generate store-specific URLs
  */
 export const generateStoreUrls = (storeSlug: string) => ({
-  storefront: `/${storeSlug}`,
-  about: `/${storeSlug}/about`,
-  cart: `/${storeSlug}/cart`,
-  checkout: `/${storeSlug}/checkout`,
-  product: (productSlug: string) => `/${storeSlug}/${productSlug}`,
+  storefront: `/store/${storeSlug}`,
+  about: `/store/${storeSlug}/about`,
+  cart: `/store/${storeSlug}/cart`,
+  checkout: `/store/${storeSlug}/checkout`,
+  product: (productSlug: string) => `/store/${storeSlug}/product/${productSlug}`,
 });
 
 /**
@@ -54,7 +54,7 @@ export const isStoreRoute = (pathname: string): boolean => {
   if (segments.length === 0) return false;
   
   const firstSegment = segments[0];
-  return !isReservedPath(firstSegment);
+  return firstSegment === 'store';
 };
 
 /**
@@ -62,8 +62,17 @@ export const isStoreRoute = (pathname: string): boolean => {
  */
 export const extractStoreSlug = (pathname: string): string | null => {
   const segments = pathname.split('/').filter(Boolean);
-  if (segments.length === 0) return null;
+  if (segments.length < 2 || segments[0] !== 'store') return null;
   
-  const firstSegment = segments[0];
-  return isReservedPath(firstSegment) ? null : firstSegment;
+  return segments[1];
+};
+
+/**
+ * Extract product slug from pathname
+ */
+export const extractProductSlug = (pathname: string): string | null => {
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length < 4 || segments[0] !== 'store' || segments[2] !== 'product') return null;
+  
+  return segments[3];
 };

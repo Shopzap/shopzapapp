@@ -11,6 +11,7 @@ import { Loader, Upload } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
+import { createStoreUsername } from '@/utils/slugHelpers';
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -90,14 +91,25 @@ const Onboarding = () => {
         storeLogoUrl = urlData.publicUrl;
       }
       
-      // Step 2: Create a unique username from store name
-      const storeUsername = storeName.toLowerCase()
-        .replace(/[^\w\s]/gi, '')
-        .replace(/\s+/g, '');
+      // Step 2: Create a clean username from store name
+      const storeUsername = createStoreUsername(storeName);
       
-      // Add a unique suffix to ensure uniqueness
-      const uniqueSuffix = `-${uuidv4().substring(0, 6)}`;
-      const uniqueUsername = `${storeUsername}${uniqueSuffix}`;
+      // Check if username already exists
+      const { data: existingStore, error: checkError } = await supabase
+        .from('stores')
+        .select('username')
+        .eq('username', storeUsername)
+        .maybeSingle();
+      
+      if (existingStore) {
+        toast({
+          title: "Store name already taken",
+          description: "Please choose a different store name",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
       
       // Step 3: Save store data to Supabase
       const { data: store, error: storeError } = await supabase
@@ -106,7 +118,7 @@ const Onboarding = () => {
           {
             name: storeName,
             logo_image: storeLogoUrl,
-            username: uniqueUsername,
+            username: storeUsername,
             user_id: user.id,
             business_email: user.email || '',
             phone_number: '', // This is a required field in the stores table

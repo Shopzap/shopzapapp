@@ -25,7 +25,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   // Extract store username from current path
   const storeUsername = location.pathname.split('/store/')[1]?.split('/')[0];
   
-  // Use the product slug directly from the database
+  // Use the product slug from the database
   const productSlug = product.slug;
   
   const handleViewDetails = () => {
