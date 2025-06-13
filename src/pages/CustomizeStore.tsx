@@ -55,12 +55,20 @@ const CustomizeStore = () => {
         }
         
         setStoreData(storeData);
+        
+        // Safely extract theme data with proper type checking
+        let primaryColor = '#6c5ce7';
+        if (storeData.theme && typeof storeData.theme === 'object' && storeData.theme !== null) {
+          const theme = storeData.theme as { primary_color?: string };
+          primaryColor = theme.primary_color || '#6c5ce7';
+        }
+        
         setFormData({
           name: storeData.name || '',
           description: storeData.description || '',
           banner_image: storeData.banner_image || '',
           logo_image: storeData.logo_image || '',
-          primary_color: (storeData.theme && storeData.theme.primary_color) ? storeData.theme.primary_color : '#6c5ce7'
+          primary_color: primaryColor
         });
         
       } catch (error) {
@@ -83,6 +91,11 @@ const CustomizeStore = () => {
     
     setIsSaving(true);
     try {
+      // Prepare the theme object
+      const existingTheme = (storeData.theme && typeof storeData.theme === 'object' && storeData.theme !== null) 
+        ? storeData.theme as { [key: string]: any }
+        : {};
+
       const { error } = await supabase
         .from('stores')
         .update({
@@ -91,7 +104,7 @@ const CustomizeStore = () => {
           banner_image: formData.banner_image,
           logo_image: formData.logo_image,
           theme: {
-            ...storeData.theme,
+            ...existingTheme,
             primary_color: formData.primary_color
           }
         })
