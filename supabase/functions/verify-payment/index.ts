@@ -49,7 +49,6 @@ const handler = async (req: Request): Promise<Response> => {
     const razorpaySecret = Deno.env.get('RAZORPAY_SECRET_KEY')?.trim();
     
     console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret available: ${razorpaySecret ? 'YES' : 'NO'}`);
-    console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Secret length: ${razorpaySecret?.length || 0}`);
     
     if (!razorpaySecret) {
       console.error('ShopZap.io Razorpay secret key not configured');
@@ -115,6 +114,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(orderError.message);
     }
 
+    console.log('Order created successfully:', newOrder);
+
     // Create order items
     const orderItems = orderData.items.map(item => ({
       order_id: newOrder.id,
@@ -151,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Prepare email data
     if (orderData.buyerEmail && storeData) {
-      console.log('sending email');
+      console.log('Sending order confirmation emails...');
       
       const emailProducts = orderData.items.map(item => {
         const product = productData?.find(p => p.id === item.productId);
@@ -163,7 +164,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       try {
-        // Send order confirmation email
+        // Send order confirmation email to both buyer and seller
         const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-order-email', {
           body: {
             buyerEmail: orderData.buyerEmail,
@@ -180,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
           console.error('Failed to send order confirmation email:', emailError);
           // Don't fail the order creation due to email issues
         } else {
-          console.log('Order confirmation email sent successfully:', emailData);
+          console.log('Order confirmation emails sent successfully:', emailData);
         }
       } catch (emailError) {
         console.error('Error sending order confirmation email:', emailError);
@@ -195,7 +196,9 @@ const handler = async (req: Request): Promise<Response> => {
       order: newOrder,
       testMode: isTestMode,
       testMessage: isTestMode ? 'This was a test payment using ShopZap.io Razorpay test environment' : undefined,
-      platform: 'ShopZap.io'
+      platform: 'ShopZap.io',
+      // Add redirect information
+      redirectUrl: `/thank-you?order_id=${newOrder.id}&payment_id=${razorpay_payment_id}`
     }), {
       status: 200,
       headers: {
