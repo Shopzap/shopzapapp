@@ -81,6 +81,16 @@ const ProductManager = () => {
     // Refresh products list
     window.location.reload();
   };
+
+  const handleProductDeleted = () => {
+    // Refresh products list
+    window.location.reload();
+  };
+
+  const handleProductUpdated = () => {
+    // Refresh products list
+    window.location.reload();
+  };
   
   if (isLoading) {
     return (
@@ -116,22 +126,23 @@ const ProductManager = () => {
             <CardTitle>Your Products</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProductGrid products={products} storeData={storeData} />
+            <ProductGrid 
+              products={products} 
+              isLoading={isLoading}
+              onDelete={handleProductDeleted}
+              onUpdate={handleProductUpdated}
+            />
           </CardContent>
         </Card>
 
         <AddProductModal 
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
           onProductAdded={handleProductAdded}
-          storeId={storeData?.id}
         />
 
         <CsvUploadModal
-          isOpen={showCsvModal}
+          open={showCsvModal}
           onClose={() => setShowCsvModal(false)}
-          onUploadComplete={handleProductAdded}
-          storeId={storeData?.id}
+          onProductsUploaded={handleProductAdded}
         />
       </div>
     </MainLayout>
