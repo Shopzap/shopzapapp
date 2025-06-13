@@ -25,8 +25,8 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   // Extract store username from current path
   const storeUsername = location.pathname.split('/store/')[1]?.split('/')[0];
   
-  // Use the product slug from the database
-  const productSlug = product.slug;
+  // Use the product slug from the database, with fallback to ID if slug is missing
+  const productSlug = product.slug || product.id;
   
   const handleViewDetails = () => {
     if (storeUsername && productSlug) {

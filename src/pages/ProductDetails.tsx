@@ -27,7 +27,7 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Improved fetch function with proper store and product slug filtering
+  // Improved fetch function with fallback for UUID-based slugs
   const fetchProductData = async () => {
     if (!storeUsername || !productSlug) {
       throw new Error('Missing store username or product slug');
@@ -58,8 +58,8 @@ const ProductDetails: React.FC = () => {
 
       console.log('Store found:', storeData);
 
-      // Then get the product by slug within that store
-      const { data: productData, error: productError } = await supabase
+      // First try to get the product by slug
+      let { data: productData, error: productError } = await supabase
         .from('products')
         .select(`
           id, 
@@ -82,6 +82,42 @@ const ProductDetails: React.FC = () => {
         .eq('status', 'active')
         .eq('is_published', true)
         .maybeSingle();
+
+      // If not found by slug and the productSlug looks like a UUID, try by ID as fallback
+      if (!productData && !productError && productSlug.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        console.log('Slug looks like UUID, trying to fetch by ID as fallback');
+        const fallbackResult = await supabase
+          .from('products')
+          .select(`
+            id, 
+            name, 
+            description, 
+            price, 
+            image_url, 
+            images, 
+            status, 
+            is_published, 
+            store_id, 
+            slug,
+            inventory_count,
+            payment_method,
+            created_at,
+            updated_at
+          `)
+          .eq('store_id', storeData.id)
+          .eq('id', productSlug)
+          .eq('status', 'active')
+          .eq('is_published', true)
+          .maybeSingle();
+
+        if (fallbackResult.data && !fallbackResult.error) {
+          // If found by UUID, redirect to the correct slug-based URL
+          const correctSlug = fallbackResult.data.slug;
+          console.log('Found product by UUID, redirecting to slug-based URL:', correctSlug);
+          navigate(`/store/${storeUsername}/product/${correctSlug}`, { replace: true });
+          return fallbackResult.data;
+        }
+      }
 
       if (productError) {
         console.error('Product query error:', productError);
