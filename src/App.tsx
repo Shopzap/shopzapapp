@@ -84,12 +84,20 @@ const App = () => (
                 <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/verify" element={<Verify />} />
 
-                {/* Dashboard routes */}
+                {/* Dashboard routes - All with MainLayout */}
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard/products" element={<ProductManager />} />
+                <Route path="/dashboard/orders" element={<DashboardOrders />} />
+                <Route path="/dashboard/analytics" element={<Analytics />} />
+                <Route path="/dashboard/settings" element={<Settings />} />
+                <Route path="/dashboard/customize-store" element={<CustomizeStore />} />
+                <Route path="/dashboard/automation" element={<InstagramAutomation />} />
+                <Route path="/dashboard/automation/test-send" element={<InstagramAutomationTest />} />
+                
+                {/* Legacy dashboard routes for backward compatibility */}
                 <Route path="/products" element={<ProductManager />} />
                 <Route path="/orders" element={<Orders />} />
-                <Route path="/dashboard/orders" element={<DashboardOrders />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/customize" element={<CustomizeStore />} />
@@ -101,10 +109,8 @@ const App = () => (
                 
                 {/* Instagram Automation routes */}
                 <Route path="/instagram-automation" element={<InstagramAutomation />} />
-                <Route path="/dashboard/automation" element={<InstagramAutomation />} />
-                <Route path="/dashboard/automation/test-send" element={<InstagramAutomationTest />} />
 
-                {/* Storefront routes */}
+                {/* Storefront routes - Using username instead of slug */}
                 <Route path="/store/:storeUsername" element={<Storefront />} />
                 <Route path="/store/:storeUsername/about" element={<StorefrontAbout />} />
                 <Route path="/store/:storeUsername/product/:productSlug" element={<ProductDetails />} />
@@ -120,7 +126,7 @@ const App = () => (
                 <Route path="/track-order" element={<OrderTracking />} />
                 <Route path="/order/:orderId" element={<OrderRedirect />} />
 
-                {/* 404 route */}
+                {/* 404 route - Must be last */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </StoreProvider>

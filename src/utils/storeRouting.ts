@@ -8,14 +8,14 @@ interface StoreRouteData {
 }
 
 /**
- * Resolves store routing by checking username and name fields
+ * Resolves store routing by checking username field (primary method)
  * Returns store data and whether a redirect is needed
  */
 export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteData> => {
   const normalizedIdentifier = identifier.toLowerCase();
   
   try {
-    // First, try to find by username (preferred method)
+    // Find by username (primary method)
     let { data: usernameData, error: usernameError } = await supabase
       .from('stores')
       .select('*')
@@ -31,22 +31,6 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
       };
     }
     
-    // If not found by username, try name field as fallback
-    let { data: nameData, error: nameError } = await supabase
-      .from('stores')
-      .select('*')
-      .eq('name', normalizedIdentifier)
-      .single();
-      
-    if (nameData && !nameError) {
-      console.log('Store found by name, redirect needed', nameData);
-      return { 
-        store: nameData, 
-        redirectNeeded: true, 
-        finalUsername: nameData.username || nameData.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '')
-      };
-    }
-    
     throw new Error(`Store "${identifier}" not found`);
   } catch (err) {
     console.error('Exception in store route resolution', err);
@@ -58,7 +42,7 @@ export const resolveStoreRoute = async (identifier: string): Promise<StoreRouteD
  * Generates the correct store URL based on the store's username
  */
 export const getStoreUrl = (store: any, path: string = '', includeOrigin: boolean = true): string => {
-  const username = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
+  const username = store.username;
   const storeUrl = `/store/${username}${path}`;
   
   if (includeOrigin) {
@@ -72,15 +56,14 @@ export const getStoreUrl = (store: any, path: string = '', includeOrigin: boolea
  * Checks if the current URL matches the preferred store URL format
  */
 export const shouldRedirectToUsername = (currentIdentifier: string, store: any): boolean => {
-  const preferredUsername = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
-  return currentIdentifier.toLowerCase() !== preferredUsername.toLowerCase();
+  return currentIdentifier.toLowerCase() !== store.username.toLowerCase();
 };
 
 /**
  * Generates a redirect path for legacy URLs
  */
 export const generateRedirectPath = (currentPath: string, store: any): string => {
-  const preferredUsername = store.username || store.name.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
+  const preferredUsername = store.username;
   
   // Extract the current store identifier from the path
   const pathParts = currentPath.split('/');
@@ -108,8 +91,8 @@ export const preserveStoreContext = (store: any, currentPath: string): void => {
   };
   
   localStorage.setItem('shopzap_store_context', JSON.stringify(storeContext));
-  localStorage.setItem('currentStore', store.username || store.name.toLowerCase());
-  localStorage.setItem('lastVisitedStore', store.username || store.name.toLowerCase());
+  localStorage.setItem('currentStore', store.username);
+  localStorage.setItem('lastVisitedStore', store.username);
 };
 
 /**
