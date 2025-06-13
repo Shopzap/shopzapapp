@@ -1,174 +1,188 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LogOut, User, Settings, Home, Store, Package } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import MobileNav from '@/components/ui/mobile-nav';
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Failed to sign out', error);
-    }
+    await signOut();
+    navigate('/');
   };
 
+  const mobileNavItems = [
+    { href: '/', label: 'Home', icon: Home },
+    { href: '/features', label: 'Features' },
+    { href: '/pricing', label: 'Pricing' },
+    ...(isAuthenticated ? [
+      { href: '/dashboard', label: 'Dashboard', icon: Store },
+      { href: '/dashboard/products', label: 'Products', icon: Package },
+      { href: '/dashboard/orders', label: 'Orders' },
+    ] : [])
+  ];
+
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+    <nav className="border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-14 sm:h-16 items-center justify-between">
+          {/* Mobile Navigation */}
           <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold text-blue-600">ShopZap</span>
+            <MobileNav items={mobileNavItems}>
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2 px-3 py-2 border-t">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">{user?.email}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={handleSignOut}
+                    className="w-full justify-start px-3 text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2">
+                  <Button asChild variant="ghost" className="justify-start">
+                    <Link to="/auth">Sign In</Link>
+                  </Button>
+                  <Button asChild className="justify-start">
+                    <Link to="/auth">Get Started</Link>
+                  </Button>
+                </div>
+              )}
+            </MobileNav>
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-2">
+              <span className="font-bold text-lg sm:text-xl lg:text-2xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                ShopZap.io
+              </span>
             </Link>
           </div>
 
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link to="/features" className="text-gray-600 hover:text-gray-900">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <Link
+              to="/features"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
               Features
             </Link>
-            <Link to="/pricing" className="text-gray-600 hover:text-gray-900">
+            <Link
+              to="/pricing"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
               Pricing
             </Link>
-            <Link to="/contact" className="text-gray-600 hover:text-gray-900">
-              Contact
+            <Link
+              to="/docs"
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+            >
+              Docs
             </Link>
-            
+          </div>
+
+          {/* Desktop Auth Section */}
+          <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <Link to="/dashboard">
-                  <Button variant="outline">Dashboard</Button>
-                </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="relative flex items-center rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    >
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500">
-                        <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
-                      </span>
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-4 py-2">
-                      <p className="text-sm font-medium">{user?.email}</p>
-                      <p className="text-xs text-gray-500">Logged in</p>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user?.email}</p>
                     </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      <Store className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/products" className="cursor-pointer">
+                      <Package className="mr-2 h-4 w-4" />
+                      Products
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/settings" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-4">
-                <Link to="/auth">
-                  <Button variant="outline">Sign In</Button>
-                </Link>
-                <Link to="/auth">
-                  <Button>Get Started</Button>
-                </Link>
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" asChild>
+                  <Link to="/auth">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/auth">Get Started</Link>
+                </Button>
               </div>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-600 hover:text-gray-900 focus:outline-none focus:text-gray-900"
-            >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+          {/* Mobile Auth Buttons */}
+          <div className="flex md:hidden items-center space-x-2">
+            {!isAuthenticated && (
+              <>
+                <Button variant="ghost" size="sm" asChild className="text-xs">
+                  <Link to="/auth">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild className="text-xs">
+                  <Link to="/auth">Start</Link>
+                </Button>
+              </>
+            )}
+            {isAuthenticated && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
-              <Link
-                to="/features"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-900"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Features
-              </Link>
-              <Link
-                to="/pricing"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-900"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link
-                to="/contact"
-                className="block px-3 py-2 text-gray-600 hover:text-gray-900"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Contact
-              </Link>
-              
-              {isAuthenticated ? (
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex items-center px-3 py-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 mr-3">
-                      <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">{user?.email}</p>
-                      <p className="text-xs text-gray-500">Logged in</p>
-                    </div>
-                  </div>
-                  <Link
-                    to="/dashboard"
-                    className="block px-3 py-2 text-blue-600 hover:text-blue-800"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 text-red-600 hover:text-red-800"
-                  >
-                    <LogOut className="inline mr-2 h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <div className="border-t pt-4 mt-4 space-y-2">
-                  <Link
-                    to="/auth"
-                    className="block px-3 py-2 text-blue-600 hover:text-blue-800"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to="/auth"
-                    className="block px-3 py-2 text-blue-600 hover:text-blue-800"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Get Started
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );

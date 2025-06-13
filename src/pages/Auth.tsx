@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from 'sonner';
 import { z } from "zod";
+import PasswordInput from '@/components/ui/password-input';
 
 const Auth = () => {
   const { signIn, signUp, isLoading, isAuthenticated } = useAuth();
@@ -33,20 +37,39 @@ const Auth = () => {
     navigate(from, { replace: true });
   }
   
+  const validateEmail = (email: string) => {
+    if (!email) return 'Email is required';
+    if (!z.string().email().safeParse(email).success) return 'Please enter a valid email address';
+    return '';
+  };
+
+  const validatePassword = (password: string, isSignup = false) => {
+    if (!password) return 'Password is required';
+    if (isSignup && password.length < 6) return 'Password must be at least 6 characters';
+    return '';
+  };
+
+  const validatePasswordStrength = (password: string) => {
+    const hasLower = /[a-z]/.test(password);
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSymbol = /[!@#$%^&*]/.test(password);
+    const isLongEnough = password.length >= 8;
+
+    if (!hasLower || !hasUpper || !hasNumber || !hasSymbol || !isLongEnough) {
+      return 'Password should contain uppercase, lowercase, number, and symbol';
+    }
+    return '';
+  };
+  
   const validateLoginForm = () => {
     const validationErrors: Record<string, string> = {};
     
-    // Email validation
-    if (!email) {
-      validationErrors.email = 'Email is required';
-    } else if (!z.string().email().safeParse(email).success) {
-      validationErrors.email = 'Please enter a valid email address';
-    }
+    const emailError = validateEmail(email);
+    if (emailError) validationErrors.email = emailError;
     
-    // Password validation
-    if (!password) {
-      validationErrors.password = 'Password is required';
-    }
+    const passwordError = validatePassword(password);
+    if (passwordError) validationErrors.password = passwordError;
     
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0;
@@ -55,26 +78,21 @@ const Auth = () => {
   const validateSignupForm = () => {
     const validationErrors: Record<string, string> = {};
     
-    // Full name validation
-    if (!fullName) {
+    if (!fullName.trim()) {
       validationErrors.fullName = 'Full name is required';
     }
     
-    // Email validation
-    if (!registerEmail) {
-      validationErrors.registerEmail = 'Email is required';
-    } else if (!z.string().email().safeParse(registerEmail).success) {
-      validationErrors.registerEmail = 'Please enter a valid email address';
+    const emailError = validateEmail(registerEmail);
+    if (emailError) validationErrors.registerEmail = emailError;
+    
+    const passwordError = validatePassword(registerPassword, true);
+    if (passwordError) {
+      validationErrors.registerPassword = passwordError;
+    } else {
+      const strengthError = validatePasswordStrength(registerPassword);
+      if (strengthError) validationErrors.registerPassword = strengthError;
     }
     
-    // Password validation
-    if (!registerPassword) {
-      validationErrors.registerPassword = 'Password is required';
-    } else if (registerPassword.length < 6) {
-      validationErrors.registerPassword = 'Password must be at least 6 characters';
-    }
-    
-    // Confirm password validation
     if (registerPassword !== confirmPassword) {
       validationErrors.confirmPassword = 'Passwords do not match';
     }
@@ -86,15 +104,27 @@ const Auth = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateLoginForm()) {
-      await signIn(email, password);
+      const result = await signIn(email, password);
+      if (result?.error) {
+        toast.error(result.error.message || 'Login failed');
+      }
     }
   };
   
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateSignupForm()) {
-      await signUp(registerEmail, registerPassword, fullName);
+      const result = await signUp(registerEmail, registerPassword, fullName);
+      if (result?.error) {
+        toast.error(result.error.message || 'Signup failed');
+      } else {
+        toast.success('Account created successfully! Please check your email to verify your account.');
+      }
     }
+  };
+
+  const handlePasswordGenerated = (password: string) => {
+    toast.success('Strong password generated!');
   };
   
   return (
@@ -102,35 +132,37 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Link to="/">
-            <h1 className="font-bold text-3xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">ShopZap.io</h1>
+            <h1 className="font-bold text-2xl sm:text-3xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
+              ShopZap.io
+            </h1>
           </Link>
-          <p className="text-muted-foreground">Your WhatsApp store solution</p>
+          <p className="text-muted-foreground text-sm sm:text-base">Your WhatsApp store solution</p>
         </div>
         
-        <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
-            <CardDescription className="text-center">
+        <Card className="w-full">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl sm:text-2xl text-center">Welcome back</CardTitle>
+            <CardDescription className="text-center text-sm">
               {activeTab === "login" 
                 ? "Enter your credentials to sign in to your account" 
                 : "Create an account to get started with ShopZap"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-4">
             <Tabs 
               defaultValue={activeTab} 
               onValueChange={(v) => setActiveTab(v as "login" | "signup")}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login" className="text-sm">Login</TabsTrigger>
+                <TabsTrigger value="signup" className="text-sm">Sign Up</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm">Email</Label>
                     <Input 
                       id="email" 
                       type="email" 
@@ -144,25 +176,25 @@ const Auth = () => {
                   
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password">Password</Label>
-                      <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                      <Label htmlFor="password" className="text-sm">Password</Label>
+                      <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                         Forgot password?
                       </Link>
                     </div>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={password} 
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={errors.password ? "border-destructive" : ""}
+                    <PasswordInput
+                      value={password}
+                      onChange={setPassword}
+                      placeholder="••••••••"
                     />
                     {errors.password && <p className="text-destructive text-xs">{errors.password}</p>}
                   </div>
                   
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
-                      <><span className="mr-2">Signing in</span><div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div></>
+                      <div className="flex items-center gap-2">
+                        <span>Signing in</span>
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                      </div>
                     ) : (
                       "Sign In"
                     )}
@@ -173,7 +205,7 @@ const Auth = () => {
               <TabsContent value="signup">
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
+                    <Label htmlFor="fullName" className="text-sm">Full Name</Label>
                     <Input 
                       id="fullName" 
                       placeholder="John Doe" 
@@ -185,7 +217,7 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="registerEmail">Email</Label>
+                    <Label htmlFor="registerEmail" className="text-sm">Email</Label>
                     <Input 
                       id="registerEmail" 
                       type="email" 
@@ -198,34 +230,38 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="registerPassword">Password</Label>
-                    <Input 
-                      id="registerPassword" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={registerPassword} 
-                      onChange={(e) => setRegisterPassword(e.target.value)}
-                      className={errors.registerPassword ? "border-destructive" : ""}
+                    <Label htmlFor="registerPassword" className="text-sm">Password</Label>
+                    <PasswordInput
+                      value={registerPassword}
+                      onChange={setRegisterPassword}
+                      placeholder="••••••••"
+                      showGenerator={true}
+                      onGenerate={handlePasswordGenerated}
                     />
                     {errors.registerPassword && <p className="text-destructive text-xs">{errors.registerPassword}</p>}
+                    {!errors.registerPassword && registerPassword && (
+                      <p className="text-xs text-muted-foreground">
+                        Use 8+ characters with uppercase, lowercase, numbers, and symbols
+                      </p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      placeholder="••••••••" 
-                      value={confirmPassword} 
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className={errors.confirmPassword ? "border-destructive" : ""}
+                    <Label htmlFor="confirmPassword" className="text-sm">Confirm Password</Label>
+                    <PasswordInput
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      placeholder="••••••••"
                     />
                     {errors.confirmPassword && <p className="text-destructive text-xs">{errors.confirmPassword}</p>}
                   </div>
                   
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
-                      <><span className="mr-2">Creating account</span><div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div></>
+                      <div className="flex items-center gap-2">
+                        <span>Creating account</span>
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+                      </div>
                     ) : (
                       "Create Account"
                     )}
@@ -234,8 +270,8 @@ const Auth = () => {
               </TabsContent>
             </Tabs>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-2">
-            <div className="text-center text-sm text-muted-foreground mt-2">
+          <CardFooter className="flex flex-col space-y-2 pt-0">
+            <div className="text-center text-xs text-muted-foreground">
               By continuing, you agree to ShopZap's
               <Link to="/terms" className="text-primary hover:underline mx-1">Terms of Service</Link>
               and

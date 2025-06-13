@@ -113,21 +113,39 @@
   -webkit-line-clamp: 3;
 }
 
-/* Touch-friendly mobile targets */
-.touch-target {
-  min-height: 44px;
-  min-width: 44px;
-  @apply flex items-center justify-center;
-}
-
-/* Mobile-first responsive grid improvements */
+/* Mobile-first responsive improvements */
 @media (max-width: 640px) {
   .container {
-    @apply px-4;
+    @apply px-3;
   }
   
   .grid-responsive {
-    @apply grid-cols-1 gap-4;
+    @apply grid-cols-1 gap-3;
+  }
+  
+  /* Improved touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    @apply flex items-center justify-center;
+  }
+  
+  /* Better spacing on mobile */
+  .mobile-spacing {
+    @apply space-y-3;
+  }
+  
+  /* Responsive text sizing */
+  .text-responsive-sm {
+    @apply text-sm;
+  }
+  
+  .text-responsive-base {
+    @apply text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg;
   }
 }
 
@@ -135,11 +153,43 @@
   .grid-responsive {
     @apply grid-cols-2 gap-4;
   }
+  
+  .tablet-spacing {
+    @apply space-y-4;
+  }
+  
+  .text-responsive-sm {
+    @apply text-base;
+  }
+  
+  .text-responsive-base {
+    @apply text-lg;
+  }
+  
+  .text-responsive-lg {
+    @apply text-xl;
+  }
 }
 
 @media (min-width: 1025px) {
   .grid-responsive {
     @apply grid-cols-3 xl:grid-cols-4 gap-6;
+  }
+  
+  .desktop-spacing {
+    @apply space-y-6;
+  }
+  
+  .text-responsive-sm {
+    @apply text-base;
+  }
+  
+  .text-responsive-base {
+    @apply text-lg;
+  }
+  
+  .text-responsive-lg {
+    @apply text-xl;
   }
 }
 
@@ -173,4 +223,65 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   @apply outline-2 outline-offset-2 outline-primary;
+}
+
+/* Loading skeleton animations */
+@keyframes skeleton-loading {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: skeleton-loading 1.5s infinite;
+}
+
+/* Improved responsive breakpoints */
+.responsive-grid {
+  @apply grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4;
+}
+
+.responsive-padding {
+  @apply px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-6;
+}
+
+.responsive-text {
+  @apply text-sm sm:text-base lg:text-lg;
+}
+
+/* Mobile navigation improvements */
+.mobile-nav-overlay {
+  @apply fixed inset-0 bg-black/50 z-40 lg:hidden;
+}
+
+.mobile-nav-sidebar {
+  @apply fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out lg:hidden;
+}
+
+/* Safe area for mobile devices with notches */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Improved form styling for mobile */
+.form-input-mobile {
+  @apply px-3 py-3 text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent;
+}
+
+/* Better spacing for small screens */
+.section-spacing {
+  @apply py-8 sm:py-12 lg:py-16;
+}
+
+.content-spacing {
+  @apply space-y-4 sm:space-y-6 lg:space-y-8;
 }
