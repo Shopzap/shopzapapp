@@ -1,25 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Instagram, CheckCircle, AlertCircle, Settings } from 'lucide-react';
-import InstagramConnectionCard from '@/components/instagram/InstagramConnectionCard';
-import KeywordAutomationSection from '@/components/instagram/KeywordAutomationSection';
-import InstagramAnalytics from '@/components/instagram/InstagramAnalytics';
+import { Instagram, Settings, Play } from 'lucide-react';
+import MainLayout from '@/components/layouts/MainLayout';
 
 const InstagramAutomation = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [storeData, setStoreData] = useState<any>(null);
-  const [igConnection, setIgConnection] = useState<any>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStoreData = async () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         
@@ -49,20 +45,10 @@ const InstagramAutomation = () => {
         
         setStoreData(storeData);
         
-        // Check for existing Instagram connection
-        const { data: igData } = await supabase
-          .from('instagram_connections')
-          .select('*')
-          .eq('store_id', storeData.id)
-          .eq('connected', true)
-          .maybeSingle();
-        
-        setIgConnection(igData);
-        
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching store data:", error);
         toast({
-          title: "Error loading data",
+          title: "Error loading store",
           description: "Please try refreshing the page",
           variant: "destructive"
         });
@@ -71,79 +57,66 @@ const InstagramAutomation = () => {
       }
     };
     
-    fetchData();
+    fetchStoreData();
   }, [navigate, toast]);
-
-  useEffect(() => {
-    // Handle OAuth callback messages
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
-    
-    if (success === 'connected') {
-      toast({
-        title: "Instagram connected successfully",
-        description: "You can now create automations",
-      });
-      // Refresh the page to load connection data
-      window.location.reload();
-    }
-    
-    if (error) {
-      toast({
-        title: "Connection failed",
-        description: decodeURIComponent(error),
-        variant: "destructive"
-      });
-    }
-  }, [searchParams, toast]);
-
-  const handleConnectionUpdate = (connection: any) => {
-    setIgConnection(connection);
-  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading Instagram automation...</p>
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading automation settings...</p>
+          </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6 max-w-4xl">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Instagram Automation</h1>
-        <p className="text-muted-foreground">
-          Connect your Instagram account via SendPulse to enable auto DMs & product promotions
-        </p>
+    <MainLayout>
+      <div className="container p-4 mx-auto space-y-6 max-w-4xl">
+        <div className="flex items-center gap-2">
+          <Instagram className="h-6 w-6" />
+          <h1 className="text-3xl font-bold tracking-tight">Instagram Automation</h1>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Instagram Integration</CardTitle>
+            <CardDescription>
+              Connect your Instagram account to automatically share your products
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center py-8">
+              <Instagram className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">Instagram Automation Coming Soon</h3>
+              <p className="text-muted-foreground mb-4">
+                We're working on Instagram integration features that will allow you to:
+              </p>
+              <ul className="text-left max-w-md mx-auto space-y-2 text-sm text-muted-foreground">
+                <li>• Automatically post new products to your Instagram</li>
+                <li>• Schedule promotional posts</li>
+                <li>• Sync product catalogs</li>
+                <li>• Track engagement metrics</li>
+              </ul>
+            </div>
+            
+            <div className="flex gap-4 justify-center">
+              <Button variant="outline" disabled>
+                <Settings className="w-4 h-4 mr-2" />
+                Configure Settings
+              </Button>
+              <Button disabled>
+                <Play className="w-4 h-4 mr-2" />
+                Start Automation
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Instagram Connection Card */}
-      <InstagramConnectionCard 
-        storeData={storeData}
-        igConnection={igConnection}
-        onConnectionUpdate={handleConnectionUpdate}
-      />
-
-      {/* Keyword Automation Section */}
-      {igConnection && (
-        <KeywordAutomationSection 
-          storeData={storeData}
-          igConnection={igConnection}
-        />
-      )}
-
-      {/* Analytics Section */}
-      {igConnection && (
-        <InstagramAnalytics 
-          storeData={storeData}
-          igConnection={igConnection}
-        />
-      )}
-    </div>
+    </MainLayout>
   );
 };
 
