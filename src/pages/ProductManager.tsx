@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
 
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Upload, Search } from 'lucide-react';
@@ -173,6 +173,12 @@ const ProductManager: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold">Products</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <AddProductModal 
+              onProductAdded={handleProductAdded}
+              disabled={isAtProductLimit}
+              title={isAtProductLimit ? "Upgrade your plan to add more products" : "Add a new product"}
+            />
+            
             {!isFreePlan && (
               <Button 
                 variant="outline"
@@ -246,8 +252,6 @@ const ProductManager: React.FC = () => {
           </div>
         </div>
       </div>
-
-      <AddProductModal onProductAdded={handleProductAdded} />
 
       <CsvUploadModal
         open={showUploadModal}

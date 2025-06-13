@@ -12,7 +12,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useStore } from '@/contexts/StoreContext';
 import { generateUniqueProductSlug } from '@/utils/slugHelpers';
 
-const AddProductModal = ({ onProductAdded }: { onProductAdded: () => void }) => {
+interface AddProductModalProps {
+  onProductAdded: () => void;
+  disabled?: boolean;
+  title?: string;
+}
+
+const AddProductModal: React.FC<AddProductModalProps> = ({ 
+  onProductAdded, 
+  disabled = false, 
+  title = "Upgrade your plan to add more products" 
+}) => {
   const { toast } = useToast();
   const { storeData } = useStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -102,7 +112,11 @@ const AddProductModal = ({ onProductAdded }: { onProductAdded: () => void }) => 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          disabled={disabled}
+          title={disabled ? title : "Add a new product"}
+          className="w-full sm:w-auto"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Product
         </Button>
