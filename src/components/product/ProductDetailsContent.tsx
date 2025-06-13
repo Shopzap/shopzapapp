@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Package, CreditCard, Truck, Eye, Share2, Info, Calendar, Hash, Tag } from 'lucide-react';
+import { ArrowLeft, Package, CreditCard, Truck, Eye, Share2, Calendar } from 'lucide-react';
 import ProductImageCarousel from './ProductImageCarousel';
 
 interface ProductDetailsContentProps {
@@ -58,15 +58,6 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
     }
   };
 
-  const formatDateForDisplay = (dateString?: string) => {
-    if (!dateString) return 'Not available';
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   const images = product.images && product.images.length > 0 
     ? product.images 
     : product.image_url 
@@ -99,7 +90,7 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-4 md:py-8">
+      <div className="container mx-auto px-6 sm:px-8 lg:px-12 xl:px-16 py-4 md:py-8 max-w-7xl">
         <div className="flex items-center justify-between mb-4 md:mb-6">
           <Button
             variant="ghost"
@@ -120,13 +111,13 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16">
           {/* Product Images */}
           <div className="space-y-4">
             {images.length > 0 ? (
               <ProductImageCarousel images={images} productName={product.name} />
             ) : (
-              <div className="bg-accent rounded-lg overflow-hidden flex items-center justify-center h-[300px] md:h-[400px]">
+              <div className="bg-accent rounded-lg overflow-hidden flex items-center justify-center h-[300px] md:h-[400px] lg:h-[500px]">
                 <div className="text-muted-foreground flex flex-col items-center">
                   <Eye className="h-8 w-8 md:h-12 md:w-12 mb-2" />
                   <span className="text-sm md:text-base">No image available</span>
@@ -136,9 +127,9 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
           </div>
 
           {/* Product Details */}
-          <div className="space-y-4 md:space-y-6">
+          <div className="space-y-6 md:space-y-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">{product.name}</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 leading-tight">{product.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 {getStatusBadge(product.status)}
                 {isOutOfStock && (
@@ -155,84 +146,29 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
               </div>
             </div>
 
-            <div className="text-2xl md:text-3xl font-bold text-primary">
+            <div className="text-3xl md:text-4xl font-bold text-primary">
               {formatPrice(product.price)}
-            </div>
-
-            {/* Product Information Section - Industry Style */}
-            <div className="bg-accent/30 rounded-lg p-4 border">
-              <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Info className="h-5 w-5" />
-                Product Information
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <p className="font-medium text-muted-foreground flex items-center gap-2">
-                      <Hash className="h-4 w-4" />
-                      Product ID:
-                    </p>
-                    <p className="font-mono text-xs bg-background px-2 py-1 rounded border break-all">
-                      {product.id}
-                    </p>
-                  </div>
-                  
-                  {product.slug && (
-                    <div className="space-y-1">
-                      <p className="font-medium text-muted-foreground flex items-center gap-2">
-                        <Tag className="h-4 w-4" />
-                        Product Slug:
-                      </p>
-                      <p className="font-mono text-xs bg-background px-2 py-1 rounded border break-all">
-                        {product.slug}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {product.created_at && (
-                    <div className="space-y-1">
-                      <p className="font-medium text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Created:
-                      </p>
-                      <p className="text-foreground">{formatDateForDisplay(product.created_at)}</p>
-                    </div>
-                  )}
-                  
-                  {product.updated_at && (
-                    <div className="space-y-1">
-                      <p className="font-medium text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Last Updated:
-                      </p>
-                      <p className="text-foreground">{formatDateForDisplay(product.updated_at)}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
 
             {product.description && (
               <div>
-                <h3 className="text-lg font-medium mb-2">Description</h3>
-                <p className="text-muted-foreground leading-relaxed text-sm md:text-base">{product.description}</p>
+                <h3 className="text-lg md:text-xl font-medium mb-3">Description</h3>
+                <p className="text-muted-foreground leading-relaxed text-sm md:text-base lg:text-lg">{product.description}</p>
               </div>
             )}
 
             {/* Product Details Grid */}
             <div className="grid grid-cols-1 gap-4">
               {product.inventory_count !== undefined && (
-                <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
-                  <Package className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center gap-4 p-4 bg-accent/50 rounded-lg">
+                  <Package className="h-6 w-6 text-muted-foreground flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Stock Available</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-medium text-base md:text-lg">Stock Available</p>
+                    <p className="text-sm md:text-base text-muted-foreground">
                       {product.inventory_count} units in stock
                     </p>
                     {isLowStock && (
-                      <p className="text-sm text-orange-600 font-medium">
+                      <p className="text-sm md:text-base text-orange-600 font-medium">
                         Low stock - order soon!
                       </p>
                     )}
@@ -241,22 +177,22 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
               )}
 
               {product.payment_method && (
-                <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center gap-4 p-4 bg-accent/50 rounded-lg">
+                  <CreditCard className="h-6 w-6 text-muted-foreground flex-shrink-0" />
                   <div>
-                    <p className="font-medium">Payment Options</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="font-medium text-base md:text-lg">Payment Options</p>
+                    <p className="text-sm md:text-base text-muted-foreground">
                       {getPaymentMethodText(product.payment_method)}
                     </p>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center gap-3 p-4 bg-accent/50 rounded-lg">
-                <Truck className="h-5 w-5 text-muted-foreground" />
+              <div className="flex items-center gap-4 p-4 bg-accent/50 rounded-lg">
+                <Truck className="h-6 w-6 text-muted-foreground flex-shrink-0" />
                 <div>
-                  <p className="font-medium">Delivery</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-medium text-base md:text-lg">Delivery</p>
+                  <p className="text-sm md:text-base text-muted-foreground">
                     Free delivery available
                   </p>
                 </div>
@@ -264,10 +200,10 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
             </div>
 
             {/* Buy Now Button */}
-            <div className="space-y-4">
+            <div className="space-y-4 pt-4">
               <Button 
                 size="lg" 
-                className="w-full text-base md:text-lg py-3 md:py-4" 
+                className="w-full text-base md:text-lg py-4 md:py-6 h-auto font-semibold" 
                 onClick={handleBuyNow}
                 disabled={isOutOfStock || product.status !== 'active'}
               >
@@ -275,13 +211,13 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
               </Button>
               
               {isOutOfStock && (
-                <p className="text-sm text-muted-foreground text-center">
+                <p className="text-sm md:text-base text-muted-foreground text-center">
                   This item is currently out of stock
                 </p>
               )}
               
               {isLowStock && !isOutOfStock && (
-                <p className="text-sm text-orange-600 text-center font-medium">
+                <p className="text-sm md:text-base text-orange-600 text-center font-medium">
                   Hurry! Only {product.inventory_count} items left in stock
                 </p>
               )}
@@ -290,7 +226,7 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
             {/* Store Info */}
             {product.store_name && (
               <div className="border-t pt-6">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm md:text-base text-muted-foreground">
                   Sold by <span className="font-medium text-foreground">{product.store_name}</span>
                 </p>
               </div>

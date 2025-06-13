@@ -275,8 +275,10 @@ export type Database = {
       instagram_connections: {
         Row: {
           access_token: string | null
+          connected: boolean | null
           connected_at: string | null
           created_at: string | null
+          email: string | null
           id: string
           ig_username: string | null
           instagram_page_id: string
@@ -285,11 +287,14 @@ export type Database = {
           sendpulse_page_id: string | null
           store_id: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           access_token?: string | null
+          connected?: boolean | null
           connected_at?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           ig_username?: string | null
           instagram_page_id: string
@@ -298,11 +303,14 @@ export type Database = {
           sendpulse_page_id?: string | null
           store_id: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           access_token?: string | null
+          connected?: boolean | null
           connected_at?: string | null
           created_at?: string | null
+          email?: string | null
           id?: string
           ig_username?: string | null
           instagram_page_id?: string
@@ -311,6 +319,7 @@ export type Database = {
           sendpulse_page_id?: string | null
           store_id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {

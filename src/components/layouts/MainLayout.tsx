@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Package, ShoppingCart, Settings, BarChart2, Users, Menu, X, LogOut } from 'lucide-react';
@@ -82,9 +83,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Overlay for mobile */}
       {isSidebarOpen && <div className="fixed inset-0 bg-black opacity-50 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
 
-      {/* Content Area */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        {children}
+      {/* Content Area - Enhanced spacing */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-12">
+        <div className="max-w-7xl mx-auto w-full">
+          {children}
+        </div>
       </main>
     </div>
   );
