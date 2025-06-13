@@ -70,7 +70,11 @@ const Storefront: React.FC = () => {
     retry: false, // We handle retries manually
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
-    initialData: cachedData ? { store: cachedData.store, redirectNeeded: false } : undefined,
+    initialData: cachedData ? { 
+      store: cachedData.store, 
+      redirectNeeded: false, 
+      finalUsername: cachedData.store?.username || storeName 
+    } : undefined,
   });
 
   // Extract store from the data structure
