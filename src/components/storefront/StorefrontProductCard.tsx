@@ -22,10 +22,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   const location = useLocation();
   const [isWishlisted, setIsWishlisted] = useState(false);
   
-  // Extract store username from current path
   const storeUsername = location.pathname.split('/store/')[1]?.split('/')[0];
-  
-  // Use the product slug from the database, with fallback to ID if slug is missing
   const productSlug = product.slug || product.id;
   
   const handleViewDetails = () => {
@@ -59,7 +56,6 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
         console.log('Error sharing:', error);
       }
     } else {
-      // Fallback: copy to clipboard
       try {
         await navigator.clipboard.writeText(productUrl);
         toast.success('Product link copied to clipboard!');
@@ -95,7 +91,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow group h-full">
+    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full bg-white">
       <div className="aspect-square overflow-hidden relative">
         <ProductCardImage
           imageUrl={imageUrl}

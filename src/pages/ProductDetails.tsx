@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +8,7 @@ import ProductNotFound from '@/components/fallbacks/ProductNotFound';
 import { useDelayedLoading } from '@/hooks/useDelayedLoading';
 import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import ResponsiveLayout from '@/components/ResponsiveLayout';
 
 const ProductDetails: React.FC = () => {
   const { storeName: storeUsername, productSlug } = useParams<{ 
@@ -18,7 +18,6 @@ const ProductDetails: React.FC = () => {
   const navigate = useNavigate();
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Smart retry hook
   const { retry, canRetry } = useSmartRetry({
     maxRetries: 2,
     onRetry: () => {
@@ -27,7 +26,6 @@ const ProductDetails: React.FC = () => {
     }
   });
 
-  // Improved fetch function with fallback for UUID-based slugs
   const fetchProductData = async () => {
     if (!storeUsername || !productSlug) {
       throw new Error('Missing store username or product slug');
@@ -36,10 +34,8 @@ const ProductDetails: React.FC = () => {
     try {
       console.log('Fetching product:', { storeUsername, productSlug });
 
-      // Normalize the store username to lowercase for consistent matching
       const normalizedStoreUsername = storeUsername.toLowerCase().trim();
 
-      // First, get the store by username (primary), then fallback to name
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id, name, username')
@@ -58,7 +54,6 @@ const ProductDetails: React.FC = () => {
 
       console.log('Store found:', storeData);
 
-      // First try to get the product by slug
       let { data: productData, error: productError } = await supabase
         .from('products')
         .select(`
@@ -83,7 +78,6 @@ const ProductDetails: React.FC = () => {
         .eq('is_published', true)
         .maybeSingle();
 
-      // If not found by slug and the productSlug looks like a UUID, try by ID as fallback
       if (!productData && !productError && productSlug.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         console.log('Slug looks like UUID, trying to fetch by ID as fallback');
         const fallbackResult = await supabase
@@ -111,7 +105,6 @@ const ProductDetails: React.FC = () => {
           .maybeSingle();
 
         if (fallbackResult.data && !fallbackResult.error) {
-          // If found by UUID, redirect to the correct slug-based URL
           const correctSlug = fallbackResult.data.slug;
           console.log('Found product by UUID, redirecting to slug-based URL:', correctSlug);
           navigate(`/store/${storeUsername}/product/${correctSlug}`, { replace: true });
@@ -131,7 +124,6 @@ const ProductDetails: React.FC = () => {
 
       console.log('Product found:', productData);
 
-      // Return the combined data
       return {
         ...productData,
         store_name: storeData.name
@@ -143,7 +135,6 @@ const ProductDetails: React.FC = () => {
     }
   };
 
-  // Use query with proper error handling
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', storeUsername, productSlug],
     queryFn: fetchProductData,
@@ -152,13 +143,11 @@ const ProductDetails: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Use delayed loading
   const { shouldShowLoading, hasTimedOut } = useDelayedLoading(isLoading, {
     delay: 300,
     timeout: 8000
   });
 
-  // Handle Buy Now action
   const handleBuyNow = () => {
     if (product) {
       const orderItem = {
@@ -177,7 +166,6 @@ const ProductDetails: React.FC = () => {
     }
   };
 
-  // Handle back navigation
   const handleBack = () => {
     if (storeUsername) {
       navigate(`/store/${storeUsername}`);
@@ -186,44 +174,51 @@ const ProductDetails: React.FC = () => {
     }
   };
 
-  // Redirect if missing params
   useEffect(() => {
     if (!storeUsername || !productSlug) {
       navigate('/', { replace: true });
     }
   }, [storeUsername, productSlug, navigate]);
 
-  // Show skeleton loading
   if (shouldShowLoading) {
-    return <ProductDetailsSkeleton />;
+    return (
+      <ResponsiveLayout padding="md">
+        <ProductDetailsSkeleton />
+      </ResponsiveLayout>
+    );
   }
 
-  // Show error or timeout fallback with improved 404 UI
   if (hasTimedOut || (error && !product)) {
     return (
-      <ProductNotFound
-        productName={productSlug}
-        storeName={storeUsername}
-        onRetry={canRetry ? retry : undefined}
-      />
+      <ResponsiveLayout padding="md">
+        <ProductNotFound
+          productName={productSlug}
+          storeName={storeUsername}
+          onRetry={canRetry ? retry : undefined}
+        />
+      </ResponsiveLayout>
     );
   }
 
-  // Show product details
   if (product) {
     return (
-      <ErrorBoundary>
-        <ProductDetailsContent 
-          product={product} 
-          handleBuyNow={handleBuyNow}
-          handleBack={handleBack}
-        />
-      </ErrorBoundary>
+      <ResponsiveLayout padding="md">
+        <ErrorBoundary>
+          <ProductDetailsContent 
+            product={product} 
+            handleBuyNow={handleBuyNow}
+            handleBack={handleBack}
+          />
+        </ErrorBoundary>
+      </ResponsiveLayout>
     );
   }
 
-  // Fallback
-  return <ProductDetailsSkeleton />;
+  return (
+    <ResponsiveLayout padding="md">
+      <ProductDetailsSkeleton />
+    </ResponsiveLayout>
+  );
 };
 
 export default ProductDetails;

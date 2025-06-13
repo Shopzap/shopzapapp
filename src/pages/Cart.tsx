@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -135,72 +134,76 @@ const Cart = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white shadow-sm border-b">
-          <div className="container mx-auto px-4 py-4">
+          <div className="container mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">Shopping Cart</h1>
-              <Button variant="ghost" onClick={handleGoHome} className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold">Shopping Cart</h1>
+              <Button variant="ghost" onClick={handleGoHome} className="flex items-center gap-2 text-sm">
                 <Home className="w-4 h-4" />
-                Home
+                <span className="hidden sm:inline">Home</span>
               </Button>
             </div>
           </div>
         </div>
         
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
           <div className="max-w-4xl mx-auto">
             {items.length === 0 ? (
-              <Card className="text-center py-16">
-                <CardContent>
-                  <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
-                  <p className="text-gray-600 mb-6">Start shopping to add items to your cart!</p>
-                  <Button onClick={handleGoHome}>
+              <Card className="text-center py-12 sm:py-16">
+                <CardContent className="px-4">
+                  <ShoppingBag className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
+                  <h2 className="text-lg sm:text-xl font-semibold mb-2">Your cart is empty</h2>
+                  <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">Start shopping to add items to your cart!</p>
+                  <Button onClick={handleGoHome} className="w-full sm:w-auto">
                     Go to Homepage
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              <div className="grid lg:grid-cols-3 gap-8">
+              <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {/* Cart Items */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2 space-y-3 sm:space-y-4">
                   {items.map((item) => (
                     <Card key={item.id}>
-                      <CardContent className="p-6">
-                        <div className="flex items-center gap-4">
+                      <CardContent className="p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                           <img
                             src={item.product.image_url || 'https://placehold.co/80x80'}
                             alt={item.product.name}
-                            className="w-20 h-20 object-cover rounded-lg"
+                            className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg mx-auto sm:mx-0"
                           />
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{item.product.name}</h3>
-                            <p className="text-gray-600">{formatPrice(Number(item.product.price))}</p>
+                          <div className="flex-1 text-center sm:text-left">
+                            <h3 className="font-semibold text-base sm:text-lg line-clamp-2">{item.product.name}</h3>
+                            <p className="text-gray-600 text-sm sm:text-base">{formatPrice(Number(item.product.price))}</p>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between w-full sm:w-auto gap-3 sm:gap-4">
+                            <div className="flex items-center gap-2 mx-auto sm:mx-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              onClick={() => updateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                              onClick={() => removeFromCart(item.product.id)}
+                              className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                             >
-                              <Minus className="w-4 h-4" />
-                            </Button>
-                            <span className="w-8 text-center">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            >
-                              <Plus className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeFromCart(item.product.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -210,26 +213,26 @@ const Cart = () => {
                 {/* Order Summary */}
                 <div className="lg:col-span-1">
                   <Card className="sticky top-4">
-                    <CardHeader>
-                      <CardTitle>Order Summary</CardTitle>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex justify-between">
+                    <CardContent className="space-y-3 sm:space-y-4">
+                      <div className="flex justify-between text-sm sm:text-base">
                         <span>Subtotal</span>
                         <span>{formatPrice(getTotalPrice())}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between text-sm sm:text-base">
                         <span>Shipping</span>
-                        <span>Free</span>
+                        <span className="text-green-600">Free</span>
                       </div>
-                      <div className="border-t pt-4">
-                        <div className="flex justify-between font-semibold text-lg">
+                      <div className="border-t pt-3 sm:pt-4">
+                        <div className="flex justify-between font-semibold text-base sm:text-lg">
                           <span>Total</span>
                           <span>{formatPrice(getTotalPrice())}</span>
                         </div>
                       </div>
                       <Button 
-                        className="w-full" 
+                        className="w-full text-sm sm:text-base" 
                         onClick={handleCheckout}
                         disabled={items.length === 0}
                       >
@@ -237,7 +240,7 @@ const Cart = () => {
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="w-full" 
+                        className="w-full text-sm sm:text-base" 
                         onClick={clearCart}
                         disabled={items.length === 0}
                       >
@@ -264,73 +267,76 @@ const Cart = () => {
     <div className="min-h-screen bg-gray-50">
       <StoreHeader store={storeWithTheme} />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
             <Button
               variant="ghost"
               onClick={handleContinueShopping}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-sm w-full sm:w-auto justify-center sm:justify-start"
             >
               <ArrowLeft className="w-4 h-4" />
               Continue Shopping
             </Button>
-            <h1 className="text-3xl font-bold">Shopping Cart</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-center sm:text-left w-full sm:w-auto">Shopping Cart</h1>
           </div>
 
           {items.length === 0 ? (
-            <Card className="text-center py-16">
-              <CardContent>
-                <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <h2 className="text-xl font-semibold mb-2">Your cart is empty</h2>
-                <p className="text-gray-600 mb-6">Add some products to get started!</p>
-                <Button onClick={handleContinueShopping}>
+            <Card className="text-center py-12 sm:py-16">
+              <CardContent className="px-4">
+                <ShoppingBag className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
+                <h2 className="text-lg sm:text-xl font-semibold mb-2">Your cart is empty</h2>
+                <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">Add some products to get started!</p>
+                <Button onClick={handleContinueShopping} className="w-full sm:w-auto">
                   Start Shopping
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Cart Items */}
-              <div className="lg:col-span-2 space-y-4">
+            <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+              <div className="lg:col-span-2 space-y-3 sm:space-y-4">
                 {items.map((item) => (
                   <Card key={item.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                         <img
                           src={item.product.image_url || 'https://placehold.co/80x80'}
                           alt={item.product.name}
-                          className="w-20 h-20 object-cover rounded-lg"
+                          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg mx-auto sm:mx-0"
                         />
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{item.product.name}</h3>
-                          <p className="text-gray-600">{formatPrice(Number(item.product.price))}</p>
+                        <div className="flex-1 text-center sm:text-left">
+                          <h3 className="font-semibold text-base sm:text-lg line-clamp-2">{item.product.name}</h3>
+                          <p className="text-gray-600 text-sm sm:text-base">{formatPrice(Number(item.product.price))}</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between w-full sm:w-auto gap-3 sm:gap-4">
+                          <div className="flex items-center gap-2 mx-auto sm:mx-0">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => updateQuantity(item.product.id, Math.max(0, item.quantity - 1))}
+                            onClick={() => removeFromCart(item.product.id)}
+                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
                           >
-                            <Minus className="w-4 h-4" />
-                          </Button>
-                          <span className="w-8 text-center">{item.quantity}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          >
-                            <Plus className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFromCart(item.product.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -339,26 +345,26 @@ const Cart = () => {
 
               <div className="lg:col-span-1">
                 <Card className="sticky top-4">
-                  <CardHeader>
-                    <CardTitle>Order Summary</CardTitle>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg sm:text-xl">Order Summary</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
+                  <CardContent className="space-y-3 sm:space-y-4">
+                    <div className="flex justify-between text-sm sm:text-base">
                       <span>Subtotal</span>
                       <span>{formatPrice(getTotalPrice())}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-sm sm:text-base">
                       <span>Shipping</span>
-                      <span>Free</span>
+                      <span className="text-green-600">Free</span>
                     </div>
-                    <div className="border-t pt-4">
-                      <div className="flex justify-between font-semibold text-lg">
+                    <div className="border-t pt-3 sm:pt-4">
+                      <div className="flex justify-between font-semibold text-base sm:text-lg">
                         <span>Total</span>
                         <span>{formatPrice(getTotalPrice())}</span>
                       </div>
                     </div>
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm sm:text-base" 
                       onClick={handleCheckout}
                       disabled={items.length === 0}
                     >
@@ -366,7 +372,7 @@ const Cart = () => {
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="w-full" 
+                      className="w-full text-sm sm:text-base" 
                       onClick={clearCart}
                       disabled={items.length === 0}
                     >
