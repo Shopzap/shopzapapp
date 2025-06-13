@@ -104,9 +104,10 @@ const Auth = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateLoginForm()) {
-      const result = await signIn(email, password);
-      if (result?.error) {
-        toast.error(result.error.message || 'Login failed');
+      try {
+        await signIn(email, password);
+      } catch (error: any) {
+        toast.error(error.message || 'Login failed');
       }
     }
   };
@@ -114,11 +115,10 @@ const Auth = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateSignupForm()) {
-      const result = await signUp(registerEmail, registerPassword, fullName);
-      if (result?.error) {
-        toast.error(result.error.message || 'Signup failed');
-      } else {
-        toast.success('Account created successfully! Please check your email to verify your account.');
+      try {
+        await signUp(registerEmail, registerPassword, fullName);
+      } catch (error: any) {
+        toast.error(error.message || 'Signup failed');
       }
     }
   };
