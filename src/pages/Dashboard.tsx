@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoreUrl } from '@/utils/storeRouting';
-import MainLayout from '@/components/layouts/MainLayout';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import StoreUrlCard from '@/components/dashboard/StoreUrlCard';
@@ -105,66 +104,60 @@ const Dashboard = () => {
   
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
-      </MainLayout>
+      </div>
     );
   }
   
   if (!storeData) {
     return (
-      <MainLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>No Store Found</CardTitle>
-              <CardDescription>You need to create a store first</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => navigate('/onboarding')} className="w-full">Create Your Store</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </MainLayout>
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>No Store Found</CardTitle>
+            <CardDescription>You need to create a store first</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => navigate('/onboarding')} className="w-full">Create Your Store</Button>
+          </CardFooter>
+        </Card>
+      </div>
     );
   }
   
   return (
-    <MainLayout>
-      <div className="container p-4 mx-auto space-y-6">
-        <DashboardHeader storeName={storeData.name} productCount={productCount} />
-        
-        <StoreUrlCard storeData={storeData} />
-        
-        <StoreStats 
-          productCount={productCount} 
-          orderCount={orderCount} 
-          plan={storeData.plan} 
-        />
-        
-        {/* Recent Orders Section */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-medium">Recent Orders</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/orders')}>
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <RecentOrdersList orders={recentOrders} onCopyStoreLink={handleCopyStoreLink} />
-          </CardContent>
-        </Card>
-        
-        <QuickActionsCard />
-      </div>
-    </MainLayout>
+    <div className="container p-4 mx-auto space-y-6">
+      <DashboardHeader storeName={storeData.name} productCount={productCount} />
+      
+      <StoreUrlCard storeData={storeData} />
+      
+      <StoreStats 
+        productCount={productCount} 
+        orderCount={orderCount} 
+        plan={storeData.plan} 
+      />
+      
+      {/* Recent Orders Section */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-medium">Recent Orders</CardTitle>
+            <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/orders')}>
+              View All
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <RecentOrdersList orders={recentOrders} onCopyStoreLink={handleCopyStoreLink} />
+        </CardContent>
+      </Card>
+      
+      <QuickActionsCard />
+    </div>
   );
 };
 

@@ -14,10 +14,10 @@ import { useSmartRetry } from "@/hooks/useSmartRetry";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Storefront: React.FC = () => {
-  const { storeUsername } = useParams<{ storeUsername: string }>();
+  const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { getCachedData, setCachedData } = useStoreCache(storeUsername || '');
+  const { getCachedData, setCachedData } = useStoreCache(storeName || '');
   const [fetchError, setFetchError] = useState<string | null>(null);
   
   // Preload critical resources on component mount
@@ -25,17 +25,17 @@ const Storefront: React.FC = () => {
     preloadCriticalResources();
   }, []);
 
-  // Normalize the store username to lowercase for consistent querying
-  const normalizedStoreUsername = storeUsername?.toLowerCase();
+  // Normalize the store name to lowercase for consistent querying
+  const normalizedStoreName = storeName?.toLowerCase();
 
-  // Redirect to home if no store username provided
-  if (!storeUsername || storeUsername.trim() === '') {
-    console.error('Storefront: No store username provided in URL');
+  // Redirect to home if no store name provided
+  if (!storeName || storeName.trim() === '') {
+    console.error('Storefront: No store name provided in URL');
     return <Navigate to="/" replace />;
   }
 
   // Check cache first
-  const cachedData = getCachedData(storeUsername);
+  const cachedData = getCachedData(storeName);
   
   // Smart retry hook
   const { retry, canRetry, isRetrying } = useSmartRetry({
@@ -43,22 +43,22 @@ const Storefront: React.FC = () => {
     retryDelay: 1000,
     onRetry: () => {
       setFetchError(null);
-      queryClient.invalidateQueries({ queryKey: ['store-lookup', normalizedStoreUsername] });
+      queryClient.invalidateQueries({ queryKey: ['store-lookup', normalizedStoreName] });
     }
   });
   
-  // Fetch store data using username field
+  // Fetch store data with improved error handling and query logic
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
-    queryKey: ['store-lookup', normalizedStoreUsername],
+    queryKey: ['store-lookup', normalizedStoreName],
     queryFn: async () => {
-      console.log('Storefront: Fetching store data for username', normalizedStoreUsername);
+      console.log('Storefront: Fetching store data for identifier', normalizedStoreName);
       
       try {
-        // Find by username field (primary method)
-        const { data: usernameData, error: usernameError } = await supabase
+        // First, try to find by username (preferred method)
+        let { data: usernameData, error: usernameError } = await supabase
           .from('stores')
           .select('*')
-          .eq('username', normalizedStoreUsername)
+          .eq('username', normalizedStoreName)
           .maybeSingle();
           
         if (usernameData && !usernameError) {
@@ -66,15 +66,27 @@ const Storefront: React.FC = () => {
           return { store: usernameData, redirectNeeded: false };
         }
         
-        console.error('Storefront: Store not found with username', normalizedStoreUsername);
-        throw new Error(`Store "${storeUsername}" not found`);
+        // If not found by username, try name field as fallback
+        let { data: nameData, error: nameError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('name', normalizedStoreName)
+          .maybeSingle();
+          
+        if (nameData && !nameError) {
+          console.log('Storefront: Store found by name', nameData);
+          return { store: nameData, redirectNeeded: false };
+        }
+        
+        console.error('Storefront: Store not found with any identifier', normalizedStoreName);
+        throw new Error(`Store "${storeName}" not found`);
       } catch (err: any) {
         console.error('Storefront: Exception in store fetch', err);
         setFetchError(err.message);
         throw err;
       }
     },
-    enabled: !!normalizedStoreUsername && !cachedData,
+    enabled: !!normalizedStoreName && !cachedData,
     retry: false, // We handle retries manually
     staleTime: 60 * 1000, // 1 minute
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -84,7 +96,7 @@ const Storefront: React.FC = () => {
   // Extract store from the data structure
   const store = storeData?.store;
   
-  // Fetch products with caching - Show ALL published products
+  // Fetch products with caching - FIXED to show ALL published products
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -134,9 +146,9 @@ const Storefront: React.FC = () => {
   // Cache data when both store and products are loaded
   useEffect(() => {
     if (store && products && !cachedData) {
-      setCachedData(storeUsername, store, products);
+      setCachedData(storeName, store, products);
     }
-  }, [store, products, storeUsername, setCachedData, cachedData]);
+  }, [store, products, storeName, setCachedData, cachedData]);
   
   // Show skeleton loading only after delay
   if (shouldShowLoading && !cachedData) {
@@ -147,7 +159,7 @@ const Storefront: React.FC = () => {
   if (hasTimedOut || (storeError && !store && !cachedData)) {
     return (
       <StoreNotFound 
-        storeName={storeUsername} 
+        storeName={storeName} 
         onRetry={canRetry ? retry : undefined}
       />
     );

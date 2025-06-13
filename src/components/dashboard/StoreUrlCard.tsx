@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink } from 'lucide-react';
+import { getStoreUrl } from '@/utils/storeRouting';
 
 interface StoreUrlCardProps {
   storeData: any;
@@ -12,14 +13,9 @@ interface StoreUrlCardProps {
 const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
   const { toast } = useToast();
 
-  const getStoreUrl = (includeOrigin: boolean = true): string => {
-    const storeUrl = `/store/${storeData.username}`;
-    return includeOrigin ? `${window.location.origin}${storeUrl}` : storeUrl;
-  };
-
   const handleCopyStoreLink = () => {
     if (storeData) {
-      const storeLink = getStoreUrl(true);
+      const storeLink = getStoreUrl(storeData, '', true);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
     }
@@ -27,7 +23,7 @@ const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
 
   const handleOpenStore = () => {
     if (storeData) {
-      const storeLink = getStoreUrl(true);
+      const storeLink = getStoreUrl(storeData, '', true);
       window.open(storeLink, '_blank');
     }
   };
@@ -40,7 +36,7 @@ const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
       <CardContent>
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-            {getStoreUrl(true)}
+            {getStoreUrl(storeData, '', true)}
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
