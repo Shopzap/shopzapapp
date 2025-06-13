@@ -20,15 +20,68 @@ const StoreBuilder = () => {
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [storeUsername, setStoreUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   
-  // Auto-generate username from store name
-  const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Auto-generate and validate username from store name
+  const handleStoreNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setStoreName(name);
+    
+    if (!name.trim()) {
+      setStoreUsername("");
+      setUsernameAvailable(null);
+      return;
+    }
     
     // Generate clean username from store name
     const username = createStoreUsername(name);
     setStoreUsername(username);
+    
+    // Check if username is available
+    if (username && username.length >= 3) {
+      setIsCheckingUsername(true);
+      try {
+        const { data: existingStore } = await supabase
+          .from('stores')
+          .select('username')
+          .eq('username', username)
+          .maybeSingle();
+        
+        setUsernameAvailable(!existingStore);
+      } catch (error) {
+        console.error('Error checking username availability:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    }
+  };
+  
+  // Manual username validation
+  const handleUsernameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const username = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '');
+    setStoreUsername(username);
+    
+    if (username && username.length >= 3) {
+      setIsCheckingUsername(true);
+      try {
+        const { data: existingStore } = await supabase
+          .from('stores')
+          .select('username')
+          .eq('username', username)
+          .maybeSingle();
+        
+        setUsernameAvailable(!existingStore);
+      } catch (error) {
+        console.error('Error checking username availability:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    } else {
+      setUsernameAvailable(null);
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,21 +104,31 @@ const StoreBuilder = () => {
       // Clean store name for display
       const cleanStoreName = storeName.trim();
       
-      // Clean username for URL (no suffixes)
-      const cleanUsername = createStoreUsername(cleanStoreName);
+      // Clean username for URL (no suffixes, exactly as entered)
+      const cleanUsername = storeUsername.toLowerCase().replace(/[^a-z0-9]/g, '');
       
-      if (!cleanUsername) {
+      if (!cleanUsername || cleanUsername.length < 3) {
         toast({
           title: "Invalid username",
-          description: "Please enter a valid store name to generate username",
+          description: "Username must be at least 3 characters long and contain only letters and numbers",
           variant: "destructive"
         });
         setIsLoading(false);
         return;
       }
       
-      // Check if username already exists
-      const { data: existingStore, error: checkError } = await supabase
+      if (usernameAvailable === false) {
+        toast({
+          title: "Username already taken",
+          description: "Please choose a different username",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Final check before creating store
+      const { data: existingStore } = await supabase
         .from('stores')
         .select('username')
         .eq('username', cleanUsername)
@@ -74,20 +137,21 @@ const StoreBuilder = () => {
       if (existingStore) {
         toast({
           title: "Username already taken",
-          description: "Please choose a different store name",
+          description: "Please choose a different username",
           variant: "destructive"
         });
+        setUsernameAvailable(false);
         setIsLoading(false);
         return;
       }
       
-      // Create store with the clean name and username
+      // Create store with the clean name and username (NO SUFFIXES)
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
             name: cleanStoreName,
-            username: cleanUsername,
+            username: cleanUsername, // Exact username as entered, no suffixes
             phone_number: whatsappNumber,
             user_id: userId,
             business_email: user.email || '',
@@ -183,14 +247,38 @@ const StoreBuilder = () => {
                     <Input
                       id="storeUrl"
                       className="rounded-l-none"
-                      placeholder="your-store-username" 
+                      placeholder="your-username" 
                       value={storeUsername}
-                      onChange={(e) => setStoreUsername(e.target.value)}
+                      onChange={handleUsernameChange}
                       required
+                      minLength={3}
                     />
                   </div>
+                  
+                  {/* Username availability feedback */}
+                  {isCheckingUsername && (
+                    <p className="text-sm text-muted-foreground">
+                      <Loader className="inline w-3 h-3 mr-1 animate-spin" />
+                      Checking availability...
+                    </p>
+                  )}
+                  
+                  {!isCheckingUsername && usernameAvailable === true && storeUsername && (
+                    <p className="text-sm text-green-600">
+                      ✓ Username is available
+                    </p>
+                  )}
+                  
+                  {!isCheckingUsername && usernameAvailable === false && storeUsername && (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        Username "{storeUsername}" is already taken. Please choose a different one.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <p className="text-sm text-muted-foreground">
-                    Choose a unique username for your store URL (automatically generated from store name)
+                    Choose a unique username (3+ characters, letters and numbers only)
                   </p>
                 </div>
                 
@@ -209,7 +297,7 @@ const StoreBuilder = () => {
             <Button 
               className="w-full" 
               onClick={handleSubmit} 
-              disabled={isLoading}
+              disabled={isLoading || isCheckingUsername || usernameAvailable === false || !storeUsername}
             >
               {isLoading ? (
                 <>

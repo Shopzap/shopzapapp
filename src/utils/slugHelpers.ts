@@ -63,14 +63,12 @@ export const generateUniqueProductSlug = async (
 };
 
 /**
- * Generate a clean store username (no suffixes)
+ * Generate a clean store username (NO SUFFIXES - exactly as entered)
  */
 export const createStoreUsername = (storeName: string): string => {
   return storeName
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    .replace(/[^a-z0-9]/g, '') // Remove all special characters and spaces
+    .substring(0, 50); // Limit length to reasonable size
 };

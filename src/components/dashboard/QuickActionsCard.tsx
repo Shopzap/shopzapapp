@@ -19,7 +19,7 @@ const QuickActionsCard: React.FC = () => {
             <Package className="mr-2 h-4 w-4" /> Manage Products
           </Button>
           <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/customize-store')}>
-            <Palette className="mr-2 h-4 w-4" /> Customize Storefront
+            <Palette className="mr-2 h-4 w-4" /> Customize Store
           </Button>
           <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard/instagram')}>
             <Instagram className="mr-2 h-4 w-4" /> Instagram Automation

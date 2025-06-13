@@ -11,6 +11,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { COLOR_PALETTES } from "@/components/storefront/ColorPaletteSelector";
 import { useDelayedLoading } from "@/hooks/useDelayedLoading";
 import { useSmartRetry } from "@/hooks/useSmartRetry";
+import { resolveStoreRoute } from "@/utils/storeRouting";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Storefront: React.FC = () => {
@@ -47,39 +48,18 @@ const Storefront: React.FC = () => {
     }
   });
   
-  // Fetch store data with improved error handling and query logic
+  // Fetch store data with improved error handling and routing resolution
   const { data: storeData, isLoading: storeLoading, error: storeError } = useQuery({
     queryKey: ['store-lookup', normalizedStoreName],
     queryFn: async () => {
       console.log('Storefront: Fetching store data for identifier', normalizedStoreName);
       
       try {
-        // First, try to find by username (preferred method)
-        let { data: usernameData, error: usernameError } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('username', normalizedStoreName)
-          .maybeSingle();
-          
-        if (usernameData && !usernameError) {
-          console.log('Storefront: Store found by username', usernameData);
-          return { store: usernameData, redirectNeeded: false };
-        }
+        // Use the improved store resolution logic
+        const result = await resolveStoreRoute(normalizedStoreName!);
+        console.log('Storefront: Store resolution result:', result);
         
-        // If not found by username, try name field as fallback
-        let { data: nameData, error: nameError } = await supabase
-          .from('stores')
-          .select('*')
-          .eq('name', normalizedStoreName)
-          .maybeSingle();
-          
-        if (nameData && !nameError) {
-          console.log('Storefront: Store found by name', nameData);
-          return { store: nameData, redirectNeeded: false };
-        }
-        
-        console.error('Storefront: Store not found with any identifier', normalizedStoreName);
-        throw new Error(`Store "${storeName}" not found`);
+        return result;
       } catch (err: any) {
         console.error('Storefront: Exception in store fetch', err);
         setFetchError(err.message);

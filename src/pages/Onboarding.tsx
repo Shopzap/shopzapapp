@@ -12,15 +12,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { createStoreUsername } from '@/utils/slugHelpers';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   
   // Form state
   const [storeName, setStoreName] = useState("");
+  const [storeUsername, setStoreUsername] = useState("");
   const [storeTheme, setStoreTheme] = useState("light");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -35,6 +39,41 @@ const Onboarding = () => {
     }
   };
   
+  // Auto-generate and validate username from store name
+  const handleStoreNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value;
+    setStoreName(name);
+    
+    if (!name.trim()) {
+      setStoreUsername("");
+      setUsernameAvailable(null);
+      return;
+    }
+    
+    // Generate clean username from store name
+    const username = createStoreUsername(name);
+    setStoreUsername(username);
+    
+    // Check if username is available
+    if (username && username.length >= 3) {
+      setIsCheckingUsername(true);
+      try {
+        const { data: existingStore } = await supabase
+          .from('stores')
+          .select('username')
+          .eq('username', username)
+          .maybeSingle();
+        
+        setUsernameAvailable(!existingStore);
+      } catch (error) {
+        console.error('Error checking username availability:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingUsername(false);
+      }
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -43,6 +82,24 @@ const Onboarding = () => {
       toast({
         title: "Missing information",
         description: "Please enter a store name",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!storeUsername || storeUsername.length < 3) {
+      toast({
+        title: "Invalid username",
+        description: "Username must be at least 3 characters long",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (usernameAvailable === false) {
+      toast({
+        title: "Username already taken",
+        description: "Please choose a different store name",
         variant: "destructive"
       });
       return;
@@ -91,11 +148,8 @@ const Onboarding = () => {
         storeLogoUrl = urlData.publicUrl;
       }
       
-      // Step 2: Create a clean username from store name
-      const storeUsername = createStoreUsername(storeName);
-      
-      // Check if username already exists
-      const { data: existingStore, error: checkError } = await supabase
+      // Step 2: Final check if username is available
+      const { data: existingStore } = await supabase
         .from('stores')
         .select('username')
         .eq('username', storeUsername)
@@ -111,14 +165,14 @@ const Onboarding = () => {
         return;
       }
       
-      // Step 3: Save store data to Supabase
+      // Step 3: Save store data to Supabase (NO SUFFIXES)
       const { data: store, error: storeError } = await supabase
         .from('stores')
         .insert([
           {
-            name: storeName,
+            name: storeName.trim(),
+            username: storeUsername, // Exact username, no suffixes
             logo_image: storeLogoUrl,
-            username: storeUsername,
             user_id: user.id,
             business_email: user.email || '',
             phone_number: '', // This is a required field in the stores table
@@ -170,10 +224,40 @@ const Onboarding = () => {
               <Input 
                 id="storeName"
                 value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
+                onChange={handleStoreNameChange}
                 placeholder="Enter your store name"
                 required
               />
+              
+              {/* Show generated username */}
+              {storeUsername && (
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    Your store URL will be: shopzap.io/store/{storeUsername}
+                  </p>
+                  
+                  {isCheckingUsername && (
+                    <p className="text-sm text-muted-foreground">
+                      <Loader className="inline w-3 h-3 mr-1 animate-spin" />
+                      Checking availability...
+                    </p>
+                  )}
+                  
+                  {!isCheckingUsername && usernameAvailable === true && (
+                    <p className="text-sm text-green-600">
+                      ✓ Username is available
+                    </p>
+                  )}
+                  
+                  {!isCheckingUsername && usernameAvailable === false && (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        Username "{storeUsername}" is already taken. Please choose a different store name.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -232,7 +316,11 @@ const Onboarding = () => {
               </RadioGroup>
             </div>
             
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading || isCheckingUsername || usernameAvailable === false}
+            >
               {isLoading ? (
                 <>
                   <Loader className="mr-2 h-4 w-4 animate-spin" />

@@ -15,6 +15,7 @@ const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
 
   const handleCopyStoreLink = () => {
     if (storeData) {
+      // Use exact username from database for URL generation
       const storeLink = getStoreUrl(storeData, '', true);
       navigator.clipboard.writeText(storeLink);
       toast({ title: "Store link copied!" });
@@ -23,9 +24,16 @@ const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
 
   const handleOpenStore = () => {
     if (storeData) {
+      // Use exact username from database for URL generation
       const storeLink = getStoreUrl(storeData, '', true);
       window.open(storeLink, '_blank');
     }
+  };
+
+  const getDisplayUrl = () => {
+    if (!storeData) return '';
+    // Always use the exact username from the database
+    return `${window.location.origin}/store/${storeData.username}`;
   };
 
   return (
@@ -36,7 +44,7 @@ const StoreUrlCard: React.FC<StoreUrlCardProps> = ({ storeData }) => {
       <CardContent>
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="bg-muted text-muted-foreground px-3 py-1 rounded-md text-sm flex-1 truncate w-full">
-            {getStoreUrl(storeData, '', true)}
+            {getDisplayUrl()}
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="outline" size="sm" onClick={handleCopyStoreLink} className="flex-1">
