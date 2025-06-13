@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -56,9 +55,9 @@ const Settings = () => {
         
         setStoreData(storeData);
         setFormData({
-          username: storeData.owner_name || '',
+          username: storeData.username || '',
           email: userEmail || '',
-          phone: storeData.phone || '',
+          phone: storeData.phone_number || '',
           store_name: storeData.name || '',
           store_username: storeData.username || ''
         });
@@ -86,8 +85,7 @@ const Settings = () => {
       const { error } = await supabase
         .from('stores')
         .update({
-          owner_name: formData.username,
-          phone: formData.phone,
+          phone_number: formData.phone,
           name: formData.store_name,
           username: formData.store_username
         })

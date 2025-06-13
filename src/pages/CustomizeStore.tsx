@@ -21,7 +21,7 @@ const CustomizeStore = () => {
     name: '',
     description: '',
     banner_image: '',
-    logo_url: '',
+    logo_image: '',
     primary_color: '#6c5ce7'
   });
 
@@ -59,8 +59,8 @@ const CustomizeStore = () => {
           name: storeData.name || '',
           description: storeData.description || '',
           banner_image: storeData.banner_image || '',
-          logo_url: storeData.logo_url || '',
-          primary_color: storeData.primary_color || '#6c5ce7'
+          logo_image: storeData.logo_image || '',
+          primary_color: (storeData.theme && storeData.theme.primary_color) ? storeData.theme.primary_color : '#6c5ce7'
         });
         
       } catch (error) {
@@ -89,8 +89,11 @@ const CustomizeStore = () => {
           name: formData.name,
           description: formData.description,
           banner_image: formData.banner_image,
-          logo_url: formData.logo_url,
-          primary_color: formData.primary_color
+          logo_image: formData.logo_image,
+          theme: {
+            ...storeData.theme,
+            primary_color: formData.primary_color
+          }
         })
         .eq('id', storeData.id);
 
@@ -184,11 +187,11 @@ const CustomizeStore = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="logo_url">Logo URL</Label>
+              <Label htmlFor="logo_image">Logo URL</Label>
               <Input
-                id="logo_url"
-                value={formData.logo_url}
-                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                id="logo_image"
+                value={formData.logo_image}
+                onChange={(e) => setFormData({ ...formData, logo_image: e.target.value })}
                 placeholder="https://example.com/logo.png"
               />
             </div>
