@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Upload, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import ProductGrid from '@/components/product/ProductGrid';
 import AddProductModal from '@/components/product/AddProductModal';
 import CsvUploadModal from '@/components/product/CsvUploadModal';
@@ -28,7 +27,6 @@ const ProductManager: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [storePlan, setStorePlan] = useState('free');
   const { toast } = useToast();
@@ -123,7 +121,6 @@ const ProductManager: React.FC = () => {
 
   const handleProductAdded = () => {
     fetchProducts();
-    setShowAddModal(false);
     toast({
       title: "Product added",
       description: "Your product has been added successfully",
@@ -176,15 +173,6 @@ const ProductManager: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold">Products</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button 
-              onClick={() => setShowAddModal(true)}
-              disabled={isAtProductLimit}
-              title={isAtProductLimit ? "Upgrade your plan to add more products" : "Add a new product"}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Add Product
-            </Button>
-            
             {!isFreePlan && (
               <Button 
                 variant="outline"
@@ -259,11 +247,7 @@ const ProductManager: React.FC = () => {
         </div>
       </div>
 
-      <AddProductModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        onProductAdded={handleProductAdded}
-      />
+      <AddProductModal onProductAdded={handleProductAdded} />
 
       <CsvUploadModal
         open={showUploadModal}
