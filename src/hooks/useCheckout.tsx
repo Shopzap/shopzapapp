@@ -108,6 +108,24 @@ export const useCheckout = () => {
     });
   };
 
+  const updateReferralOnOrder = async (orderId: string) => {
+    try {
+      const sessionId = sessionStorage.getItem('referral_session_id');
+      if (!sessionId) return;
+
+      await supabase
+        .from('referrals')
+        .update({ 
+          order_id: orderId, 
+          status: 'converted',
+          converted_at: new Date().toISOString()
+        })
+        .eq('session_id', sessionId);
+    } catch (error) {
+      console.error('Error updating referral:', error);
+    }
+  };
+
   const handlePlaceOrder = async (values: FormData) => {
     if (orderItems.length === 0) {
       toast({
@@ -212,6 +230,9 @@ export const useCheckout = () => {
 
               console.log('Payment verified successfully:', verificationData);
 
+              // Update referral if exists
+              await updateReferralOnOrder(verificationData.orderId);
+
               navigate('/order-success', {
                 state: {
                   orderId: verificationData.orderId,
@@ -279,6 +300,9 @@ export const useCheckout = () => {
         if (orderError) {
           throw new Error('Failed to create COD order');
         }
+
+        // Update referral if exists
+        await updateReferralOnOrder(orderResult.orderId);
         
         navigate('/order-success', {
           state: {

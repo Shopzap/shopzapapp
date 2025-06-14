@@ -13,6 +13,7 @@ interface InstagramPost {
   image_url: string;
   caption: string;
   permalink: string;
+  timestamp?: string;
 }
 
 export const InstaFeed: React.FC<InstaFeedProps> = ({ storeId }) => {
@@ -21,33 +22,50 @@ export const InstaFeed: React.FC<InstaFeedProps> = ({ storeId }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchInstagramConnection();
+    fetchInstagramData();
   }, [storeId]);
 
-  const fetchInstagramConnection = async () => {
+  const fetchInstagramData = async () => {
     try {
-      const { data, error } = await supabase
+      // Get Instagram connection info
+      const { data: connection } = await supabase
         .from('instagram_connections')
         .select('ig_username, is_active')
         .eq('store_id', storeId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
+
+      if (connection?.ig_username) {
+        setInstagramHandle(connection.ig_username);
+      }
+
+      // Fetch posts from ig_feed table
+      const { data: feedPosts, error } = await supabase
+        .from('ig_feed')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false })
+        .limit(6);
 
       if (error) {
-        console.log('No Instagram connection found');
+        console.error('Error fetching Instagram feed:', error);
         loadDummyPosts();
         return;
       }
 
-      if (data?.ig_username) {
-        setInstagramHandle(data.ig_username);
-        // In a real implementation, this would fetch actual posts from Instagram API
-        loadDummyPosts();
+      if (feedPosts && feedPosts.length > 0) {
+        setPosts(feedPosts.map(post => ({
+          id: post.id,
+          image_url: post.image_url,
+          caption: post.caption || '',
+          permalink: post.permalink || '#',
+          timestamp: post.timestamp || post.created_at
+        })));
       } else {
         loadDummyPosts();
       }
     } catch (error) {
-      console.error('Error fetching Instagram connection:', error);
+      console.error('Error fetching Instagram data:', error);
       loadDummyPosts();
     } finally {
       setIsLoading(false);
@@ -55,7 +73,6 @@ export const InstaFeed: React.FC<InstaFeedProps> = ({ storeId }) => {
   };
 
   const loadDummyPosts = () => {
-    // Dummy Instagram posts for demonstration
     const dummyPosts: InstagramPost[] = [
       {
         id: '1',
@@ -114,20 +131,29 @@ export const InstaFeed: React.FC<InstaFeedProps> = ({ storeId }) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3">
-          {posts.map((post) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {posts.slice(0, 6).map((post) => (
             <div key={post.id} className="group relative aspect-square overflow-hidden rounded-lg">
               <img
                 src={post.image_url}
                 alt={post.caption}
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <ExternalLink className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
+              {post.caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-white text-xs truncate">
+                    {post.caption}
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
+        
         {instagramHandle && (
           <div className="mt-4 text-center">
             <a

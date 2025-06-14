@@ -326,6 +326,50 @@ export type Database = {
           },
         ]
       }
+      ig_feed: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          image_url: string
+          permalink: string | null
+          post_id: string
+          store_id: string
+          timestamp: string | null
+          updated_at: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          permalink?: string | null
+          post_id: string
+          store_id: string
+          timestamp?: string | null
+          updated_at?: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          permalink?: string | null
+          post_id?: string
+          store_id?: string
+          timestamp?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_ig_feed_store"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_connections: {
         Row: {
           access_token: string | null
@@ -738,6 +782,63 @@ export type Database = {
           },
           {
             foreignKeyName: "referral_logs_referrer_store_id_fkey"
+            columns: ["referrer_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          converted_at: string | null
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          order_id: string | null
+          referred_user_id: string | null
+          referrer_store_id: string
+          session_id: string
+          status: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          order_id?: string | null
+          referred_user_id?: string | null
+          referrer_store_id: string
+          session_id: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          order_id?: string | null
+          referred_user_id?: string | null
+          referrer_store_id?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_referrals_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_referrals_store"
             columns: ["referrer_store_id"]
             isOneToOne: false
             referencedRelation: "stores"
