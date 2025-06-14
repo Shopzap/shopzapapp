@@ -68,8 +68,8 @@
         }
         
         .alert-box {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 25px;
@@ -77,13 +77,13 @@
         
         .alert-title {
             font-weight: 600;
-            color: #856404;
+            color: #155724;
             margin-bottom: 10px;
             font-size: 16px;
         }
         
         .alert-text {
-            color: #856404;
+            color: #155724;
             font-size: 14px;
         }
         
@@ -312,6 +312,34 @@
             color: white;
         }
         
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .info-card {
+            background-color: white;
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid #7b3fe4;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            color: #222;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
         @media (max-width: 600px) {
             .content {
                 padding: 20px 15px;
@@ -335,6 +363,10 @@
             .order-detail {
                 flex-direction: column;
                 gap: 5px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -369,7 +401,7 @@
                 </div>
                 <div class="order-detail">
                     <span class="order-label">Payment Status:</span>
-                    <span class="order-value" style="color: #28a745; font-weight: 600;">✅ Paid</span>
+                    <span class="order-value" style="color: #28a745; font-weight: 600;">✅ Payment Pending (COD)</span>
                 </div>
                 <div class="order-detail">
                     <span class="order-label">Store:</span>
@@ -379,21 +411,27 @@
             
             <div class="section-title">Customer Information</div>
             <div class="buyer-info">
-                <div class="order-detail">
-                    <span class="order-label">Customer Name:</span>
-                    <span class="order-value">{{buyer_name}}</span>
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="info-label">Customer Name</div>
+                        <div class="info-value">{{buyer_name}}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Email Address</div>
+                        <div class="info-value">{{buyer_email}}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Phone Number</div>
+                        <div class="info-value">{{buyer_phone}}</div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-label">Payment Method</div>
+                        <div class="info-value">Cash on Delivery</div>
+                    </div>
                 </div>
-                <div class="order-detail">
-                    <span class="order-label">Email:</span>
-                    <span class="order-value">{{buyer_email}}</span>
-                </div>
-                <div class="order-detail">
-                    <span class="order-label">Phone:</span>
-                    <span class="order-value">{{buyer_phone}}</span>
-                </div>
-                <div class="order-detail">
-                    <span class="order-label">Shipping Address:</span>
-                    <span class="order-value">{{buyer_address}}</span>
+                <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #28a745; margin-top: 15px;">
+                    <div class="info-label">Delivery Address</div>
+                    <div class="info-value">{{buyer_address}}</div>
                 </div>
             </div>
             
@@ -429,14 +467,17 @@
             <div class="instruction-box">
                 <div class="instruction-title">📦 Next Steps</div>
                 <div class="instruction-text">
-                    Please pack and fulfill this order promptly. Your customer is excited to receive their items! Make sure to update the order status and tracking information in your dashboard.
+                    <div style="margin-bottom: 8px;">1. ✅ <strong>Confirm the order</strong> in your dashboard</div>
+                    <div style="margin-bottom: 8px;">2. 📦 <strong>Pack the items</strong> securely for shipping</div>
+                    <div style="margin-bottom: 8px;">3. 🚚 <strong>Update tracking information</strong> once shipped</div>
+                    <div>4. 💰 <strong>Collect payment</strong> upon delivery (COD)</div>
                 </div>
             </div>
             
             <div class="cta-buttons">
-                <a href="https://shopzap.io/dashboard/orders/{{order_id}}" class="btn btn-primary">View in Dashboard</a>
-                <a href="{{invoice_link}}" class="btn btn-secondary">Download Invoice</a>
-                <a href="https://shopzap.io/dashboard/orders" class="btn btn-success">Manage All Orders</a>
+                <a href="https://shopzap.io/dashboard/orders/{{order_id}}" class="btn btn-primary">📊 View in Dashboard</a>
+                <a href="https://shopzap.io/thank-you?order_id={{order_id}}" class="btn btn-secondary">📄 Download Invoice</a>
+                <a href="https://shopzap.io/dashboard/orders" class="btn btn-success">📋 Manage All Orders</a>
             </div>
             
             <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
@@ -451,6 +492,10 @@
                 <div class="support-title">Need Help?</div>
                 <div class="support-text">If you have any questions about order fulfillment or need assistance, our support team is here to help.</div>
                 <a href="mailto:support@shopzap.io" class="support-email">support@shopzap.io</a>
+                <br><br>
+                <a href="https://shopzap.io/help" class="btn btn-secondary" style="display: inline-block; margin-top: 10px;">
+                    Visit Help Center
+                </a>
             </div>
         </div>
         

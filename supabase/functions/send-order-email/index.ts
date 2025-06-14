@@ -13,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    const { buyerEmail, buyerName, orderId, products, totalAmount, storeName, sellerEmail } = await req.json();
+    const { buyerEmail, buyerName, buyerPhone, buyerAddress, orderId, products, totalAmount, storeName, sellerEmail, eventType } = await req.json();
     
-    console.log('Sending order emails for:', { orderId, buyerEmail, sellerEmail, storeName });
+    console.log('Sending order emails for:', { orderId, buyerEmail, sellerEmail, storeName, eventType });
 
     // Generate secure URLs with proper domain
     const baseUrl = 'https://shopzap.io';
@@ -24,8 +24,18 @@ serve(async (req) => {
     
     // Updated URLs with proper routing
     const trackingUrl = `${baseUrl}/track-order?orderId=${orderId}`;
-    const correctionUrl = `${baseUrl}/correct-order?token=${secureToken}`;
-    const invoiceUrl = `${baseUrl}/invoice/${orderId}?token=${btoa(orderId + buyerEmail)}`;
+    const correctionUrl = `${baseUrl}/correct-order/${orderId}?token=${secureToken}`;
+    const invoiceUrl = `${baseUrl}/thank-you?order_id=${orderId}`;
+    const helpUrl = `${baseUrl}/help`;
+
+    // Calculate estimated delivery (7 days from now)
+    const estimatedDelivery = new Date();
+    estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
+    const deliveryDate = estimatedDelivery.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
 
     // Create detailed item list with images
     const itemsList = products.map((p: any) => 
@@ -69,6 +79,33 @@ serve(async (req) => {
             <div style="font-size: 16px; color: #7b3fe4; font-weight: 500;">Store: ${storeName}</div>
             <div style="font-size: 14px; color: #666; margin-top: 8px;">Order Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
           </div>
+
+          <!-- Enhanced Customer & Delivery Information -->
+          <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #0066cc; margin-bottom: 15px; font-size: 16px;">📋 Order & Delivery Details</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Customer Name</div>
+                <div style="color: #222; font-weight: 500;">${buyerName}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Contact Phone</div>
+                <div style="color: #222; font-weight: 500;">${buyerPhone}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Email Address</div>
+                <div style="color: #222; font-weight: 500;">${buyerEmail}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Estimated Delivery</div>
+                <div style="color: #222; font-weight: 500;">${deliveryDate}</div>
+              </div>
+            </div>
+            <div style="background-color: white; padding: 15px; border-radius: 6px; border-left: 4px solid #28a745; margin-top: 15px;">
+              <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Delivery Address</div>
+              <div style="color: #222; font-weight: 500;">${buyerAddress}</div>
+            </div>
+          </div>
           
           <!-- Order Summary -->
           <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Order Summary</div>
@@ -94,15 +131,18 @@ serve(async (req) => {
           </div>
           
           <!-- Action Buttons -->
-          <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
-            <a href="${invoiceUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7b3fe4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+          <div style="display: flex; gap: 10px; margin: 30px 0; flex-wrap: wrap;">
+            <a href="${invoiceUrl}" style="display: inline-block; padding: 12px 20px; background-color: #7b3fe4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
               🧾 Download Invoice
             </a>
-            <a href="${trackingUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+            <a href="${trackingUrl}" style="display: inline-block; padding: 12px 20px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
               📦 Track My Order
             </a>
-            <a href="${correctionUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #e67e22; text-decoration: none; border: 2px solid #e67e22; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+            <a href="${correctionUrl}" style="display: inline-block; padding: 12px 20px; background-color: white; color: #e67e22; text-decoration: none; border: 2px solid #e67e22; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
               ✏️ Correct Order
+            </a>
+            <a href="${helpUrl}" style="display: inline-block; padding: 12px 20px; background-color: white; color: #6c757d; text-decoration: none; border: 2px solid #6c757d; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
+              ❓ Need Help?
             </a>
           </div>
           
@@ -127,13 +167,17 @@ serve(async (req) => {
             <div style="font-weight: 600; margin-bottom: 10px;">Need Help?</div>
             <div style="color: #666; margin-bottom: 15px; font-size: 14px;">If you have any questions about your order, feel free to contact our support team.</div>
             <a href="mailto:support@shopzap.io" style="color: #7b3fe4; text-decoration: none; font-weight: 500;">support@shopzap.io</a>
+            <br><br>
+            <a href="${helpUrl}" style="display: inline-block; padding: 10px 20px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; margin-top: 10px;">
+              Visit Help Center
+            </a>
           </div>
         </div>
         
         <!-- Footer -->
         <div style="background-color: #222; color: white; padding: 20px; text-align: center; font-size: 14px;">
           <div style="margin-bottom: 15px;">
-            <a href="https://shopzap.io/help" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
+            <a href="${helpUrl}" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
             <a href="https://shopzap.io/privacy" style="color: #ccc; text-decoration: none; margin: 0 10px;">Privacy Policy</a>
             <a href="https://shopzap.io/terms" style="color: #ccc; text-decoration: none; margin: 0 10px;">Terms of Service</a>
           </div>
@@ -187,6 +231,33 @@ serve(async (req) => {
               <span style="font-weight: 500; color: #222;">${buyerName}</span>
             </div>
           </div>
+
+          <!-- Enhanced Customer Information -->
+          <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Customer Information</div>
+          <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Customer Name</div>
+                <div style="color: #222; font-weight: 500; font-size: 14px;">${buyerName}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Email Address</div>
+                <div style="color: #222; font-weight: 500; font-size: 14px;">${buyerEmail}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Phone Number</div>
+                <div style="color: #222; font-weight: 500; font-size: 14px;">${buyerPhone}</div>
+              </div>
+              <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #7b3fe4;">
+                <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Payment Method</div>
+                <div style="color: #222; font-weight: 500; font-size: 14px;">Cash on Delivery</div>
+              </div>
+            </div>
+            <div style="background-color: white; padding: 12px; border-radius: 6px; border-left: 4px solid #28a745; margin-top: 15px;">
+              <div style="font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px;">Delivery Address</div>
+              <div style="color: #222; font-weight: 500; font-size: 14px;">${buyerAddress}</div>
+            </div>
+          </div>
           
           <!-- Order Items -->
           <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Items to Pack & Ship</div>
@@ -214,10 +285,23 @@ serve(async (req) => {
           <!-- Next Steps -->
           <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0;">
             <div style="font-weight: 600; color: #0c5460; margin-bottom: 15px; font-size: 16px;">📦 Next Steps</div>
-            <div style="color: #0c5460; margin-bottom: 12px;">1. ✅ <strong>Confirm the order</strong> in your dashboard</div>
-            <div style="color: #0c5460; margin-bottom: 12px;">2. 📦 <strong>Pack the items</strong> securely for shipping</div>
-            <div style="color: #0c5460; margin-bottom: 12px;">3. 🚚 <strong>Update tracking information</strong> once shipped</div>
+            <div style="color: #0c5460; margin-bottom: 8px;">1. ✅ <strong>Confirm the order</strong> in your dashboard</div>
+            <div style="color: #0c5460; margin-bottom: 8px;">2. 📦 <strong>Pack the items</strong> securely for shipping</div>
+            <div style="color: #0c5460; margin-bottom: 8px;">3. 🚚 <strong>Update tracking information</strong> once shipped</div>
             <div style="color: #0c5460;">4. 💰 <strong>Collect payment</strong> upon delivery (COD)</div>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 10px; margin: 30px 0; flex-wrap: wrap;">
+            <a href="https://shopzap.io/dashboard/orders/${orderId}" style="display: inline-block; padding: 12px 20px; background-color: #7b3fe4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
+              📊 View in Dashboard
+            </a>
+            <a href="${invoiceUrl}" style="display: inline-block; padding: 12px 20px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
+              📄 Download Invoice
+            </a>
+            <a href="https://shopzap.io/dashboard/orders" style="display: inline-block; padding: 12px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 120px;">
+              📋 Manage All Orders
+            </a>
           </div>
           
           <!-- Support -->
@@ -225,14 +309,18 @@ serve(async (req) => {
             <div style="font-weight: 600; margin-bottom: 10px;">Need Help?</div>
             <div style="color: #666; margin-bottom: 15px; font-size: 14px;">If you have any questions about order fulfillment, our support team is here to help.</div>
             <a href="mailto:support@shopzap.io" style="color: #7b3fe4; text-decoration: none; font-weight: 500;">support@shopzap.io</a>
+            <br><br>
+            <a href="${helpUrl}" style="display: inline-block; padding: 10px 20px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; margin-top: 10px;">
+              Visit Help Center
+            </a>
           </div>
         </div>
         
         <!-- Footer -->
         <div style="background-color: #222; color: white; padding: 20px; text-align: center; font-size: 14px;">
           <div style="margin-bottom: 15px;">
+            <a href="${helpUrl}" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
             <a href="https://shopzap.io/dashboard" style="color: #ccc; text-decoration: none; margin: 0 10px;">Dashboard</a>
-            <a href="https://shopzap.io/help" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
             <a href="https://shopzap.io/tutorials" style="color: #ccc; text-decoration: none; margin: 0 10px;">Tutorials</a>
           </div>
           <div>© 2025 ShopZap.io | All rights reserved</div>
@@ -287,7 +375,8 @@ serve(async (req) => {
       orderNumber,
       invoiceUrl,
       trackingUrl,
-      correctionUrl
+      correctionUrl,
+      helpUrl
     }), {
       headers: { 
         "Content-Type": "application/json",
@@ -300,10 +389,7 @@ serve(async (req) => {
       JSON.stringify({ sent: false, error: error.message }),
       {
         status: 500,
-        headers: { 
-          "Content-Type": "application/json",
-          ...corsHeaders 
-        },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }

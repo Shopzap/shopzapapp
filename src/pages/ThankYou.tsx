@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Package, CreditCard, Truck, Clock, Copy, Download, Loader2 } from 'lucide-react';
+import { CheckCircle, Package, CreditCard, Truck, Clock, Copy, Download, Loader2, User, MapPin, Phone, Mail, Store, Calendar, ExternalLink, HelpCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 import ResponsiveLayout from '@/components/ResponsiveLayout';
@@ -24,6 +24,9 @@ interface OrderDetails {
   created_at: string;
   paid_at: string;
   status: string;
+  estimated_delivery_date: string;
+  special_instructions: string;
+  order_notes: string;
   order_items: {
     id: string;
     quantity: number;
@@ -35,8 +38,13 @@ interface OrderDetails {
     };
   }[];
   stores: {
+    id: string;
     name: string;
     username: string;
+    business_email: string;
+    phone_number: string;
+    address: string;
+    tagline: string;
   };
 }
 
@@ -51,6 +59,7 @@ const ThankYou = () => {
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -73,8 +82,13 @@ const ThankYou = () => {
               )
             ),
             stores (
+              id,
               name,
-              username
+              username,
+              business_email,
+              phone_number,
+              address,
+              tagline
             )
           `);
 
@@ -185,17 +199,71 @@ const ThankYou = () => {
   };
 
   const downloadInvoice = async () => {
+    if (!orderDetails) return;
+    
+    setDownloadingInvoice(true);
     try {
-      toast({
-        title: "Invoice Available",
-        description: "You can download your invoice from the dashboard under Orders section.",
+      console.log('Generating invoice for order:', orderDetails.id);
+      
+      const { data, error } = await supabase.functions.invoke('generate-invoice', {
+        body: {
+          orderId: orderDetails.id,
+          orderDetails: {
+            id: orderDetails.id,
+            buyer_name: orderDetails.buyer_name,
+            buyer_email: orderDetails.buyer_email,
+            buyer_phone: orderDetails.buyer_phone,
+            buyer_address: orderDetails.buyer_address,
+            total_price: orderDetails.total_price,
+            created_at: orderDetails.created_at,
+            order_items: orderDetails.order_items,
+            stores: orderDetails.stores
+          }
+        }
       });
+
+      if (error) {
+        console.error('Invoice generation error:', error);
+        throw error;
+      }
+
+      if (data?.downloadUrl) {
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = `invoice-${orderDetails.id.slice(-8)}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Invoice Downloaded",
+          description: "Your invoice has been downloaded successfully.",
+        });
+      } else {
+        throw new Error('No download URL received');
+      }
     } catch (error) {
       console.error('Error downloading invoice:', error);
       toast({
-        title: "Download Available",
-        description: "You can download your invoice from the dashboard under Invoices section.",
+        title: "Download Error",
+        description: "Unable to download invoice. Please try again or contact support.",
+        variant: "destructive"
       });
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
+
+  const handleNeedHelp = () => {
+    // Redirect to help/support page
+    window.open('https://shopzap.io/help', '_blank');
+  };
+
+  const handleCorrectOrder = () => {
+    if (orderDetails) {
+      const token = btoa(orderDetails.id + orderDetails.buyer_email + Date.now());
+      navigate(`/correct-order/${orderDetails.id}?token=${token}`);
     }
   };
 
@@ -254,7 +322,7 @@ const ThankYou = () => {
         </div>
 
         {/* Payment Information */}
-        {isPaidOrder && (
+        {isPaidOrder && orderDetails && (
           <Card className="mb-6 border-green-200 bg-green-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-800">
@@ -300,116 +368,267 @@ const ThankYou = () => {
           </Card>
         )}
 
-        {/* Order Details Card */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Order Details
-              </span>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">#{orderDetails.id.slice(-8)}</Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(orderDetails.id, 'Order ID')}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-muted-foreground">Order Date</p>
-                  <p>{formatDateTime(orderDetails.created_at)}</p>
+        {/* Enhanced Order Details Card */}
+        {orderDetails && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Order Details
+                </span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">#{orderDetails.id.slice(-8)}</Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(orderDetails.id, 'Order ID')}
+                  >
+                    <Copy className="h-3 w-3" />
+                  </Button>
                 </div>
-                <div>
-                  <p className="font-medium text-muted-foreground">Store</p>
-                  <p className="font-semibold">{orderDetails.stores.name}</p>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="font-medium text-muted-foreground">Order Date</p>
+                    <p>{formatDateTime(orderDetails.created_at)}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Store</p>
+                    <p className="font-semibold">{orderDetails.stores.name}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Estimated Delivery</p>
+                    <p className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {orderDetails.estimated_delivery_date 
+                        ? new Date(orderDetails.estimated_delivery_date).toLocaleDateString()
+                        : calculateEstimatedDelivery()
+                      }
+                    </p>
+                  </div>
                 </div>
+                
+                <Separator />
+                
+                {/* Enhanced Items Section */}
                 <div>
-                  <p className="font-medium text-muted-foreground">Estimated Delivery</p>
-                  <p className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {calculateEstimatedDelivery()}
-                  </p>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h4 className="font-semibold mb-4">Items Ordered ({orderDetails.order_items.length} items)</h4>
-                <div className="space-y-3">
-                  {orderDetails.order_items.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={item.products.image_url || 'https://placehold.co/50x50'} 
-                          alt={item.products.name}
-                          className="w-12 h-12 rounded object-cover"
-                        />
-                        <div>
-                          <p className="font-medium">{item.products.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ₹{Number(item.price_at_purchase).toLocaleString()} × {item.quantity}
-                          </p>
+                  <h4 className="font-semibold mb-4">Items Ordered ({orderDetails.order_items.length} items)</h4>
+                  <div className="space-y-3">
+                    {orderDetails.order_items.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={item.products.image_url || 'https://placehold.co/50x50'} 
+                            alt={item.products.name}
+                            className="w-12 h-12 rounded object-cover"
+                          />
+                          <div>
+                            <p className="font-medium">{item.products.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ₹{Number(item.price_at_purchase).toLocaleString()} × {item.quantity}
+                            </p>
+                          </div>
                         </div>
+                        <p className="font-semibold">₹{(Number(item.price_at_purchase) * item.quantity).toLocaleString()}</p>
                       </div>
-                      <p className="font-semibold">₹{(Number(item.price_at_purchase) * item.quantity).toLocaleString()}</p>
+                    ))}
+                  </div>
+                  
+                  <Separator className="my-4" />
+                  
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>₹{Number(orderDetails.total_price).toLocaleString()}</span>
                     </div>
-                  ))}
+                    <div className="flex justify-between">
+                      <span>Shipping</span>
+                      <span className="text-green-600">Free</span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
+                      <span>Total Amount</span>
+                      <span>₹{Number(orderDetails.total_price).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Special Instructions */}
+                {orderDetails.special_instructions && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-semibold mb-2">Special Instructions</h4>
+                      <p className="text-sm text-muted-foreground bg-blue-50 p-3 rounded">
+                        {orderDetails.special_instructions}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Enhanced Buyer Information */}
+        {orderDetails && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Customer & Delivery Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Customer Details */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Customer Information
+                  </h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center gap-3">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Name</p>
+                        <p>{orderDetails.buyer_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Email</p>
+                        <p className="break-all">{orderDetails.buyer_email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Phone</p>
+                        <p>{orderDetails.buyer_phone}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <Separator className="my-4" />
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>₹{Number(orderDetails.total_price).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
-                  </div>
-                  <div className="flex justify-between items-center font-bold text-lg border-t pt-2">
-                    <span>Total Amount</span>
-                    <span>₹{Number(orderDetails.total_price).toLocaleString()}</span>
+                {/* Delivery Address */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Delivery Address
+                  </h4>
+                  <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                    <p className="font-medium mb-2">{orderDetails.buyer_name}</p>
+                    <p className="whitespace-pre-line">{orderDetails.buyer_address}</p>
+                    <p className="mt-2 text-muted-foreground">Phone: {orderDetails.buyer_phone}</p>
                   </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {/* Enhanced Seller Information */}
+        {orderDetails && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Seller Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold mb-3">{orderDetails.stores.name}</h4>
+                  {orderDetails.stores.tagline && (
+                    <p className="text-sm text-muted-foreground mb-3">{orderDetails.stores.tagline}</p>
+                  )}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      <span>{orderDetails.stores.business_email}</span>
+                    </div>
+                    {orderDetails.stores.phone_number && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span>{orderDetails.stores.phone_number}</span>
+                      </div>
+                    )}
+                    {orderDetails.stores.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
+                        <span>{orderDetails.stores.address}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate(`/store/${orderDetails.stores.username}`)}
+                    className="w-full"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Visit Store
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Enhanced Action Buttons */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Button 
             onClick={downloadInvoice}
+            disabled={downloadingInvoice}
             className="flex items-center justify-center gap-2"
             size="lg"
           >
-            <Download className="h-4 w-4" />
-            Download Invoice
+            {downloadingInvoice ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download Invoice
+              </>
+            )}
           </Button>
+          
           <Button 
             variant="outline" 
-            onClick={() => navigate(`/store/${orderDetails.stores.username}`)}
+            onClick={handleCorrectOrder}
+            className="flex items-center justify-center gap-2"
+            size="lg"
+          >
+            <Package className="h-4 w-4" />
+            Correct Order
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={() => orderDetails && navigate(`/store/${orderDetails.stores.username}`)}
             className="flex items-center justify-center gap-2"
             size="lg"
           >
             Continue Shopping
           </Button>
+          
           <Button 
             variant="outline" 
-            onClick={() => toast({ title: "Contact Support", description: "Please email us at support@shopzap.io for any corrections." })}
+            onClick={handleNeedHelp}
             className="flex items-center justify-center gap-2"
             size="lg"
           >
+            <HelpCircle className="h-4 w-4" />
             Need Help?
           </Button>
         </div>

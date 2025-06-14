@@ -1,284 +1,226 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface InvoiceRequest {
-  orderId: string;
-}
-
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { orderId }: InvoiceRequest = await req.json();
+    const { orderId, orderDetails } = await req.json();
     
-    if (!orderId) {
-      throw new Error('Order ID is required');
-    }
+    console.log('Generating invoice for order:', orderId);
 
-    // Create Supabase client
+    // Create the supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch order data
-    const { data: order, error } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (
-          id,
-          quantity,
-          price_at_purchase,
-          products (
-            id,
-            name,
-            image_url
-          )
-        ),
-        stores (
-          name,
-          business_email,
-          phone_number,
-          address
-        )
-      `)
-      .eq('id', orderId)
-      .single();
-
-    if (error || !order) {
-      throw new Error('Order not found');
-    }
-
-    // Create PDF
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-    let yPosition = 20;
-
-    // Add ShopZap watermark
-    doc.setTextColor(240, 240, 240); // Very light gray
-    doc.setFontSize(60);
-    doc.text('ShopZap', pageWidth / 2, pageHeight / 2, { 
-      align: 'center',
-      angle: 45
+    // Generate HTML invoice
+    const invoiceHtml = generateInvoiceHTML(orderDetails);
+    
+    // For now, we'll return a data URL that can be used to download the invoice
+    // In a production environment, you might want to use a PDF generation service
+    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(invoiceHtml)}`;
+    
+    // Log the invoice generation
+    await supabase.from('email_logs').insert({
+      order_id: orderId,
+      to_email: orderDetails.buyer_email,
+      subject: `Invoice for Order #${orderId.slice(-8)}`,
+      event_type: 'invoice_generated',
+      status: 'completed'
     });
 
-    // Reset color for main content
-    doc.setTextColor(0, 0, 0);
-
-    // Helper function to add text with line wrapping
-    const addText = (text: string, x: number, y: number, maxWidth?: number, fontSize = 10) => {
-      doc.setFontSize(fontSize);
-      if (maxWidth) {
-        const lines = doc.splitTextToSize(text, maxWidth);
-        doc.text(lines, x, y);
-        return y + (lines.length * fontSize * 0.4);
-      } else {
-        doc.text(text, x, y);
-        return y + (fontSize * 0.4);
-      }
-    };
-
-    // Header
-    doc.setFontSize(24);
-    doc.setTextColor(25, 118, 210); // Blue color
-    doc.text('INVOICE', 20, yPosition);
-    
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`#${order.id.slice(-8)}`, 20, yPosition + 10);
-
-    // Store information (right aligned)
-    doc.setFontSize(16);
-    doc.text(order.stores?.name || 'Store', pageWidth - 20, yPosition, { align: 'right' });
-    
-    yPosition += 15;
-    doc.setFontSize(10);
-    if (order.stores?.business_email) {
-      doc.text(order.stores.business_email, pageWidth - 20, yPosition, { align: 'right' });
-      yPosition += 5;
-    }
-    if (order.stores?.phone_number) {
-      doc.text(order.stores.phone_number, pageWidth - 20, yPosition, { align: 'right' });
-      yPosition += 5;
-    }
-    if (order.stores?.address) {
-      yPosition = addText(order.stores.address, pageWidth - 20, yPosition, 80, 10);
-    }
-
-    yPosition += 20;
-
-    // Bill To section
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('BILL TO:', 20, yPosition);
-    yPosition += 8;
-
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    yPosition = addText(order.buyer_name, 20, yPosition, 80, 10);
-    if (order.buyer_email) {
-      yPosition = addText(order.buyer_email, 20, yPosition + 3, 80, 10);
-    }
-    if (order.buyer_phone) {
-      yPosition = addText(order.buyer_phone, 20, yPosition + 3, 80, 10);
-    }
-    if (order.buyer_address) {
-      yPosition = addText(order.buyer_address, 20, yPosition + 3, 80, 10);
-    }
-
-    // Invoice details (right side)
-    let rightYPosition = yPosition - 30;
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('INVOICE DETAILS:', pageWidth - 80, rightYPosition);
-    rightYPosition += 8;
-
-    doc.setFont(undefined, 'normal');
-    doc.setFontSize(10);
-    doc.text('Invoice Date:', pageWidth - 80, rightYPosition);
-    doc.text(new Date(order.created_at).toLocaleDateString('en-IN'), pageWidth - 20, rightYPosition, { align: 'right' });
-    rightYPosition += 5;
-
-    if (order.paid_at) {
-      doc.text('Payment Date:', pageWidth - 80, rightYPosition);
-      doc.text(new Date(order.paid_at).toLocaleDateString('en-IN'), pageWidth - 20, rightYPosition, { align: 'right' });
-      rightYPosition += 5;
-    }
-
-    doc.text('Payment Method:', pageWidth - 80, rightYPosition);
-    doc.text(order.payment_method || 'N/A', pageWidth - 20, rightYPosition, { align: 'right' });
-    rightYPosition += 5;
-
-    doc.text('Status:', pageWidth - 80, rightYPosition);
-    doc.text(order.payment_status || 'pending', pageWidth - 20, rightYPosition, { align: 'right' });
-
-    yPosition = Math.max(yPosition, rightYPosition) + 20;
-
-    // Items table
-    doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
-    doc.text('ITEMS:', 20, yPosition);
-    yPosition += 10;
-
-    // Table headers
-    doc.setFontSize(10);
-    doc.setFont(undefined, 'bold');
-    doc.text('Item', 20, yPosition);
-    doc.text('Qty', 120, yPosition, { align: 'center' });
-    doc.text('Unit Price', 140, yPosition, { align: 'right' });
-    doc.text('Total', pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 3;
-
-    // Draw line under headers
-    doc.line(20, yPosition, pageWidth - 20, yPosition);
-    yPosition += 8;
-
-    // Table items
-    doc.setFont(undefined, 'normal');
-    let subtotal = 0;
-
-    order.order_items?.forEach((item: any) => {
-      const itemTotal = Number(item.price_at_purchase) * item.quantity;
-      subtotal += itemTotal;
-
-      doc.text(item.products?.name || 'Product', 20, yPosition, { maxWidth: 90 });
-      doc.text(item.quantity.toString(), 120, yPosition, { align: 'center' });
-      doc.text(`₹${Number(item.price_at_purchase).toLocaleString()}`, 140, yPosition, { align: 'right' });
-      doc.text(`₹${itemTotal.toLocaleString()}`, pageWidth - 20, yPosition, { align: 'right' });
-      yPosition += 8;
-    });
-
-    yPosition += 10;
-
-    // Totals
-    const totalsX = pageWidth - 80;
-    doc.text('Subtotal:', totalsX, yPosition);
-    doc.text(`₹${subtotal.toLocaleString()}`, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 6;
-
-    doc.text('Shipping:', totalsX, yPosition);
-    doc.text('Free', pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 6;
-
-    const tax = subtotal * 0.18;
-    doc.text('Tax (GST 18%):', totalsX, yPosition);
-    doc.text(`₹${tax.toLocaleString()}`, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 8;
-
-    // Draw line above total
-    doc.line(totalsX, yPosition, pageWidth - 20, yPosition);
-    yPosition += 5;
-
-    doc.setFont(undefined, 'bold');
-    doc.setFontSize(12);
-    doc.text('Total:', totalsX, yPosition);
-    doc.text(`₹${Number(order.total_price).toLocaleString()}`, pageWidth - 20, yPosition, { align: 'right' });
-
-    yPosition += 20;
-
-    // Payment information
-    if (order.razorpay_payment_id) {
-      doc.setFontSize(12);
-      doc.setFont(undefined, 'bold');
-      doc.text('PAYMENT INFORMATION:', 20, yPosition);
-      yPosition += 8;
-
-      doc.setFont(undefined, 'normal');
-      doc.setFontSize(10);
-      doc.text(`Payment ID: ${order.razorpay_payment_id}`, 20, yPosition);
-      if (order.razorpay_order_id) {
-        yPosition += 5;
-        doc.text(`Order ID: ${order.razorpay_order_id}`, 20, yPosition);
-      }
-      yPosition += 15;
-    }
-
-    // Footer with ShopZap branding
-    yPosition = pageHeight - 40;
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text('Powered by ShopZap', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 5;
-    doc.text('Thank you for your business!', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 5;
-    doc.text('This is a computer-generated invoice and does not require a signature.', pageWidth / 2, yPosition, { align: 'center' });
-    yPosition += 8;
-    doc.setFontSize(7);
-    doc.text('Create your own online store at shopzap.io', pageWidth / 2, yPosition, { align: 'center' });
-
-    // Generate PDF buffer
-    const pdfBuffer = doc.output('arraybuffer');
-
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="invoice-${order.id.slice(-8)}.pdf"`,
+    return new Response(JSON.stringify({ 
+      success: true, 
+      downloadUrl: dataUrl,
+      message: 'Invoice generated successfully' 
+    }), {
+      headers: { 
+        "Content-Type": "application/json",
+        ...corsHeaders 
       },
     });
-
   } catch (error) {
     console.error('Error generating invoice:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Failed to generate invoice' 
-      }),
+      JSON.stringify({ error: error.message }),
       {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }
 });
+
+function generateInvoiceHTML(orderDetails: any): string {
+  const orderNumber = orderDetails.id.slice(-8);
+  const orderDate = new Date(orderDetails.created_at).toLocaleDateString('en-IN');
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Invoice #${orderNumber}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #7b3fe4; padding-bottom: 20px; }
+            .logo { font-size: 24px; font-weight: bold; color: #7b3fe4; }
+            .invoice-title { font-size: 28px; color: #333; }
+            .invoice-details { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+            .section { background: #f8f9fa; padding: 20px; border-radius: 8px; }
+            .section h3 { color: #7b3fe4; margin-bottom: 15px; font-size: 16px; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+            .info-label { font-weight: 600; color: #666; }
+            .items-table { width: 100%; border-collapse: collapse; margin: 30px 0; }
+            .items-table th, .items-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            .items-table th { background: #7b3fe4; color: white; font-weight: 600; }
+            .items-table tr:nth-child(even) { background: #f8f9fa; }
+            .total-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px; }
+            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 5px 0; }
+            .total-final { font-size: 18px; font-weight: bold; color: #7b3fe4; border-top: 2px solid #7b3fe4; padding-top: 15px; margin-top: 15px; }
+            .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
+            @media print { body { margin: 0; } .invoice-container { max-width: none; } }
+        </style>
+    </head>
+    <body>
+        <div class="invoice-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">ShopZap</div>
+                <div class="invoice-title">INVOICE</div>
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="invoice-details">
+                <div class="section">
+                    <h3>Bill To</h3>
+                    <div class="info-row">
+                        <span class="info-label">Name:</span>
+                        <span>${orderDetails.buyer_name}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span>${orderDetails.buyer_email}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Phone:</span>
+                        <span>${orderDetails.buyer_phone}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address:</span>
+                        <span>${orderDetails.buyer_address}</span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Invoice Details</h3>
+                    <div class="info-row">
+                        <span class="info-label">Invoice #:</span>
+                        <span>${orderNumber}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Order Date:</span>
+                        <span>${orderDate}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Store:</span>
+                        <span>${orderDetails.stores.name}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Payment Status:</span>
+                        <span style="color: #28a745; font-weight: bold;">Paid</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align: center;">Qty</th>
+                        <th style="text-align: right;">Unit Price</th>
+                        <th style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${orderDetails.order_items.map((item: any) => `
+                        <tr>
+                            <td>${item.products.name}</td>
+                            <td style="text-align: center;">${item.quantity}</td>
+                            <td style="text-align: right;">₹${Number(item.price_at_purchase).toLocaleString()}</td>
+                            <td style="text-align: right;">₹${(Number(item.price_at_purchase) * item.quantity).toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <!-- Total Section -->
+            <div class="total-section">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>₹${Number(orderDetails.total_price).toLocaleString()}</span>
+                </div>
+                <div class="total-row">
+                    <span>Shipping:</span>
+                    <span style="color: #28a745;">Free</span>
+                </div>
+                <div class="total-row">
+                    <span>Tax:</span>
+                    <span>₹0</span>
+                </div>
+                <div class="total-row total-final">
+                    <span>Total Amount:</span>
+                    <span>₹${Number(orderDetails.total_price).toLocaleString()}</span>
+                </div>
+            </div>
+
+            <!-- Seller Information -->
+            <div class="section" style="margin-top: 30px;">
+                <h3>Seller Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Store Name:</span>
+                    <span>${orderDetails.stores.name}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Contact Email:</span>
+                    <span>${orderDetails.stores.business_email}</span>
+                </div>
+                ${orderDetails.stores.phone_number ? `
+                <div class="info-row">
+                    <span class="info-label">Phone:</span>
+                    <span>${orderDetails.stores.phone_number}</span>
+                </div>
+                ` : ''}
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>Thank you for shopping with ${orderDetails.stores.name} on ShopZap!</p>
+                <p style="margin-top: 10px; font-size: 12px;">
+                    For support, contact us at support@shopzap.io
+                </p>
+            </div>
+        </div>
+
+        <script>
+            // Auto-print when opened in new window
+            if (window.location.href.startsWith('data:')) {
+                setTimeout(() => window.print(), 500);
+            }
+        </script>
+    </body>
+    </html>
+  `;
+}
