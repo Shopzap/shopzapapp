@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StoreStats from "@/components/dashboard/StoreStats";
@@ -8,11 +8,69 @@ import { ReferralStats } from "@/components/dashboard/ReferralStats";
 import QuickActionsCard from "@/components/dashboard/QuickActionsCard";
 import StoreUrlCard from "@/components/dashboard/StoreUrlCard";
 import { useStore } from "@/contexts/StoreContext";
+import { supabase } from "@/integrations/supabase/client";
 import { ExternalLink, Plus, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   const { storeData } = useStore();
+  const [productCount, setProductCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!storeData?.id) return;
+
+      try {
+        setIsLoading(true);
+        
+        // Fetch product count
+        const { count: productsCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('store_id', storeData.id);
+        
+        if (productsCount !== null) {
+          setProductCount(productsCount);
+        }
+
+        // Fetch orders data
+        const { data: ordersData, count: totalOrdersCount } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact' })
+          .eq('store_id', storeData.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (ordersData) {
+          setRecentOrders(ordersData);
+        }
+        
+        if (totalOrdersCount !== null) {
+          setOrderCount(totalOrdersCount);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [storeData?.id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -31,8 +89,8 @@ const Dashboard = () => {
 
       {/* Stats Overview */}
       <StoreStats 
-        productCount={storeData?.product_count || 0} 
-        orderCount={storeData?.order_count || 0} 
+        productCount={productCount} 
+        orderCount={orderCount} 
         plan={storeData?.plan || 'free'} 
       />
 
@@ -68,7 +126,7 @@ const Dashboard = () => {
 
       {/* Recent Orders */}
       <RecentOrdersList 
-        orders={storeData?.recent_orders || []} 
+        orders={recentOrders} 
         onCopyStoreLink={() => {
           if (storeData?.username) {
             const storeLink = `${window.location.origin}/store/${storeData.username}`;
