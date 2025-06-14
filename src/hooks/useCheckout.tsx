@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { paymentConfig } from '@/config/payment';
+import { useStore } from '@/contexts/StoreContext';
 
 interface FormData {
   fullName: string;
@@ -28,6 +28,7 @@ export const useCheckout = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { storeData: contextStoreData } = useStore();
   
   const [storeData, setStoreData] = useState<{ id: string; name: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +72,7 @@ export const useCheckout = () => {
           setRazorpayKeyId(data.keyId || '');
           console.log('Razorpay key ID set:', data.keyId);
         } else {
-          console.log('Razorpay not available, using fallback');
+          console.log('Razorpay not available, error:', error);
           setRazorpayAvailable(false);
           setRazorpayKeyId('');
         }
@@ -85,23 +86,20 @@ export const useCheckout = () => {
     checkRazorpayAvailability();
   }, []);
 
-  // Fetch store data
+  // Use real store data from context
   useEffect(() => {
-    const fetchStoreData = async () => {
-      try {
-        setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
-      } catch (error) {
-        console.error('Failed to fetch store data:', error);
-        toast({
-          title: "Store Error",
-          description: "Failed to load store information. Please try again.",
-          variant: "destructive"
-        });
-      }
-    };
-
-    fetchStoreData();
-  }, []);
+    if (contextStoreData) {
+      console.log('Using real store data:', contextStoreData);
+      setStoreData({
+        id: contextStoreData.id,
+        name: contextStoreData.name
+      });
+    } else {
+      console.log('No store data available in context');
+      // Only use demo data if no real store data is available
+      setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
+    }
+  }, [contextStoreData]);
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
@@ -145,12 +143,21 @@ export const useCheckout = () => {
       });
       return;
     }
+
+    if (!storeData?.id) {
+      toast({
+        title: "Store Error",
+        description: "Store information is not available. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsLoading(true);
     
     try {
       const orderData = {
-        storeId: storeData?.id || 'demo-store-id',
+        storeId: storeData.id,
         buyerName: values.fullName,
         buyerEmail: values.email,
         buyerPhone: values.phone,
@@ -162,6 +169,8 @@ export const useCheckout = () => {
           priceAtPurchase: item.price
         }))
       };
+
+      console.log('Order data prepared:', orderData);
 
       if (paymentMethod === 'online') {
         // Check if Razorpay is available and key is set
@@ -203,13 +212,15 @@ export const useCheckout = () => {
             throw new Error('Failed to create payment order. Please try again or use Cash on Delivery.');
           }
 
+          console.log('Razorpay order created:', razorpayOrder);
+
           const options = {
             key: razorpayKeyId,
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
-            name: storeData?.name || 'ShopZap Store',
+            name: storeData.name,
             description: 'Secure online payment',
-            order_id: razorpayOrder.id,
+            order_id: razorpayOrder.razorpayOrderId,
             handler: async function (response: any) {
               try {
                 console.log('Payment successful, verifying...', response);
@@ -270,7 +281,8 @@ export const useCheckout = () => {
               contact: values.phone
             },
             notes: {
-              order_id: razorpayOrder.id
+              order_id: razorpayOrder.razorpayOrderId,
+              store_name: storeData.name
             },
             theme: {
               color: '#7b3fe4'
@@ -309,6 +321,7 @@ export const useCheckout = () => {
       } else {
         // COD Order
         try {
+          console.log('Creating COD order...');
           const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
             body: {
               razorpay_order_id: '',
@@ -325,6 +338,8 @@ export const useCheckout = () => {
             console.error('COD order creation failed:', orderError);
             throw new Error('Failed to create Cash on Delivery order. Please try again.');
           }
+
+          console.log('COD order created successfully:', orderResult);
 
           // Update referral if exists
           await updateReferralOnOrder(orderResult.orderId);
