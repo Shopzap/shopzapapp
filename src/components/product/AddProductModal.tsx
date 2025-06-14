@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     description: '',
     price: '',
     inventory_count: '',
-    payment_method: 'cod'
+    payment_method: 'cod',
+    category: ''
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,6 +258,28 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Electronics">Electronics</SelectItem>
+                    <SelectItem value="Clothing">Clothing</SelectItem>
+                    <SelectItem value="Home & Kitchen">Home & Kitchen</SelectItem>
+                    <SelectItem value="Beauty & Personal Care">Beauty & Personal Care</SelectItem>
+                    <SelectItem value="Books">Books</SelectItem>
+                    <SelectItem value="Toys & Games">Toys & Games</SelectItem>
+                    <SelectItem value="Sports & Outdoors">Sports & Outdoors</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="description">Description</Label>
                   <AIDescriptionGenerator
@@ -286,7 +310,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     step="0.01"
                     required
                   />
-                  <SmartPricingBadge category={formData.name} />
+                  <SmartPricingBadge category={formData.category} />
                 </div>
 
                 <div className="space-y-2">
