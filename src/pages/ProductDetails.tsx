@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -208,42 +207,50 @@ const ProductDetails: React.FC = () => {
 
   if (shouldShowLoading) {
     return (
-      <ResponsiveLayout padding="md">
-        <ProductDetailsSkeleton />
+      <ResponsiveLayout>
+        <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <ProductDetailsSkeleton />
+        </div>
       </ResponsiveLayout>
     );
   }
 
   if (hasTimedOut || (error && !product)) {
     return (
-      <ResponsiveLayout padding="md">
-        <ProductNotFound
-          productName={productSlug}
-          storeName={storeUsername}
-          onRetry={canRetry ? retry : undefined}
-        />
+      <ResponsiveLayout>
+        <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <ProductNotFound
+            productName={productSlug}
+            storeName={storeUsername}
+            onRetry={canRetry ? retry : undefined}
+          />
+        </div>
       </ResponsiveLayout>
     );
   }
 
   if (product) {
     return (
-      <ResponsiveLayout padding="md">
-        <ErrorBoundary>
-          <ProductDetailsContent 
-            product={product} 
-            handleBuyNow={handleBuyNow}
-            handleBack={handleBack}
-            isBuyingNow={isBuyingNow}
-          />
-        </ErrorBoundary>
+      <ResponsiveLayout>
+        <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <ErrorBoundary>
+            <ProductDetailsContent 
+              product={product} 
+              handleBuyNow={handleBuyNow}
+              handleBack={handleBack}
+              isBuyingNow={isBuyingNow}
+            />
+          </ErrorBoundary>
+        </div>
       </ResponsiveLayout>
     );
   }
 
   return (
-    <ResponsiveLayout padding="md">
-      <ProductDetailsSkeleton />
+    <ResponsiveLayout>
+      <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <ProductDetailsSkeleton />
+      </div>
     </ResponsiveLayout>
   );
 };

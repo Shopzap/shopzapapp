@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -202,8 +201,8 @@ const ThankYou = () => {
 
   if (loading) {
     return (
-      <ResponsiveLayout padding="md">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <ResponsiveLayout>
+        <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex items-center justify-center min-h-[50vh]">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -217,8 +216,8 @@ const ThankYou = () => {
 
   if (error || !orderDetails) {
     return (
-      <ResponsiveLayout padding="md">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <ResponsiveLayout>
+        <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="text-center">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Package className="w-10 h-10 text-red-600" />
@@ -239,8 +238,8 @@ const ThankYou = () => {
   const isPaidOrder = orderDetails.payment_status === 'paid';
 
   return (
-    <ResponsiveLayout padding="md">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <ResponsiveLayout>
+      <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Success Header */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-scale-in">
