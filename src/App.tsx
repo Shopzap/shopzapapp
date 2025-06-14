@@ -48,10 +48,11 @@ function App() {
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                  <Route path="/" element={<Storefront />} />
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/store/:storeName" element={<Storefront />} />
                   <Route path="/product/:productId" element={<ProductDetails />} />
                   
-                  {/* New Dashboard Routes */}
+                  {/* Dashboard Routes */}
                   <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
                   <Route path="/dashboard/products" element={<ProtectedRoute><ProductsPage /></ProtectedRoute>} />
                   <Route path="/dashboard/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
@@ -63,7 +64,6 @@ function App() {
                   <Route path="/dashboard/academy" element={<ProtectedRoute><AcademyPage /></ProtectedRoute>} />
                   <Route path="/dashboard/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
                   <Route path="/dashboard/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
-                  
                 </Routes>
               </ErrorBoundary>
             </div>
@@ -71,6 +71,32 @@ function App() {
         </AuthProvider>
       </Router>
     </QueryClientProvider>
+  );
+}
+
+// Simple HomePage component
+function HomePage() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="max-w-md mx-auto text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to ShopZap</h1>
+        <p className="text-lg text-gray-600 mb-8">Your WhatsApp store solution</p>
+        <div className="space-y-4">
+          <a
+            href="/auth"
+            className="block w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Get Started
+          </a>
+          <a
+            href="/dashboard"
+            className="block w-full bg-gray-200 text-gray-800 py-3 px-6 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+          >
+            Go to Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
