@@ -1,12 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Instagram, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
+import { Instagram, ExternalLink, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { constructOAuthUrl, validateSupabaseSession, type OAuthState } from "@/utils/instagramAuth";
 
 const InstagramAuth = () => {
   const [isRedirecting, setIsRedirecting] = useState(true);
@@ -14,40 +15,31 @@ const InstagramAuth = () => {
   const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const initiateOAuthRedirect = async () => {
       try {
-        // Get authenticated user session
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        setIsRedirecting(true);
+        setError(null);
+
+        console.log('Starting Instagram OAuth process...');
+
+        // Validate user session and store
+        const sessionValidation = await validateSupabaseSession(supabase);
         
-        if (sessionError || !sessionData?.session?.user) {
-          setError('You must be logged in to connect Instagram. Please sign in first.');
+        if (!sessionValidation.isValid) {
+          setError(sessionValidation.error || 'Session validation failed');
           setIsRedirecting(false);
           return;
         }
 
-        const userId = sessionData.session.user.id;
-
-        // Get user's store data
-        const { data: storeData, error: storeError } = await supabase
-          .from('stores')
-          .select('id, user_id')
-          .eq('user_id', userId)
-          .single();
-
-        if (storeError || !storeData) {
-          setError('Store not found. Please complete seller onboarding first.');
-          setIsRedirecting(false);
-          return;
-        }
+        const { user, store } = sessionValidation;
 
         // Check if Instagram is already connected
         const { data: existingConnection } = await supabase
           .from('instagram_connections')
           .select('*')
-          .eq('store_id', storeData.id)
+          .eq('store_id', store.id)
           .eq('is_active', true)
           .maybeSingle();
 
@@ -64,7 +56,7 @@ const InstagramAuth = () => {
         // Get SendPulse Client ID from Supabase secrets via edge function
         const { data: secretData, error: secretError } = await supabase.functions.invoke('get-sendpulse-config', {
           headers: {
-            Authorization: `Bearer ${sessionData.session.access_token}`
+            Authorization: `Bearer ${sessionValidation.user.access_token || 'fallback'}`
           }
         });
 
@@ -75,30 +67,21 @@ const InstagramAuth = () => {
           return;
         }
 
-        // Create state parameter with store and user info
-        const stateData = {
-          store_id: storeData.id,
-          user_id: userId,
+        // Create OAuth state
+        const oauthState: OAuthState = {
+          store_id: store.id,
+          user_id: user.id,
           timestamp: Date.now()
         };
-        const state = btoa(JSON.stringify(stateData));
-        
-        // Construct OAuth URL with production parameters
-        const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
-        const scope = 'chatbots,user_data';
-        
-        const oauthUrl = new URL('https://oauth.sendpulse.com/authorize');
-        oauthUrl.searchParams.set('client_id', secretData.client_id);
-        oauthUrl.searchParams.set('redirect_uri', redirectUri);
-        oauthUrl.searchParams.set('response_type', 'code');
-        oauthUrl.searchParams.set('scope', scope);
-        oauthUrl.searchParams.set('state', state);
+
+        // Construct OAuth URL using helper utility
+        const oauthUrl = constructOAuthUrl(secretData.client_id, oauthState);
 
         console.log('Initiating OAuth redirect to SendPulse...');
 
         // Add a small delay for better UX
         setTimeout(() => {
-          window.location.href = oauthUrl.toString();
+          window.location.href = oauthUrl;
         }, 1500);
 
       } catch (err) {
@@ -125,9 +108,9 @@ const InstagramAuth = () => {
 
   const handleManualRedirect = async () => {
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionValidation = await validateSupabaseSession(supabase);
       
-      if (!sessionData?.session?.user) {
+      if (!sessionValidation.isValid) {
         navigate('/auth');
         return;
       }
@@ -224,14 +207,29 @@ const InstagramAuth = () => {
             </div>
           ) : null}
 
-          {/* Information section */}
+          {/* What happens next section */}
           <div className="border-t pt-4">
-            <h4 className="font-medium text-sm mb-2">What happens next?</h4>
-            <ul className="text-xs text-gray-600 space-y-1">
-              <li>• You'll authorize ShopZap to access your Instagram Business Account</li>
-              <li>• This enables automated DM responses and comment replies</li>
-              <li>• You'll be redirected back to your dashboard once complete</li>
-              <li>• Your data is encrypted and stored securely</li>
+            <h4 className="font-medium text-sm mb-3 flex items-center">
+              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+              What happens next?
+            </h4>
+            <ul className="text-xs text-gray-600 space-y-2">
+              <li className="flex items-start">
+                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                You'll authorize ShopZap to access your Instagram Business Account
+              </li>
+              <li className="flex items-start">
+                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                This enables automated DM responses and comment replies
+              </li>
+              <li className="flex items-start">
+                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                You'll be redirected back to your dashboard once complete
+              </li>
+              <li className="flex items-start">
+                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-1.5 mr-2 flex-shrink-0"></span>
+                Your data is encrypted and stored securely
+              </li>
             </ul>
           </div>
 
