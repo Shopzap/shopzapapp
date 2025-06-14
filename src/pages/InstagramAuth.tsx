@@ -1,39 +1,100 @@
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Instagram, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const InstagramAuth = () => {
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const initiateOAuthRedirect = () => {
+    const initiateOAuthRedirect = async () => {
       try {
-        // Get SendPulse Client ID from environment
-        const clientId = import.meta.env.VITE_SENDPULSE_CLIENT_ID;
+        // Get authenticated user session
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
-        if (!clientId) {
-          setError('SendPulse Client ID is not configured. Please contact support.');
+        if (sessionError || !sessionData?.session?.user) {
+          setError('You must be logged in to connect Instagram. Please sign in first.');
           setIsRedirecting(false);
           return;
         }
 
-        // Construct OAuth URL
+        const userId = sessionData.session.user.id;
+
+        // Get user's store data
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores')
+          .select('id, user_id')
+          .eq('user_id', userId)
+          .single();
+
+        if (storeError || !storeData) {
+          setError('Store not found. Please complete seller onboarding first.');
+          setIsRedirecting(false);
+          return;
+        }
+
+        // Check if Instagram is already connected
+        const { data: existingConnection } = await supabase
+          .from('instagram_connections')
+          .select('*')
+          .eq('store_id', storeData.id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (existingConnection) {
+          toast({
+            title: "Already Connected",
+            description: `Instagram account @${existingConnection.ig_username} is already connected.`,
+            variant: "destructive"
+          });
+          navigate('/dashboard/instagram-automation');
+          return;
+        }
+
+        // Get SendPulse Client ID from Supabase secrets via edge function
+        const { data: secretData, error: secretError } = await supabase.functions.invoke('get-sendpulse-config', {
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`
+          }
+        });
+
+        if (secretError || !secretData?.client_id) {
+          console.error('Failed to get SendPulse client ID:', secretError);
+          setError('SendPulse configuration error. Please contact support.');
+          setIsRedirecting(false);
+          return;
+        }
+
+        // Create state parameter with store and user info
+        const stateData = {
+          store_id: storeData.id,
+          user_id: userId,
+          timestamp: Date.now()
+        };
+        const state = btoa(JSON.stringify(stateData));
+        
+        // Construct OAuth URL with production parameters
         const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
-        const scope = 'chatbots user_data';
-        const state = 'xyz123'; // Simple state for verification
+        const scope = 'chatbots,user_data';
         
         const oauthUrl = new URL('https://oauth.sendpulse.com/authorize');
-        oauthUrl.searchParams.set('client_id', clientId);
+        oauthUrl.searchParams.set('client_id', secretData.client_id);
         oauthUrl.searchParams.set('redirect_uri', redirectUri);
         oauthUrl.searchParams.set('response_type', 'code');
         oauthUrl.searchParams.set('scope', scope);
         oauthUrl.searchParams.set('state', state);
+
+        console.log('Initiating OAuth redirect to SendPulse...');
 
         // Add a small delay for better UX
         setTimeout(() => {
@@ -54,30 +115,40 @@ const InstagramAuth = () => {
     };
 
     initiateOAuthRedirect();
-  }, [toast]);
+  }, [toast, navigate, retryCount]);
 
-  const handleManualRedirect = () => {
+  const handleRetry = () => {
     setIsRedirecting(true);
     setError(null);
-    
-    // Retry the redirect process
-    setTimeout(() => {
-      const clientId = import.meta.env.VITE_SENDPULSE_CLIENT_ID;
-      if (clientId) {
-        const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
-        const scope = 'chatbots user_data';
-        const state = 'xyz123';
-        
-        const oauthUrl = new URL('https://oauth.sendpulse.com/authorize');
-        oauthUrl.searchParams.set('client_id', clientId);
-        oauthUrl.searchParams.set('redirect_uri', redirectUri);
-        oauthUrl.searchParams.set('response_type', 'code');
-        oauthUrl.searchParams.set('scope', scope);
-        oauthUrl.searchParams.set('state', state);
+    setRetryCount(prev => prev + 1);
+  };
 
-        window.location.href = oauthUrl.toString();
+  const handleManualRedirect = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData?.session?.user) {
+        navigate('/auth');
+        return;
       }
-    }, 500);
+
+      // Get basic redirect with minimal params for manual fallback
+      const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
+      const fallbackUrl = `https://oauth.sendpulse.com/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      
+      window.open(fallbackUrl, '_blank');
+    } catch (err) {
+      console.error('Manual redirect error:', err);
+      toast({
+        title: "Redirect Failed",
+        description: "Unable to open authorization page. Please try again later.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleGoToDashboard = () => {
+    navigate('/dashboard/instagram-automation');
   };
 
   return (
@@ -106,6 +177,9 @@ const InstagramAuth = () => {
                 <p className="text-sm text-gray-600 mt-2">
                   You'll be redirected to authorize your Instagram Business Account through SendPulse.
                 </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  This may take a few seconds...
+                </p>
               </div>
             </div>
           ) : error ? (
@@ -115,18 +189,37 @@ const InstagramAuth = () => {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
               
-              <div className="text-center">
-                <p className="text-sm text-gray-600 mb-4">
-                  Having trouble? Try the manual redirect below.
+              <div className="text-center space-y-3">
+                <p className="text-sm text-gray-600">
+                  Having trouble? Try one of the options below:
                 </p>
-                <Button 
-                  onClick={handleManualRedirect}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  disabled={!import.meta.env.VITE_SENDPULSE_CLIENT_ID}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Authorize Instagram Account
-                </Button>
+                
+                <div className="space-y-2">
+                  <Button 
+                    onClick={handleRetry}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Instagram className="h-4 w-4 mr-2" />
+                    Retry Authorization
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleManualRedirect}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Manual Redirect
+                  </Button>
+                  
+                  <Button 
+                    onClick={handleGoToDashboard}
+                    variant="ghost"
+                    className="w-full text-sm"
+                  >
+                    Return to Dashboard
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}
@@ -138,6 +231,7 @@ const InstagramAuth = () => {
               <li>• You'll authorize ShopZap to access your Instagram Business Account</li>
               <li>• This enables automated DM responses and comment replies</li>
               <li>• You'll be redirected back to your dashboard once complete</li>
+              <li>• Your data is encrypted and stored securely</li>
             </ul>
           </div>
 

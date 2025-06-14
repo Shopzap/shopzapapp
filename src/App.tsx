@@ -153,7 +153,7 @@ const AppContent = () => {
       <Route path="/verify" element={<ResponsiveLayout><Verify /></ResponsiveLayout>} /> 
       <Route path="/auth-callback" element={<ResponsiveLayout><AuthCallback /></ResponsiveLayout>} />
       
-      {/* Instagram OAuth route */}
+      {/* Instagram OAuth route - Production ready with proper security */}
       <Route path="/instagram-auth" element={<InstagramAuth />} />
       
       {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
