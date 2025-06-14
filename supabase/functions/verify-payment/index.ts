@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderData }: PaymentVerificationRequest = await req.json();
 
-    console.log(`Verifying payment for order ${razorpay_order_id}, payment ${razorpay_payment_id}`);
+    console.log(`Processing order for payment method: ${orderData.paymentMethod || 'online'}`);
 
     // If this is a COD order (no payment IDs provided)
     if (!razorpay_order_id && !razorpay_payment_id && !razorpay_signature) {
@@ -69,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (orderError) {
         console.error('Error creating COD order:', orderError);
-        throw new Error(orderError.message);
+        throw new Error(`COD order creation failed: ${orderError.message}`);
       }
 
       // Create order items
@@ -89,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Rollback order creation
           await supabaseClient.from('orders').delete().eq('id', newOrder.id);
           console.error('Error creating order items for COD order:', itemsError);
-          throw new Error(itemsError.message);
+          throw new Error(`COD order items creation failed: ${itemsError.message}`);
         }
       }
 
@@ -114,111 +114,150 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (!razorpaySecret) {
       console.error('Razorpay secret key not configured');
-      throw new Error('Payment verification not configured');
+      throw new Error('Payment verification not configured - missing secret key');
     }
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      console.error('Missing required payment parameters:', {
+        hasOrderId: !!razorpay_order_id,
+        hasPaymentId: !!razorpay_payment_id,
+        hasSignature: !!razorpay_signature
+      });
+      throw new Error('Missing required payment verification parameters');
+    }
+
+    console.log(`Verifying payment for order ${razorpay_order_id}, payment ${razorpay_payment_id}`);
 
     // Verify signature
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     
-    // Create HMAC using Web Crypto API
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(razorpaySecret);
-    const messageData = encoder.encode(body);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    const expectedSignature = Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    try {
+      // Create HMAC using Web Crypto API
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(razorpaySecret);
+      const messageData = encoder.encode(body);
+      
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+      const expectedSignature = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 
-    console.log('Expected signature:', expectedSignature);
-    console.log('Received signature:', razorpay_signature);
+      console.log('Signature verification - Expected vs Received:', {
+        expected: expectedSignature.substring(0, 20) + '...',
+        received: razorpay_signature.substring(0, 20) + '...',
+        match: expectedSignature === razorpay_signature
+      });
 
-    const isSignatureValid = expectedSignature === razorpay_signature;
+      const isSignatureValid = expectedSignature === razorpay_signature;
 
-    if (!isSignatureValid) {
-      console.error('Invalid payment signature');
-      throw new Error('Payment verification failed - Invalid signature');
+      if (!isSignatureValid) {
+        console.error('Payment signature verification failed');
+        throw new Error('Payment verification failed - Invalid signature. This may indicate a security issue.');
+      }
+
+      console.log('Payment signature verified successfully');
+    } catch (cryptoError) {
+      console.error('Crypto signature verification error:', cryptoError);
+      throw new Error(`Payment signature verification failed: ${cryptoError.message}`);
     }
-
-    console.log('Payment signature verified successfully');
 
     // Create order in database after successful payment verification
-    const { data: newOrder, error: orderError } = await supabaseClient
-      .from('orders')
-      .insert({
-        store_id: orderData.storeId,
-        buyer_name: orderData.buyerName,
-        buyer_email: orderData.buyerEmail,
-        buyer_phone: orderData.buyerPhone,
-        buyer_address: orderData.buyerAddress,
-        total_price: orderData.totalPrice,
-        payment_status: 'paid',
-        payment_method: 'online',
-        payment_gateway: 'razorpay',
-        razorpay_payment_id,
-        razorpay_order_id,
-        razorpay_signature,
-        paid_at: new Date().toISOString(),
-        status: 'pending',
-        notes: 'Online Payment - Razorpay'
-      })
-      .select()
-      .single();
+    try {
+      const { data: newOrder, error: orderError } = await supabaseClient
+        .from('orders')
+        .insert({
+          store_id: orderData.storeId,
+          buyer_name: orderData.buyerName,
+          buyer_email: orderData.buyerEmail,
+          buyer_phone: orderData.buyerPhone,
+          buyer_address: orderData.buyerAddress,
+          total_price: orderData.totalPrice,
+          payment_status: 'paid',
+          payment_method: 'online',
+          payment_gateway: 'razorpay',
+          razorpay_payment_id,
+          razorpay_order_id,
+          razorpay_signature,
+          paid_at: new Date().toISOString(),
+          status: 'pending',
+          notes: 'Online Payment - Razorpay'
+        })
+        .select()
+        .single();
 
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      throw new Error(orderError.message);
-    }
-
-    // Create order items
-    if (orderData.items && orderData.items.length > 0) {
-      const orderItems = orderData.items.map(item => ({
-        order_id: newOrder.id,
-        product_id: item.productId,
-        quantity: item.quantity,
-        price_at_purchase: item.priceAtPurchase
-      }));
-
-      const { error: itemsError } = await supabaseClient
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        // Rollback order creation
-        await supabaseClient.from('orders').delete().eq('id', newOrder.id);
-        console.error('Error creating order items:', itemsError);
-        throw new Error(itemsError.message);
+      if (orderError) {
+        console.error('Error creating order:', orderError);
+        throw new Error(`Order creation failed: ${orderError.message}`);
       }
+
+      // Create order items
+      if (orderData.items && orderData.items.length > 0) {
+        const orderItems = orderData.items.map(item => ({
+          order_id: newOrder.id,
+          product_id: item.productId,
+          quantity: item.quantity,
+          price_at_purchase: item.priceAtPurchase
+        }));
+
+        const { error: itemsError } = await supabaseClient
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) {
+          // Rollback order creation
+          await supabaseClient.from('orders').delete().eq('id', newOrder.id);
+          console.error('Error creating order items:', itemsError);
+          throw new Error(`Order items creation failed: ${itemsError.message}`);
+        }
+      }
+
+      console.log('Order created successfully:', newOrder.id);
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: 'Payment verified and order created successfully',
+        orderId: newOrder.id,
+        order: newOrder
+      }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (dbError) {
+      console.error('Database operation failed:', dbError);
+      throw new Error(`Database operation failed: ${dbError.message}`);
     }
 
-    console.log('Order created successfully:', newOrder.id);
-
-    return new Response(JSON.stringify({ 
-      success: true,
-      message: 'Payment verified and order created successfully',
-      orderId: newOrder.id,
-      order: newOrder
-    }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
   } catch (error: any) {
     console.error("Error in verify-payment function:", error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Payment verification failed';
+    if (error.message.includes('signature')) {
+      errorMessage = 'Payment signature verification failed. Please try again or contact support.';
+    } else if (error.message.includes('database') || error.message.includes('order')) {
+      errorMessage = 'Order creation failed. Please contact support with your payment details.';
+    } else if (error.message.includes('configuration') || error.message.includes('secret')) {
+      errorMessage = 'Payment system configuration error. Please contact support.';
+    } else if (error.message.includes('COD')) {
+      errorMessage = error.message; // COD errors are already user-friendly
+    }
+
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message
+        error: errorMessage,
+        details: error.message // Include technical details for debugging
       }),
       {
         status: 500,

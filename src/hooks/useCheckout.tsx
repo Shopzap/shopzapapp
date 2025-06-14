@@ -73,12 +73,12 @@ export const useCheckout = () => {
         } else {
           console.log('Razorpay not available, using fallback');
           setRazorpayAvailable(false);
-          setRazorpayKeyId(''); // Don't set fallback key if not available
+          setRazorpayKeyId('');
         }
       } catch (error) {
         console.error('Error checking Razorpay availability:', error);
         setRazorpayAvailable(false);
-        setRazorpayKeyId(''); // Don't set fallback key on error
+        setRazorpayKeyId('');
       }
     };
 
@@ -180,7 +180,7 @@ export const useCheckout = () => {
         if (!razorpay) {
           toast({
             title: "Payment Error",
-            description: "Razorpay SDK failed to load. Please try again.",
+            description: "Payment system failed to load. Please try Cash on Delivery or refresh the page.",
             variant: "destructive"
           });
           setIsLoading(false);
@@ -189,151 +189,173 @@ export const useCheckout = () => {
 
         console.log('Creating Razorpay order with key:', razorpayKeyId);
 
-        const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
-          body: {
-            amount: total * 100,
-            currency: 'INR',
-            receipt: `order_${Date.now()}`
-          }
-        });
-
-        if (razorpayError) {
-          console.error('Razorpay order creation failed:', razorpayError);
-          toast({
-            title: "Payment Error",
-            description: "Failed to initiate online payment. Please try again.",
-            variant: "destructive"
+        try {
+          const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
+            body: {
+              amount: total * 100,
+              currency: 'INR',
+              receipt: `order_${Date.now()}`
+            }
           });
-          setIsLoading(false);
-          return;
-        }
 
-        const options = {
-          key: razorpayKeyId,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-          name: storeData?.name || 'ShopZap Store',
-          description: 'Secure online payment',
-          order_id: razorpayOrder.id,
-          handler: async function (response: any) {
-            try {
-              console.log('Payment successful, verifying...', response);
-              
-              const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-payment', {
-                body: {
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  orderData
+          if (razorpayError) {
+            console.error('Razorpay order creation failed:', razorpayError);
+            throw new Error('Failed to create payment order. Please try again or use Cash on Delivery.');
+          }
+
+          const options = {
+            key: razorpayKeyId,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+            name: storeData?.name || 'ShopZap Store',
+            description: 'Secure online payment',
+            order_id: razorpayOrder.id,
+            handler: async function (response: any) {
+              try {
+                console.log('Payment successful, verifying...', response);
+                
+                const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-payment', {
+                  body: {
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    orderData
+                  }
+                });
+
+                if (verificationError) {
+                  console.error('Payment verification failed:', verificationError);
+                  toast({
+                    title: "Payment Verification Failed",
+                    description: "Your payment was processed but verification failed. Please contact support with your payment ID: " + response.razorpay_payment_id,
+                    variant: "destructive"
+                  });
+                  setIsLoading(false);
+                  return;
                 }
-              });
 
-              if (verificationError) {
-                console.error('Payment verification failed:', verificationError);
+                console.log('Payment verified successfully:', verificationData);
+
+                // Update referral if exists
+                await updateReferralOnOrder(verificationData.orderId);
+
+                navigate('/order-success', {
+                  state: {
+                    orderId: verificationData.orderId,
+                    orderItems,
+                    total,
+                    customerInfo: values,
+                    paymentInfo: {
+                      paymentId: response.razorpay_payment_id,
+                      paymentMethod: 'Razorpay',
+                      paymentTime: new Date().toISOString(),
+                      paymentStatus: 'Paid'
+                    },
+                    estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+                  }
+                });
+              } catch (error) {
+                console.error('Error in payment handler:', error);
                 toast({
-                  title: "Payment Verification Failed",
-                  description: "Payment could not be verified. Please contact support.",
+                  title: "Payment Processing Error",
+                  description: "There was an error processing your payment. Please contact support with payment ID: " + response.razorpay_payment_id,
                   variant: "destructive"
                 });
                 setIsLoading(false);
-                return;
               }
-
-              console.log('Payment verified successfully:', verificationData);
-
-              // Update referral if exists
-              await updateReferralOnOrder(verificationData.orderId);
-
-              navigate('/order-success', {
-                state: {
-                  orderId: verificationData.orderId,
-                  orderItems,
-                  total,
-                  customerInfo: values,
-                  paymentInfo: {
-                    paymentId: response.razorpay_payment_id,
-                    paymentMethod: 'Razorpay',
-                    paymentTime: new Date().toISOString(),
-                    paymentStatus: 'Paid'
-                  },
-                  estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
-                }
-              });
-            } catch (error) {
-              console.error('Error in payment handler:', error);
-              toast({
-                title: "Payment Processing Error",
-                description: "There was an error processing your payment. Please contact support.",
-                variant: "destructive"
-              });
-              setIsLoading(false);
+            },
+            prefill: {
+              name: values.fullName,
+              email: values.email,
+              contact: values.phone
+            },
+            notes: {
+              order_id: razorpayOrder.id
+            },
+            theme: {
+              color: '#7b3fe4'
+            },
+            modal: {
+              ondismiss: function() {
+                console.log('Payment modal dismissed');
+                setIsLoading(false);
+              }
             }
-          },
-          prefill: {
-            name: values.fullName,
-            email: values.email,
-            contact: values.phone
-          },
-          notes: {
-            order_id: razorpayOrder.id
-          },
-          theme: {
-            color: '#7b3fe4'
-          }
-        };
+          };
 
-        console.log('Opening Razorpay with options:', options);
-        const rzp1 = new window.Razorpay(options);
-        rzp1.on('payment.failed', function (response: any) {
-          console.error('Razorpay payment failed:', response);
+          console.log('Opening Razorpay with options:', options);
+          const rzp1 = new (window as any).Razorpay(options);
+          
+          rzp1.on('payment.failed', function (response: any) {
+            console.error('Razorpay payment failed:', response);
+            toast({
+              title: "Payment Failed",
+              description: response.error?.description || "Your payment failed. Please try again or use Cash on Delivery.",
+              variant: "destructive"
+            });
+            setIsLoading(false);
+          });
+          
+          rzp1.open();
+        } catch (createOrderError) {
+          console.error('Error creating Razorpay order:', createOrderError);
           toast({
-            title: "Payment Failed",
-            description: "Your payment failed. Please try again or use a different payment method.",
+            title: "Payment Setup Failed",
+            description: "Unable to set up online payment. Please try Cash on Delivery.",
             variant: "destructive"
           });
           setIsLoading(false);
-        });
-        rzp1.open();
+        }
       } else {
         // COD Order
-        const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
-          body: {
-            razorpay_order_id: '',
-            razorpay_payment_id: '',
-            razorpay_signature: '',
-            orderData: {
-              ...orderData,
-              paymentMethod: 'cod'
+        try {
+          const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
+            body: {
+              razorpay_order_id: '',
+              razorpay_payment_id: '',
+              razorpay_signature: '',
+              orderData: {
+                ...orderData,
+                paymentMethod: 'cod'
+              }
             }
-          }
-        });
+          });
 
-        if (orderError) {
-          throw new Error('Failed to create COD order');
+          if (orderError) {
+            console.error('COD order creation failed:', orderError);
+            throw new Error('Failed to create Cash on Delivery order. Please try again.');
+          }
+
+          // Update referral if exists
+          await updateReferralOnOrder(orderResult.orderId);
+          
+          navigate('/order-success', {
+            state: {
+              orderId: orderResult.orderId,
+              orderItems,
+              total,
+              customerInfo: values,
+              paymentInfo: {
+                paymentMethod: 'Cash on Delivery',
+                paymentStatus: 'Pending'
+              },
+              estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+            }
+          });
+        } catch (codError) {
+          console.error('COD order error:', codError);
+          toast({
+            title: "Order Failed",
+            description: "Failed to create your Cash on Delivery order. Please try again.",
+            variant: "destructive"
+          });
         }
-
-        // Update referral if exists
-        await updateReferralOnOrder(orderResult.orderId);
-        
-        navigate('/order-success', {
-          state: {
-            orderId: orderResult.orderId,
-            orderItems,
-            total,
-            customerInfo: values,
-            paymentInfo: {
-              paymentMethod: 'Cash on Delivery',
-              paymentStatus: 'Pending'
-            },
-            estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
-          }
-        });
       }
     } catch (error) {
       console.error('Order creation failed:', error);
       toast({
         title: "Order Failed",
-        description: "There was an error creating your order. Please try again.",
+        description: "There was an unexpected error creating your order. Please try again.",
         variant: "destructive"
       });
     } finally {
