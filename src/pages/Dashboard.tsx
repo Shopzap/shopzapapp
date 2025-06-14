@@ -2,11 +2,11 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StoreStats } from "@/components/dashboard/StoreStats";
-import { RecentOrdersList } from "@/components/dashboard/RecentOrdersList";
+import StoreStats from "@/components/dashboard/StoreStats";
+import RecentOrdersList from "@/components/dashboard/RecentOrdersList";
 import { ReferralStats } from "@/components/dashboard/ReferralStats";
-import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
-import { StoreUrlCard } from "@/components/dashboard/StoreUrlCard";
+import QuickActionsCard from "@/components/dashboard/QuickActionsCard";
+import StoreUrlCard from "@/components/dashboard/StoreUrlCard";
 import { useStore } from "@/contexts/StoreContext";
 import { ExternalLink, Plus, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -27,10 +27,14 @@ const Dashboard = () => {
       </div>
 
       {/* Store URL Card */}
-      <StoreUrlCard />
+      <StoreUrlCard storeData={storeData} />
 
       {/* Stats Overview */}
-      <StoreStats />
+      <StoreStats 
+        productCount={storeData?.product_count || 0} 
+        orderCount={storeData?.order_count || 0} 
+        plan={storeData?.plan || 'free'} 
+      />
 
       {/* Main Dashboard Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -63,7 +67,15 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Orders */}
-      <RecentOrdersList />
+      <RecentOrdersList 
+        orders={storeData?.recent_orders || []} 
+        onCopyStoreLink={() => {
+          if (storeData?.username) {
+            const storeLink = `${window.location.origin}/store/${storeData.username}`;
+            navigator.clipboard.writeText(storeLink);
+          }
+        }} 
+      />
     </div>
   );
 };
