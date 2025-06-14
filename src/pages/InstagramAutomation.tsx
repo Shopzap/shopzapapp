@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Instagram, Plus, Trash2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Instagram, Plus, Trash2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import InstagramConnectionCard from "@/components/instagram/InstagramConnectionCard";
 
 const InstagramAutomation = () => {
   const { toast } = useToast();
@@ -160,78 +162,6 @@ const InstagramAutomation = () => {
     }
   }, [searchParams, toast]);
 
-  const handleConnectInstagram = async () => {
-    if (!storeData) {
-      toast({
-        title: "Error",
-        description: "Store data not loaded. Please refresh the page.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Check for existing connection before proceeding
-    const { data: existingConnection } = await supabase
-      .from('instagram_connections')
-      .select('*')
-      .eq('store_id', storeData.id)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (existingConnection) {
-      toast({
-        title: "Already Connected",
-        description: `Instagram account @${existingConnection.ig_username} is already connected.`,
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Create state parameter with store and user info
-    const state = btoa(JSON.stringify({
-      store_id: storeData.id,
-      user_id: storeData.user_id
-    }));
-    
-    // SendPulse OAuth URL - using the correct callback URL
-    const callbackUrl = `https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback`;
-    const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?` +
-      `client_id=your-client-id` +
-      `&response_type=code` +
-      `&scope=chatbots,user_data` +
-      `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
-      `&state=${state}`;
-    
-    console.log('Redirecting to SendPulse OAuth:', sendpulseAuthUrl);
-    window.location.href = sendpulseAuthUrl;
-  };
-
-  const handleDisconnect = async () => {
-    try {
-      const { error } = await supabase
-        .from('instagram_connections')
-        .update({ is_active: false })
-        .eq('store_id', storeData.id);
-      
-      if (error) throw error;
-      
-      setIgConnection(null);
-      setAutomations([]);
-      
-      toast({
-        title: "Instagram disconnected",
-        description: "Your Instagram account has been disconnected",
-      });
-    } catch (error) {
-      console.error('Disconnect error:', error);
-      toast({
-        title: "Error disconnecting",
-        description: "Please try again",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleSaveAutomation = async () => {
     if (!triggerKeywords.trim()) {
       toast({
@@ -355,54 +285,12 @@ const InstagramAutomation = () => {
         </AlertDescription>
       </Alert>
 
-      {/* Section 1: Instagram Connection Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Instagram className="h-5 w-5" />
-            <span>Instagram Connection</span>
-          </CardTitle>
-          <CardDescription>
-            Connect your Instagram Business Account via SendPulse to enable automation features
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {igConnection ? (
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-              <div className="flex items-center space-x-3">
-                <CheckCircle className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="font-medium text-green-900">Connected as @{igConnection.ig_username}</p>
-                  <p className="text-sm text-green-700">
-                    Connected: {new Date(igConnection.connected_at).toLocaleDateString()}
-                  </p>
-                  <p className="text-xs text-green-600">
-                    Page: {igConnection.page_name}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" onClick={handleDisconnect}>
-                Disconnect Account
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                <div>
-                  <p className="font-medium text-orange-900">Instagram not connected</p>
-                  <p className="text-sm text-orange-700">
-                    Connect your Instagram Business Account to start automating DMs and replies
-                  </p>
-                </div>
-              </div>
-              <Button onClick={handleConnectInstagram}>
-                Connect Instagram
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Instagram Connection Card */}
+      <InstagramConnectionCard 
+        storeData={storeData}
+        igConnection={igConnection}
+        onConnectionUpdate={setIgConnection}
+      />
 
       {/* Section 2: Create Automation Trigger */}
       {igConnection && (

@@ -52,15 +52,16 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       user_id: storeData.user_id
     }));
     
-    // Use Supabase URL directly instead of environment variable
+    // Use environment variable for SendPulse Client ID
     const callbackUrl = `https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback`;
     const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?` +
-      `client_id=your-client-id` +
+      `client_id=${import.meta.env.VITE_SENDPULSE_CLIENT_ID || 'your-client-id'}` +
       `&response_type=code` +
       `&scope=chatbots,user_data` +
       `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
       `&state=${state}`;
     
+    console.log('Redirecting to SendPulse OAuth:', sendpulseAuthUrl);
     window.location.href = sendpulseAuthUrl;
   };
 

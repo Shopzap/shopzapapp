@@ -75,7 +75,7 @@ serve(async (req) => {
       })
     }
 
-    // Exchange code for access token
+    // Exchange code for access token using Supabase secrets
     const tokenResponse = await fetch('https://api.sendpulse.com/oauth/access_token', {
       method: 'POST',
       headers: {
@@ -140,7 +140,7 @@ serve(async (req) => {
       })
     }
 
-    // Encrypt/hash the access token for security (basic obfuscation)
+    // Encrypt/hash the access token for security (base64 obfuscation)
     const encryptedToken = btoa(tokenData.access_token)
 
     // Save connection to database
