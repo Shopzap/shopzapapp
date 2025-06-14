@@ -1,32 +1,25 @@
 
 import React from 'react';
+import { Store } from 'lucide-react';
 
 interface StoreInfoProps {
-  store: {
-    id: string;
-    name: string;
-    logo_image: string | null;
-  };
+  storeName?: string;
+  productId: string;
 }
 
-const StoreInfo: React.FC<StoreInfoProps> = ({ store }) => {
+const StoreInfo: React.FC<StoreInfoProps> = ({ storeName, productId }) => {
   return (
-    <div className="bg-gray-100 rounded-lg p-4">
-      <h3 className="font-medium text-gray-900 mb-2">Sold by</h3>
+    <div className="bg-gray-50 rounded-lg p-4">
+      <h3 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+        <Store className="h-4 w-4" />
+        Sold by
+      </h3>
       <div className="flex items-center gap-3">
-        {store.logo_image ? (
-          <img 
-            src={store.logo_image} 
-            alt={store.name}
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          <div className="h-10 w-10 bg-gray-900 text-white rounded-full flex items-center justify-center text-sm font-bold">
-            {store.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div className="h-10 w-10 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
+          {storeName ? storeName.charAt(0).toUpperCase() : 'S'}
+        </div>
         <div>
-          <p className="font-medium text-gray-900">{store.name}</p>
+          <p className="font-medium text-gray-900">{storeName || 'Store'}</p>
           <p className="text-sm text-gray-600">Trusted Seller</p>
         </div>
       </div>
