@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ import {
 } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import { paymentConfig } from '@/config/payment';
-import { ResponsiveLayout } from '@/components/ResponsiveLayout';
+import ResponsiveLayout from '@/components/ResponsiveLayout';
 import { CheckoutSkeleton } from '@/components/skeletons/CheckoutSkeleton';
 
 interface FormData {
