@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Instagram, CheckCircle, AlertCircle, ExternalLink, Unplug } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useNavigate } from 'react-router-dom';
 
 interface InstagramConnectionCardProps {
   storeData: any;
@@ -19,6 +20,7 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
   onConnectionUpdate
 }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleConnectInstagram = async () => {
     if (!storeData) {
@@ -47,22 +49,8 @@ const InstagramConnectionCard: React.FC<InstagramConnectionCardProps> = ({
       return;
     }
     
-    const state = btoa(JSON.stringify({
-      store_id: storeData.id,
-      user_id: storeData.user_id
-    }));
-    
-    // Use environment variable for SendPulse Client ID
-    const callbackUrl = `https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback`;
-    const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?` +
-      `client_id=${import.meta.env.VITE_SENDPULSE_CLIENT_ID || 'your-client-id'}` +
-      `&response_type=code` +
-      `&scope=chatbots,user_data` +
-      `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
-      `&state=${state}`;
-    
-    console.log('Redirecting to SendPulse OAuth:', sendpulseAuthUrl);
-    window.location.href = sendpulseAuthUrl;
+    // Redirect to the Instagram auth page which handles the secure OAuth flow
+    navigate('/instagram-auth');
   };
 
   const handleDisconnect = async () => {

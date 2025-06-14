@@ -54,9 +54,11 @@ const InstagramAuth = () => {
         }
 
         // Get SendPulse Client ID from Supabase secrets via edge function
+        const { data: { session } } = await supabase.auth.getSession();
+        
         const { data: secretData, error: secretError } = await supabase.functions.invoke('get-sendpulse-config', {
           headers: {
-            Authorization: `Bearer ${sessionValidation.user.access_token || 'fallback'}`
+            Authorization: `Bearer ${session?.access_token}`
           }
         });
 
