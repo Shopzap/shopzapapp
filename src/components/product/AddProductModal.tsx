@@ -198,7 +198,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         description: '',
         price: '',
         inventory_count: '',
-        payment_method: 'cod'
+        payment_method: 'cod',
+        category: ''
       });
       setImageFile(null);
       setImagePreview(null);
