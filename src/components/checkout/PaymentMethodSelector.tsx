@@ -3,7 +3,7 @@ import React from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Truck, CreditCard, AlertCircle } from 'lucide-react';
+import { Truck, CreditCard, AlertCircle, Smartphone, Wallet } from 'lucide-react';
 
 interface PaymentMethodSelectorProps {
   paymentMethod: 'cod' | 'online';
@@ -52,6 +52,33 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           </div>
         )}
       </RadioGroup>
+      
+      {razorpayAvailable && paymentMethod === 'online' && (
+        <div className="text-sm text-muted-foreground p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Smartphone className="h-4 w-4 text-blue-600" />
+            <span className="font-medium text-blue-800">Supported Payment Methods:</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="flex items-center gap-1">
+              <Wallet className="h-3 w-3" />
+              UPI (GPay, PhonePe, Paytm)
+            </div>
+            <div className="flex items-center gap-1">
+              <CreditCard className="h-3 w-3" />
+              Credit/Debit Cards
+            </div>
+            <div className="flex items-center gap-1">
+              <Smartphone className="h-3 w-3" />
+              Net Banking
+            </div>
+            <div className="flex items-center gap-1">
+              <Wallet className="h-3 w-3" />
+              Digital Wallets
+            </div>
+          </div>
+        </div>
+      )}
       
       {!razorpayAvailable && (
         <div className="text-sm text-muted-foreground p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
