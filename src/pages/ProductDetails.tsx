@@ -172,7 +172,7 @@ const ProductDetails: React.FC = () => {
         description: `${product.name} has been added to your cart`,
       });
       
-      // Navigate to checkout with small delay for better UX
+      // Navigate to checkout with proper username-based URL
       setTimeout(() => {
         navigate(`/store/${storeUsername}/checkout`, { 
           state: { 

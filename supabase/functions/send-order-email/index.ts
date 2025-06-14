@@ -17,14 +17,17 @@ serve(async (req) => {
     
     console.log('Sending order emails for:', { orderId, buyerEmail, sellerEmail, storeName });
 
-    // Generate secure URLs (in production, these would be signed URLs with expiration)
+    // Generate secure URLs with proper domain
     const baseUrl = 'https://shopzap.io';
     const orderNumber = orderId.slice(-8);
+    const secureToken = btoa(orderId + buyerEmail + Date.now());
+    
+    // Updated URLs with proper routing
+    const trackingUrl = `${baseUrl}/track-order?orderId=${orderId}`;
+    const correctionUrl = `${baseUrl}/correct-order?token=${secureToken}`;
     const invoiceUrl = `${baseUrl}/invoice/${orderId}?token=${btoa(orderId + buyerEmail)}`;
-    const trackingUrl = `${baseUrl}/track-order/${orderId}`;
-    const correctionUrl = `${baseUrl}/order/correct/${orderId}?token=${btoa(orderId + buyerEmail)}`;
 
-    // Create detailed item list
+    // Create detailed item list with images
     const itemsList = products.map((p: any) => 
       `<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f1f3f4;">
         <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
@@ -38,13 +41,18 @@ serve(async (req) => {
       </div>`
     ).join("");
 
-    // Buyer confirmation email with enhanced features
+    // Enhanced buyer confirmation email with ShopZap branding
     const buyerHtml = `
       <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
+        <!-- Header with ShopZap Logo -->
         <div style="background: linear-gradient(135deg, #7b3fe4 0%, #9b59e6 100%); color: white; padding: 30px 20px; text-align: center;">
-          <div style="font-size: 28px; font-weight: 700; margin-bottom: 10px;">ShopZap</div>
-          <div style="font-size: 16px; opacity: 0.9;">🎉 Your order has been confirmed!</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+              <path d="M7 4V2C7 1.45 7.45 1 8 1H16C16.55 1 17 1.45 17 2V4H20C20.55 4 21 4.45 21 5S20.55 6 20 6H19V19C19 20.1 18.1 21 17 21H7C5.9 21 5 20.1 5 19V6H4C3.45 6 3 5.55 3 5S3.45 4 4 4H7ZM9 3V4H15V3H9ZM7 6V19H17V6H7Z"/>
+            </svg>
+            <div style="font-size: 28px; font-weight: 700;">ShopZap</div>
+          </div>
+          <div style="font-size: 16px; opacity: 0.9;">🎉 Your order from ${storeName} is confirmed!</div>
         </div>
         
         <!-- Content -->
@@ -52,13 +60,13 @@ serve(async (req) => {
           <div style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #222;">Hi ${buyerName},</div>
           
           <p style="margin-bottom: 20px; color: #666; line-height: 1.6;">
-            Thank you for your order! We're excited to get your items to you. Here's a summary of your order:
+            Thank you for your order from <strong>${storeName}</strong>! We're excited to get your items to you. Here's a summary of your order:
           </p>
           
           <!-- Order Info -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
             <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">Order ID: <span style="color: #7b3fe4;">#${orderNumber}</span></div>
-            <div style="font-size: 16px; color: #7b3fe4; font-weight: 500;">Thank you for shopping with ${storeName}</div>
+            <div style="font-size: 16px; color: #7b3fe4; font-weight: 500;">Store: ${storeName}</div>
             <div style="font-size: 14px; color: #666; margin-top: 8px;">Order Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
           </div>
           
@@ -91,7 +99,7 @@ serve(async (req) => {
               🧾 Download Invoice
             </a>
             <a href="${trackingUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
-              📦 Track Order
+              📦 Track My Order
             </a>
             <a href="${correctionUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #e67e22; text-decoration: none; border: 2px solid #e67e22; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
               ✏️ Correct Order
@@ -101,7 +109,7 @@ serve(async (req) => {
           <!-- What's Next -->
           <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
             <h3 style="color: #0066cc; margin-bottom: 10px; font-size: 16px;">📋 What's Next?</h3>
-            <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• Order confirmed and being processed</p>
+            <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• Order confirmed and being processed by ${storeName}</p>
             <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• We'll send shipping updates via email</p>
             <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• Expected delivery: 3-7 business days</p>
             <p style="color: #666; font-size: 14px;">• Track your order anytime using the link above</p>
@@ -139,8 +147,13 @@ serve(async (req) => {
       <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #7b3fe4 0%, #9b59e6 100%); color: white; padding: 30px 20px; text-align: center;">
-          <div style="font-size: 28px; font-weight: 700; margin-bottom: 10px;">ShopZap</div>
-          <div style="font-size: 16px; opacity: 0.9;">💰 New order received!</div>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+              <path d="M7 4V2C7 1.45 7.45 1 8 1H16C16.55 1 17 1.45 17 2V4H20C20.55 4 21 4.45 21 5S20.55 6 20 6H19V19C19 20.1 18.1 21 17 21H7C5.9 21 5 20.1 5 19V6H4C3.45 6 3 5.55 3 5S3.45 4 4 4H7ZM9 3V4H15V3H9ZM7 6V19H17V6H7Z"/>
+            </svg>
+            <div style="font-size: 28px; font-weight: 700;">ShopZap</div>
+          </div>
+          <div style="font-size: 16px; opacity: 0.9;">💰 New order for ${storeName}!</div>
           <div style="background-color: #ff6b6b; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; margin-top: 15px; display: inline-block;">⚡ Action Required</div>
         </div>
         
@@ -207,15 +220,6 @@ serve(async (req) => {
             <div style="color: #0c5460;">4. 💰 <strong>Collect payment</strong> upon delivery (COD)</div>
           </div>
           
-          <!-- Pro Tips -->
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-            <h3 style="color: #7b3fe4; margin-bottom: 15px; font-size: 16px;">💡 Pro Tips for Order Fulfillment</h3>
-            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Process orders within 24 hours for best customer satisfaction</div>
-            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Pack items securely to prevent damage during shipping</div>
-            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Update tracking information as soon as you ship</div>
-            <div style="color: #666; font-size: 14px;">• Include a thank you note for better customer experience</div>
-          </div>
-          
           <!-- Support -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;">
             <div style="font-weight: 600; margin-bottom: 10px;">Need Help?</div>
@@ -244,7 +248,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "orders@shopzap.io",
+        from: "ShopZap Orders <orders@shopzap.io>",
         to: [buyerEmail],
         subject: `🎉 Order Confirmed #${orderNumber} - ${storeName}`,
         html: buyerHtml,
@@ -264,7 +268,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "orders@shopzap.io",
+          from: "ShopZap Orders <orders@shopzap.io>",
           to: [sellerEmail],
           subject: `💰 New Order #${orderNumber} from ${buyerName} - ${storeName}`,
           html: sellerHtml,

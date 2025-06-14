@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -6,13 +5,42 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Minus, Trash2, CreditCard, Truck, Shield, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, User, Truck, CreditCard, Shield } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { emailService } from '@/services/emailService';
-import ResponsiveLayout from '@/components/ResponsiveLayout';
+import { ordersApi } from '@/services/api';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { cn } from "@/lib/utils";
+import { paymentConfig } from '@/config/payment';
+import { ResponsiveLayout } from '@/components/ResponsiveLayout';
+import { CheckoutSkeleton } from '@/components/skeletons/CheckoutSkeleton';
 
 interface FormData {
   fullName: string;
@@ -22,17 +50,7 @@ interface FormData {
   city: string;
   state: string;
   zipCode: string;
-  paymentMethod: string;
-}
-
-interface FormErrors {
-  fullName?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
+  specialInstructions?: string;
 }
 
 interface OrderItem {
@@ -43,140 +61,129 @@ interface OrderItem {
   image: string;
 }
 
-const Checkout = () => {
+const formSchema = z.object({
+  fullName: z.string().min(2, {
+    message: "Full name must be at least 2 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+  phone: z.string().regex(/^(\+?\d{1,4}[\s-])?(?!0+\s+,?$)(?!0+\s?\.?$)(?!0+\s?$)(\d{10})$/, {
+    message: "Please enter a valid 10-digit phone number.",
+  }),
+  address: z.string().min(5, {
+    message: "Address is required",
+  }),
+  city: z.string().min(2, {
+    message: "City is required",
+  }),
+  state: z.string().min(2, {
+    message: "State is required",
+  }),
+  zipCode: z.string().regex(/^[0-9]{6}$/, {
+    message: "Please enter a valid 6-digit ZIP code",
+  }),
+  specialInstructions: z.string().optional(),
+});
+
+const Checkout: React.FC = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   
-  const [formData, setFormData] = useState<FormData>({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    paymentMethod: 'cod'
-  });
+  const [storeData, setStoreData] = useState<{ id: string; name: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
 
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
 
-  // Get order items from location state
-  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || []);
-  const fromBuyNow = location.state?.fromBuyNow || false;
+  // Get order items from location state or use mock data
+  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
+    {
+      id: 1,
+      name: 'Wireless Earbuds',
+      price: 1999,
+      quantity: 1,
+      image: 'https://placehold.co/80x80'
+    },
+    {
+      id: 2,
+      name: 'Phone Case',
+      price: 499,
+      quantity: 2,
+      image: 'https://placehold.co/80x80'
+    }
+  ]);
 
   const subtotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
   const shipping = 0; // Free shipping
   const total = subtotal + shipping;
 
-  // Redirect if no items
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      specialInstructions: "",
+    },
+  });
+
+  // Check Razorpay availability on mount
   useEffect(() => {
-    if (orderItems.length === 0) {
-      toast({
-        title: "Cart is empty",
-        description: "Add items to your cart before checking out.",
-        variant: "destructive"
-      });
-      navigate('/');
-    }
-  }, [orderItems.length, navigate, toast]);
+    const checkRazorpayAvailability = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-razorpay-keys');
+        if (!error && data?.available) {
+          setRazorpayAvailable(true);
+          setPaymentMode(data.mode || 'test');
+        }
+      } catch (error) {
+        console.log('Razorpay not configured');
+      }
+    };
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-    
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-    
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Please enter a valid 10-digit phone number';
-    }
-    
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-    
-    if (!formData.city.trim()) {
-      newErrors.city = 'City is required';
-    }
-    
-    if (!formData.state.trim()) {
-      newErrors.state = 'State is required';
-    }
-    
-    if (!formData.zipCode.trim()) {
-      newErrors.zipCode = 'ZIP code is required';
-    } else if (!/^\d{6}$/.test(formData.zipCode)) {
-      newErrors.zipCode = 'Please enter a valid 6-digit ZIP code';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    checkRazorpayAvailability();
+  }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    
-    // Clear error when user starts typing
-    if (errors[name as keyof FormErrors]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
-    }
-  };
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      try {
+        // Replace 'demo-store-id' with dynamic store ID if needed
+        setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
+      } catch (error) {
+        console.error('Failed to fetch store data:', error);
+        toast({
+          title: "Store Error",
+          description: "Failed to load store information. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
 
-  const handlePaymentMethodChange = (value: string) => {
-    setFormData({
-      ...formData,
-      paymentMethod: value
+    fetchStoreData();
+  }, []);
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
     });
   };
 
-  const updateQuantity = (itemId: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId);
-      return;
-    }
-    
-    setOrderItems(orderItems.map(item => 
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    ));
-  };
-
-  const removeItem = (itemId: number) => {
-    setOrderItems(orderItems.filter(item => item.id !== itemId));
-    toast({
-      title: "Item Removed",
-      description: "Item has been removed from your cart.",
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      toast({
-        title: "Please fix the errors",
-        description: "Check all required fields and correct any errors.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handlePlaceOrder = async (values: z.infer<typeof formSchema>) => {
     if (orderItems.length === 0) {
       toast({
         title: "Cart is empty",
@@ -186,75 +193,176 @@ const Checkout = () => {
       return;
     }
     
-    setIsSubmitting(true);
+    setIsLoading(true);
     
     try {
-      // Generate order ID
-      const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Create order data
+      // Create order in database
       const orderData = {
-        storeId: 'demo-store-id',
-        buyerName: formData.fullName,
-        buyerEmail: formData.email,
-        buyerPhone: formData.phone,
-        buyerAddress: `${formData.address}, ${formData.city}, ${formData.state} ${formData.zipCode}`,
+        storeId: storeData?.id || 'demo-store-id', // This should come from context/props
+        buyerName: values.fullName,
+        buyerEmail: values.email,
+        buyerPhone: values.phone,
+        buyerAddress: `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`,
         totalPrice: total,
-        paymentMethod: formData.paymentMethod,
-        status: 'placed',
         items: orderItems.map(item => ({
-          productId: `product-${item.id}`,
+          productId: `product-${item.id}`, // This should be the actual product ID
           quantity: item.quantity,
-          priceAtPurchase: item.price,
-          name: item.name
+          priceAtPurchase: item.price
         }))
       };
 
-      // Send order confirmation email
-      const emailData = {
-        buyerName: formData.fullName,
-        storeName: 'Demo Store', // This should come from store context
-        items: orderItems.map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        totalPrice: total
-      };
+      if (paymentMethod === 'online') {
+        const razorpay = await loadRazorpay();
 
-      await emailService.sendOrderPlacedEmail(
-        orderId,
-        formData.email,
-        emailData,
-        'seller@demostore.com' // This should come from store data
-      );
-
-      // Navigate to success page
-      navigate('/order-success', {
-        state: {
-          orderId,
-          orderItems,
-          total,
-          customerInfo: formData,
-          paymentInfo: {
-            paymentMethod: formData.paymentMethod,
-            paymentStatus: formData.paymentMethod === 'cod' ? 'Pending' : 'Paid',
-            paymentTime: new Date().toLocaleString()
-          },
-          estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })
+        if (!razorpay) {
+          toast({
+            title: "Payment Error",
+            description: "Razorpay SDK failed to load. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
         }
-      });
 
-      toast({
-        title: "Order Placed Successfully!",
-        description: "We've sent a confirmation email with your order details.",
-      });
+        const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
+          body: {
+            amount: total * 100, // Razorpay uses paise
+            currency: 'INR',
+            receipt: `order_${Date.now()}`
+          }
+        });
 
+        if (razorpayError) {
+          console.error('Razorpay order creation failed:', razorpayError);
+          toast({
+            title: "Payment Error",
+            description: "Failed to initiate online payment. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const options = {
+          key: paymentConfig.razorpay.keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: storeData?.name || 'ShopZap Store',
+          description: 'Secure online payment',
+          order_id: razorpayOrder.id,
+          handler: async function (response: any) {
+            // Verify payment signature on the client-side
+            const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-razorpay-signature', {
+              body: {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: razorpayOrder.id,
+                razorpay_signature: response.razorpay_signature
+              }
+            });
+
+            if (verificationError) {
+              console.error('Razorpay signature verification failed:', verificationError);
+              toast({
+                title: "Payment Verification Failed",
+                description: "Payment could not be verified. Please contact support.",
+                variant: "destructive"
+              });
+              setIsLoading(false);
+              return;
+            }
+
+            // Payment successful, create order in database
+            const apiResponse = await fetch('/api/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+              },
+              body: JSON.stringify({
+                ...orderData,
+                paymentMethod: 'online',
+                razorpayPaymentId: response.razorpay_payment_id
+              })
+            });
+
+            if (!apiResponse.ok) {
+              throw new Error('Failed to create order after payment');
+            }
+
+            const result = await apiResponse.json();
+
+            // Navigate to order success page with real order details
+            navigate('/order-success', {
+              state: {
+                orderId: result.orderId,
+                orderItems,
+                total,
+                customerInfo: values,
+                paymentInfo: {
+                  paymentId: response.razorpay_payment_id,
+                  paymentMethod: 'Razorpay',
+                  paymentTime: new Date().toISOString(),
+                  paymentStatus: 'Paid'
+                },
+                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+              }
+            });
+          },
+          prefill: {
+            name: values.fullName,
+            email: values.email,
+            contact: values.phone
+          },
+          notes: {
+            order_id: razorpayOrder.orderId
+          },
+          theme: {
+            color: '#7b3fe4'
+          }
+        };
+
+        const rzp1 = new (window as any).Razorpay(options);
+        rzp1.on('payment.failed', function (response: any) {
+          console.error('Razorpay payment failed:', response);
+          toast({
+            title: "Payment Failed",
+            description: "Your payment failed. Please try again or use a different payment method.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+        });
+        rzp1.open();
+      } else {
+        const apiResponse = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify(orderData)
+        });
+
+        if (!apiResponse.ok) {
+          throw new Error('Failed to create order');
+        }
+
+        const result = await apiResponse.json();
+        
+        // Navigate to order success page with real order details
+        navigate('/order-success', {
+          state: {
+            orderId: result.orderId,
+            orderItems,
+            total,
+            customerInfo: values,
+            paymentInfo: {
+              paymentMethod: 'Cash on Delivery',
+              paymentStatus: 'Pending'
+            },
+            estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+          }
+        });
+      }
     } catch (error) {
       console.error('Order creation failed:', error);
       toast({
@@ -263,304 +371,325 @@ const Checkout = () => {
         variant: "destructive"
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  if (orderItems.length === 0) {
-    return null; // Will redirect in useEffect
-  }
-
   return (
     <ResponsiveLayout maxWidth="7xl" padding="md">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" onClick={() => navigate(-1)} className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Checkout</h1>
-            <p className="text-muted-foreground">Complete your order securely</p>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto">
+        <Button 
+          variant="ghost" 
+          className="mb-6 flex items-center gap-2"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-          {/* Order Form */}
-          <div className="lg:col-span-2 space-y-6">
+        {!storeData ? (
+          <CheckoutSkeleton />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Order Summary */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Shipping Information
+                  <ShoppingCart className="h-5 w-5" />
+                  Order Summary
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name *</Label>
-                      <Input 
-                        id="fullName" 
-                        name="fullName" 
-                        value={formData.fullName} 
-                        onChange={handleInputChange}
-                        className={errors.fullName ? 'border-red-500' : ''}
-                        placeholder="Enter your full name"
-                        autoComplete="name"
-                        required 
-                      />
-                      {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input 
-                        id="email" 
-                        name="email" 
-                        type="email" 
-                        value={formData.email} 
-                        onChange={handleInputChange}
-                        className={errors.email ? 'border-red-500' : ''}
-                        placeholder="your@email.com"
-                        autoComplete="email"
-                        required 
-                      />
-                      {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input 
-                      id="phone" 
-                      name="phone" 
-                      type="tel"
-                      value={formData.phone} 
-                      onChange={handleInputChange}
-                      className={errors.phone ? 'border-red-500' : ''}
-                      placeholder="10-digit phone number"
-                      autoComplete="tel"
-                      inputMode="numeric"
-                      required 
-                    />
-                    {errors.phone && <p className="text-red-500 text-sm">{errors.phone}</p>}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Street Address *</Label>
-                    <Textarea 
-                      id="address" 
-                      name="address" 
-                      value={formData.address} 
-                      onChange={handleInputChange}
-                      className={errors.address ? 'border-red-500' : ''}
-                      placeholder="House number, street, area"
-                      autoComplete="street-address"
-                      rows={2}
-                      required 
-                    />
-                    {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City *</Label>
-                      <Input 
-                        id="city" 
-                        name="city" 
-                        value={formData.city} 
-                        onChange={handleInputChange}
-                        className={errors.city ? 'border-red-500' : ''}
-                        placeholder="City"
-                        autoComplete="address-level2"
-                        required 
-                      />
-                      {errors.city && <p className="text-red-500 text-sm">{errors.city}</p>}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State *</Label>
-                      <Input 
-                        id="state" 
-                        name="state" 
-                        value={formData.state} 
-                        onChange={handleInputChange}
-                        className={errors.state ? 'border-red-500' : ''}
-                        placeholder="State"
-                        autoComplete="address-level1"
-                        required 
-                      />
-                      {errors.state && <p className="text-red-500 text-sm">{errors.state}</p>}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="zipCode">PIN Code *</Label>
-                      <Input 
-                        id="zipCode" 
-                        name="zipCode" 
-                        value={formData.zipCode} 
-                        onChange={handleInputChange}
-                        className={errors.zipCode ? 'border-red-500' : ''}
-                        placeholder="6-digit PIN"
-                        autoComplete="postal-code"
-                        inputMode="numeric"
-                        maxLength={6}
-                        required 
-                      />
-                      {errors.zipCode && <p className="text-red-500 text-sm">{errors.zipCode}</p>}
-                    </div>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            {/* Payment Method */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Payment Method
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={formData.paymentMethod} 
-                  onValueChange={handlePaymentMethodChange}
-                  className="space-y-3"
-                >
-                  <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                    <RadioGroupItem value="cod" id="cod" />
-                    <Label htmlFor="cod" className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">Cash on Delivery</div>
-                          <div className="text-sm text-muted-foreground">Pay when you receive your order</div>
-                        </div>
-                        <Truck className="h-5 w-5 text-green-600" />
-                      </div>
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 p-3 border rounded-lg opacity-50">
-                    <RadioGroupItem value="online" id="online" disabled />
-                    <Label htmlFor="online" className="flex-1 cursor-pointer">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">Online Payment</div>
-                          <div className="text-sm text-muted-foreground">Coming soon - UPI, Cards, Wallets</div>
-                        </div>
-                        <CreditCard className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Order Summary */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
+                <CardDescription>
+                  Review your items from {storeData.name}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Order Items */}
-                <div className="space-y-3">
-                  {orderItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-12 h-12 rounded object-cover flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">₹{item.price.toLocaleString()}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                          onClick={() => removeItem(item.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                {orderItems.map((item) => (
+                  <div key={item.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                    <img 
+                      src={item.image} 
+                      alt={item.name}
+                      className="w-16 h-16 rounded object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-medium">{item.name}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        ₹{item.price.toLocaleString()} × {item.quantity}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-right">
+                      <p className="font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
 
                 <Separator />
 
-                {/* Price Breakdown */}
+                {/* Order Total */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal ({orderItems.length} items)</span>
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
                     <span>₹{subtotal.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
+                    <span className="text-green-600 font-medium">Free</span>
                   </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
+                  <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
                     <span>₹{total.toLocaleString()}</span>
                   </div>
                 </div>
 
-                {/* Place Order Button */}
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="w-full h-12 text-base font-semibold"
-                  size="lg"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Processing Order...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4 mr-2" />
-                      Place Order - ₹{total.toLocaleString()}
-                    </>
-                  )}
-                </Button>
-
-                {/* Security Notice */}
-                <div className="text-center text-xs text-muted-foreground pt-2">
-                  <div className="flex items-center justify-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    Secure checkout • Free shipping • Easy returns
+                {/* Payment Method Selection */}
+                <div className="space-y-3">
+                  <h4 className="font-medium">Payment Method</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem 
+                        value="cod" 
+                        id="cod"
+                        checked={paymentMethod === 'cod'}
+                        onChange={() => setPaymentMethod('cod')}
+                      />
+                      <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer">
+                        <Truck className="h-4 w-4" />
+                        Cash on Delivery
+                      </Label>
+                    </div>
+                    
+                    {razorpayAvailable ? (
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem 
+                          value="online" 
+                          id="online"
+                          checked={paymentMethod === 'online'}
+                          onChange={() => setPaymentMethod('online')}
+                        />
+                        <Label htmlFor="online" className="flex items-center gap-2 cursor-pointer">
+                          <CreditCard className="h-4 w-4" />
+                          Pay Online {paymentMode === 'test' && <Badge variant="secondary">Test Mode</Badge>}
+                        </Label>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2 opacity-50">
+                        <RadioGroupItem value="online" id="online-disabled" disabled />
+                        <Label htmlFor="online-disabled" className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Pay Online
+                          <Badge variant="outline">Coming Soon</Badge>
+                        </Label>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Customer Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Customer Information
+                </CardTitle>
+                <CardDescription>
+                  Enter your details for delivery
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handlePlaceOrder)} className="space-y-4">
+                    {/* Full Name */}
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your full name" 
+                              {...field}
+                              autoComplete="name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Email */}
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="email" 
+                              placeholder="Enter your email address" 
+                              {...field}
+                              autoComplete="email"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Phone */}
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="tel" 
+                              placeholder="Enter your phone number" 
+                              {...field}
+                              autoComplete="tel"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Address */}
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Address *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your full address" 
+                              {...field}
+                              autoComplete="street-address"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* City */}
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your city" 
+                              {...field}
+                              autoComplete="address-level2"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* State */}
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your state" 
+                              {...field}
+                              autoComplete="address-level1"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* ZIP Code */}
+                    <FormField
+                      control={form.control}
+                      name="zipCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ZIP/Pin Code *</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your ZIP/Pin code" 
+                              {...field}
+                              autoComplete="postal-code"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Special Instructions */}
+                    <FormField
+                      control={form.control}
+                      name="specialInstructions"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Special Instructions (Optional)</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Any special delivery instructions..."
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Place Order Button */}
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 text-lg font-semibold"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Processing Order...
+                        </>
+                      ) : paymentMethod === 'online' ? (
+                        <>
+                          <CreditCard className="h-5 w-5 mr-2" />
+                          Pay ₹{total.toLocaleString()} Online
+                        </>
+                      ) : (
+                        <>
+                          <Truck className="h-5 w-5 mr-2" />
+                          Place Order - ₹{total.toLocaleString()}
+                        </>
+                      )}
+                    </Button>
+
+                    <div className="text-center text-sm text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Secure checkout • Free shipping • Easy returns
+                      </div>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        )}
       </div>
     </ResponsiveLayout>
   );

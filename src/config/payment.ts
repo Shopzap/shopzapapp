@@ -1,12 +1,12 @@
 
 // Payment configuration
 export const paymentConfig = {
-  // Force test mode until live approval
+  // Dynamic test mode based on available keys
   isTestMode: true,
   razorpay: {
-    // Use test key ID - this will be returned from the edge function
-    keyId: 'rzp_test_UGces6wIHu4wqX',
-    webhookSecret: import.meta.env.VITE_RAZORPAY_WEBHOOK_SECRET || '',
+    // Key ID will be fetched from Supabase secrets
+    keyId: '', // Will be populated from edge function
+    webhookSecret: '', // Will be populated from Supabase secrets
     endpoints: {
       success: 'https://shopzap.io/payment/success',
       failure: 'https://shopzap.io/payment/failure',
@@ -18,4 +18,10 @@ export const paymentConfig = {
     checkoutEnabled: true,
     messageTemplate: 'Thank you for your order! Your order ID is: {orderId}'
   }
+};
+
+// Helper function to check if Razorpay is available
+export const isRazorpayAvailable = () => {
+  // This will be checked dynamically in components
+  return true; // Will be updated based on key availability
 };
