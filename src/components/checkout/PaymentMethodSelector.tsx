@@ -21,14 +21,9 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   return (
     <div className="space-y-3">
       <h4 className="font-medium">Payment Method</h4>
-      <div className="space-y-2">
+      <RadioGroup value={paymentMethod} onValueChange={onPaymentMethodChange}>
         <div className="flex items-center space-x-2">
-          <RadioGroupItem 
-            value="cod" 
-            id="cod"
-            checked={paymentMethod === 'cod'}
-            onChange={() => onPaymentMethodChange('cod')}
-          />
+          <RadioGroupItem value="cod" id="cod" />
           <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer">
             <Truck className="h-4 w-4" />
             Cash on Delivery
@@ -37,12 +32,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         
         {razorpayAvailable ? (
           <div className="flex items-center space-x-2">
-            <RadioGroupItem 
-              value="online" 
-              id="online"
-              checked={paymentMethod === 'online'}
-              onChange={() => onPaymentMethodChange('online')}
-            />
+            <RadioGroupItem value="online" id="online" />
             <Label htmlFor="online" className="flex items-center gap-2 cursor-pointer">
               <CreditCard className="h-4 w-4" />
               Pay Online {paymentMode === 'test' && <Badge variant="secondary">Test Mode</Badge>}
@@ -58,7 +48,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             </Label>
           </div>
         )}
-      </div>
+      </RadioGroup>
     </div>
   );
 };
