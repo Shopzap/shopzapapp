@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader, Upload, X } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from '@/contexts/StoreContext';
 import { generateUniqueProductSlug } from '@/utils/slugHelpers';
+import { AIDescriptionGenerator } from '@/components/ai/AIDescriptionGenerator';
+import { SmartPricingBadge } from '@/components/ai/SmartPricingBadge';
+import { AutoProductImport } from '@/components/product/AutoProductImport';
 
 interface AddProductModalProps {
   onProductAdded: () => void;
@@ -103,6 +106,23 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
+  const handleProductImport = (importedData: any) => {
+    setFormData(prev => ({
+      ...prev,
+      name: importedData.name,
+      description: importedData.description,
+      price: importedData.price,
+    }));
+    setImagePreview(importedData.image_url);
+  };
+
+  const handleAIDescriptionGenerated = (description: string) => {
+    setFormData(prev => ({
+      ...prev,
+      description
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -132,6 +152,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           setIsLoading(false);
           return;
         }
+      } else if (imagePreview && !imageFile) {
+        // Use imported image URL
+        imageUrl = imagePreview;
       }
 
       // Generate unique slug for the product
@@ -204,135 +227,157 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           Add Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Product Name</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter product name"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter product description"
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (₹)</Label>
-              <Input
-                id="price"
-                type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="inventory">Inventory</Label>
-              <Input
-                id="inventory"
-                type="number"
-                value={formData.inventory_count}
-                onChange={(e) => setFormData({ ...formData, inventory_count: e.target.value })}
-                placeholder="0"
-                min="0"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="image">Product Image</Label>
-            {!imagePreview ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
+        
+        <Tabs defaultValue="manual" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+            <TabsTrigger value="import">Import from URL</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="import" className="mt-4">
+            <AutoProductImport onProductImported={handleProductImport} />
+          </TabsContent>
+          
+          <TabsContent value="manual" className="mt-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Product Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter product name"
+                  required
                 />
-                <label htmlFor="image" className="cursor-pointer">
-                  <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-600">
-                    Click to upload an image
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    PNG, JPG, WEBP up to 5MB
-                  </p>
-                </label>
               </div>
-            ) : (
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Product preview"
-                  className="w-full h-48 object-cover rounded-lg border"
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="description">Description</Label>
+                  <AIDescriptionGenerator
+                    productName={formData.name}
+                    onDescriptionGenerated={handleAIDescriptionGenerated}
+                    disabled={!formData.name.trim()}
+                  />
+                </div>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter product description"
+                  rows={3}
                 />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={removeImage}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price">Price (₹)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                  <SmartPricingBadge category={formData.name} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="inventory">Inventory</Label>
+                  <Input
+                    id="inventory"
+                    type="number"
+                    value={formData.inventory_count}
+                    onChange={(e) => setFormData({ ...formData, inventory_count: e.target.value })}
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="image">Product Image</Label>
+                {!imagePreview ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                    <input
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                    <label htmlFor="image" className="cursor-pointer">
+                      <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Click to upload an image
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PNG, JPG, WEBP up to 5MB
+                      </p>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Product preview"
+                      className="w-full h-48 object-cover rounded-lg border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={removeImage}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="payment_method">Payment Method</Label>
+                <Select 
+                  value={formData.payment_method} 
+                  onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
                 >
-                  <X className="h-4 w-4" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cod">Cash on Delivery</SelectItem>
+                    <SelectItem value="online">Online Payment</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add Product"
+                  )}
                 </Button>
               </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="payment_method">Payment Method</Label>
-            <Select 
-              value={formData.payment_method} 
-              onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cod">Cash on Delivery</SelectItem>
-                <SelectItem value="online">Online Payment</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                "Add Product"
-              )}
-            </Button>
-          </div>
-        </form>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

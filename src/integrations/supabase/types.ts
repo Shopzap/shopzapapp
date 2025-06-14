@@ -47,6 +47,57 @@ export type Database = {
           },
         ]
       }
+      analytics_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          product_id: string | null
+          referrer: string | null
+          session_id: string | null
+          store_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          product_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          store_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          product_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          store_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_logs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -500,6 +551,63 @@ export type Database = {
           },
         ]
       }
+      product_reviews: {
+        Row: {
+          buyer_email: string | null
+          buyer_name: string
+          created_at: string
+          id: string
+          is_verified: boolean | null
+          order_id: string | null
+          product_id: string
+          rating: number
+          review_image_url: string | null
+          review_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          buyer_email?: string | null
+          buyer_name: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          order_id?: string | null
+          product_id: string
+          rating: number
+          review_image_url?: string | null
+          review_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buyer_email?: string | null
+          buyer_name?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          order_id?: string | null
+          product_id?: string
+          rating?: number
+          review_image_url?: string | null
+          review_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string | null
@@ -589,6 +697,54 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          order_id: string | null
+          referred_user_id: string | null
+          referrer_store_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          order_id?: string | null
+          referred_user_id?: string | null
+          referrer_store_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          order_id?: string | null
+          referred_user_id?: string | null
+          referrer_store_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_logs_referrer_store_id_fkey"
+            columns: ["referrer_store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           about_description: string | null
@@ -663,6 +819,54 @@ export type Database = {
           vision_statement?: string | null
         }
         Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          referral_log_id: string | null
+          status: string
+          store_id: string
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          referral_log_id?: string | null
+          status?: string
+          store_id: string
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          referral_log_id?: string | null
+          status?: string
+          store_id?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_referral_log_id_fkey"
+            columns: ["referral_log_id"]
+            isOneToOne: false
+            referencedRelation: "referral_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
