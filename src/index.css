@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
@@ -79,6 +78,12 @@
   }
 }
 
+@layer components {
+  .container {
+    @apply max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
 /* Font classes */
 .font-inter { font-family: 'Inter', sans-serif; }
 .font-poppins { font-family: 'Poppins', sans-serif; }
@@ -115,27 +120,20 @@
 
 /* Mobile-first responsive improvements */
 @media (max-width: 640px) {
-  .container {
-    @apply px-3;
-  }
-  
   .grid-responsive {
     @apply grid-cols-1 gap-3;
   }
   
-  /* Improved touch targets for mobile */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
     @apply flex items-center justify-center;
   }
   
-  /* Better spacing on mobile */
   .mobile-spacing {
     @apply space-y-3;
   }
   
-  /* Responsive text sizing */
   .text-responsive-sm {
     @apply text-sm;
   }
@@ -247,7 +245,7 @@ textarea:focus-visible {
 }
 
 .responsive-padding {
-  @apply px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-6;
+  @apply px-4 py-3 sm:px-6 sm:py-4 lg:px-8 lg:py-6;
 }
 
 .responsive-text {
