@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader } from 'lucide-react';
+import { Plus, Loader, Upload, X } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from '@/contexts/StoreContext';
 import { generateUniqueProductSlug } from '@/utils/slugHelpers';
@@ -27,15 +27,81 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const { storeData } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     inventory_count: '',
-    image_url: '',
     payment_method: 'cod'
   });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const uploadImage = async (file: File, storeId: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `${storeId}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return null;
+      }
+
+      const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +118,22 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setIsLoading(true);
 
     try {
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile, storeData.id);
+        if (!imageUrl) {
+          toast({
+            title: "Error",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       // Generate unique slug for the product
       const slug = await generateUniqueProductSlug(
         storeData.username,
@@ -67,7 +149,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             description: formData.description,
             price: parseFloat(formData.price),
             inventory_count: parseInt(formData.inventory_count) || 0,
-            image_url: formData.image_url,
+            image_url: imageUrl,
             payment_method: formData.payment_method,
             store_id: storeData.id,
             user_id: storeData.user_id,
@@ -91,9 +173,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         description: '',
         price: '',
         inventory_count: '',
-        image_url: '',
         payment_method: 'cod'
       });
+      setImageFile(null);
+      setImagePreview(null);
 
       setIsOpen(false);
       onProductAdded();
@@ -121,7 +204,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           Add Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
@@ -177,13 +260,44 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="image">Image URL</Label>
-            <Input
-              id="image"
-              value={formData.image_url}
-              onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-              placeholder="https://example.com/image.jpg"
-            />
+            <Label htmlFor="image">Product Image</Label>
+            {!imagePreview ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                <label htmlFor="image" className="cursor-pointer">
+                  <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Click to upload an image
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    PNG, JPG, WEBP up to 5MB
+                  </p>
+                </label>
+              </div>
+            ) : (
+              <div className="relative">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={removeImage}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
