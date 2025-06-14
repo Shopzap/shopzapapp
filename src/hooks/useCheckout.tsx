@@ -105,7 +105,7 @@ export const useCheckout = () => {
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
-      if (window.Razorpay) {
+      if (typeof window !== 'undefined' && window.Razorpay) {
         resolve(true);
         return;
       }
@@ -283,7 +283,7 @@ export const useCheckout = () => {
         };
 
         console.log('Opening Razorpay with options:', options);
-        const rzp1 = new (window as any).Razorpay(options);
+        const rzp1 = new window.Razorpay(options);
         rzp1.on('payment.failed', function (response: any) {
           console.error('Razorpay payment failed:', response);
           toast({
