@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -27,53 +26,55 @@ const Checkout: React.FC = () => {
   } = useCheckout();
 
   return (
-    <ResponsiveLayout maxWidth="7xl" padding="md">
-      {isLoading && <FullScreenLoader message="Processing your order..." />}
-      <div className="max-w-4xl mx-auto">
-        <Button 
-          variant="ghost" 
-          className="mb-6 flex items-center gap-2"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
+    <ResponsiveLayout>
+      <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {isLoading && <FullScreenLoader message="Processing your order..." />}
+        <div className="max-w-4xl mx-auto">
+          <Button 
+            variant="ghost" 
+            className="mb-6 flex items-center gap-2"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
 
-        {!storeData ? (
-          <CheckoutSkeleton />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Order Summary */}
-            <OrderSummary
-              orderItems={orderItems}
-              subtotal={subtotal}
-              shipping={shipping}
-              total={total}
-              storeName={storeData.name}
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
-              razorpayAvailable={razorpayAvailable}
-              paymentMode={paymentMode}
-            />
-
-            {/* Customer Information */}
-            <div className="space-y-4">
-              <CheckoutForm
-                onSubmit={handlePlaceOrder}
-                isLoading={isLoading}
+          {!storeData ? (
+            <CheckoutSkeleton />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Order Summary */}
+              <OrderSummary
+                orderItems={orderItems}
+                subtotal={subtotal}
+                shipping={shipping}
                 total={total}
+                storeName={storeData.name}
                 paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                razorpayAvailable={razorpayAvailable}
+                paymentMode={paymentMode}
               />
 
-              <div className="text-center text-sm text-muted-foreground">
-                <div className="flex items-center justify-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Secure checkout • Free shipping • Easy returns
+              {/* Customer Information */}
+              <div className="space-y-4">
+                <CheckoutForm
+                  onSubmit={handlePlaceOrder}
+                  isLoading={isLoading}
+                  total={total}
+                  paymentMethod={paymentMethod}
+                />
+
+                <div className="text-center text-sm text-muted-foreground">
+                  <div className="flex items-center justify-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Secure checkout • Free shipping • Easy returns
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </ResponsiveLayout>
   );
