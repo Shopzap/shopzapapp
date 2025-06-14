@@ -61,19 +61,24 @@ export const useCheckout = () => {
   useEffect(() => {
     const checkRazorpayAvailability = async () => {
       try {
+        console.log('Checking Razorpay availability...');
         const { data, error } = await supabase.functions.invoke('check-razorpay-keys');
+        
         if (!error && data?.available) {
+          console.log('Razorpay is available:', data);
           setRazorpayAvailable(true);
           setPaymentMode(data.mode || 'test');
-          setRazorpayKeyId(data.keyId || 'rzp_test_UGces6yKSJViJa');
-          console.log('Razorpay configured with key:', data.keyId);
+          setRazorpayKeyId(data.keyId || '');
+          console.log('Razorpay key ID set:', data.keyId);
         } else {
-          console.log('Razorpay not available:', error);
-          setRazorpayKeyId('rzp_test_UGces6yKSJViJa'); // Fallback test key
+          console.log('Razorpay not available, using fallback');
+          setRazorpayAvailable(false);
+          setRazorpayKeyId(''); // Don't set fallback key if not available
         }
       } catch (error) {
-        console.log('Razorpay not configured, using fallback key');
-        setRazorpayKeyId('rzp_test_UGces6yKSJViJa'); // Fallback test key
+        console.error('Error checking Razorpay availability:', error);
+        setRazorpayAvailable(false);
+        setRazorpayKeyId(''); // Don't set fallback key on error
       }
     };
 
@@ -100,6 +105,11 @@ export const useCheckout = () => {
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -154,22 +164,23 @@ export const useCheckout = () => {
       };
 
       if (paymentMethod === 'online') {
-        const razorpay = await loadRazorpay();
-
-        if (!razorpay) {
+        // Check if Razorpay is available and key is set
+        if (!razorpayAvailable || !razorpayKeyId) {
           toast({
-            title: "Payment Error",
-            description: "Razorpay SDK failed to load. Please try again.",
+            title: "Payment Unavailable",
+            description: "Online payment is currently unavailable. Please use Cash on Delivery.",
             variant: "destructive"
           });
           setIsLoading(false);
           return;
         }
 
-        if (!razorpayKeyId) {
+        const razorpay = await loadRazorpay();
+
+        if (!razorpay) {
           toast({
-            title: "Payment Error", 
-            description: "Razorpay key not configured. Please try again or use Cash on Delivery.",
+            title: "Payment Error",
+            description: "Razorpay SDK failed to load. Please try again.",
             variant: "destructive"
           });
           setIsLoading(false);
@@ -198,7 +209,7 @@ export const useCheckout = () => {
         }
 
         const options = {
-          key: razorpayKeyId, // Use the dynamically fetched key
+          key: razorpayKeyId,
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
           name: storeData?.name || 'ShopZap Store',

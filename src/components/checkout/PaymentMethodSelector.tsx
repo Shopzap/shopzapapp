@@ -3,7 +3,7 @@ import React from 'react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Truck, CreditCard } from 'lucide-react';
+import { Truck, CreditCard, AlertCircle } from 'lucide-react';
 
 interface PaymentMethodSelectorProps {
   paymentMethod: 'cod' | 'online';
@@ -44,11 +44,23 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             <Label htmlFor="online-disabled" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Pay Online
-              <Badge variant="outline">Coming Soon</Badge>
+              <Badge variant="outline" className="flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Unavailable
+              </Badge>
             </Label>
           </div>
         )}
       </RadioGroup>
+      
+      {!razorpayAvailable && (
+        <div className="text-sm text-muted-foreground p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-yellow-600" />
+            <span>Online payment is currently unavailable. Please use Cash on Delivery.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
