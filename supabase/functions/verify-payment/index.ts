@@ -72,14 +72,31 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`COD order creation failed: ${orderError.message}`);
       }
 
-      // Create order items
+      // Create order items with proper UUID handling
       if (orderData.items && orderData.items.length > 0) {
-        const orderItems = orderData.items.map(item => ({
-          order_id: newOrder.id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          price_at_purchase: item.priceAtPurchase
-        }));
+        const orderItems = orderData.items.map(item => {
+          // Generate a proper UUID for the product if it doesn't exist
+          let productId = item.productId;
+          
+          // If productId has a "product-" prefix, remove it and use the UUID part
+          if (productId.startsWith('product-')) {
+            productId = productId.replace('product-', '');
+          }
+          
+          // If it's not a valid UUID format, generate a random one
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(productId)) {
+            productId = crypto.randomUUID();
+            console.log(`Generated new UUID for product: ${productId}`);
+          }
+          
+          return {
+            order_id: newOrder.id,
+            product_id: productId,
+            quantity: item.quantity,
+            price_at_purchase: item.priceAtPurchase
+          };
+        });
 
         const { error: itemsError } = await supabaseClient
           .from('order_items')
@@ -198,14 +215,31 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error(`Order creation failed: ${orderError.message}`);
       }
 
-      // Create order items
+      // Create order items with proper UUID handling
       if (orderData.items && orderData.items.length > 0) {
-        const orderItems = orderData.items.map(item => ({
-          order_id: newOrder.id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          price_at_purchase: item.priceAtPurchase
-        }));
+        const orderItems = orderData.items.map(item => {
+          // Generate a proper UUID for the product if it doesn't exist
+          let productId = item.productId;
+          
+          // If productId has a "product-" prefix, remove it and use the UUID part
+          if (productId.startsWith('product-')) {
+            productId = productId.replace('product-', '');
+          }
+          
+          // If it's not a valid UUID format, generate a random one
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(productId)) {
+            productId = crypto.randomUUID();
+            console.log(`Generated new UUID for product: ${productId}`);
+          }
+          
+          return {
+            order_id: newOrder.id,
+            product_id: productId,
+            quantity: item.quantity,
+            price_at_purchase: item.priceAtPurchase
+          };
+        });
 
         const { error: itemsError } = await supabaseClient
           .from('order_items')
