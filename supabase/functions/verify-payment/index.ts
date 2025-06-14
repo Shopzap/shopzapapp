@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
@@ -25,9 +24,53 @@ interface PaymentVerificationRequest {
       productId: string;
       quantity: number;
       priceAtPurchase: number;
+      name: string;
+      image: string;
     }[];
   };
 }
+
+const sendConfirmationEmail = async (supabaseClient: any, orderId: string, orderData: PaymentVerificationRequest['orderData']) => {
+  try {
+    const { data: storeDetails, error: storeError } = await supabaseClient
+      .from('stores')
+      .select('name, business_email')
+      .eq('id', orderData.storeId)
+      .single();
+
+    if (storeError) throw storeError;
+
+    const emailPayload = {
+      buyerEmail: orderData.buyerEmail,
+      buyerName: orderData.buyerName,
+      orderId: orderId,
+      products: orderData.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.priceAtPurchase,
+        image: item.image,
+      })),
+      totalAmount: orderData.totalPrice,
+      storeName: storeDetails.name,
+      sellerEmail: storeDetails.business_email
+    };
+
+    // Invoke email function without failing the main transaction
+    const { error: emailError } = await supabaseClient.functions.invoke('send-order-email', {
+      body: emailPayload
+    });
+
+    if (emailError) {
+      console.error(`Failed to send order confirmation email for order ${orderId}:`, emailError);
+    } else {
+      console.log(`Successfully queued confirmation email for order ${orderId}`);
+    }
+
+  } catch (emailStepError) {
+    console.error(`Error during email notification step for order ${orderId}:`, emailStepError.message);
+    // Do not re-throw, to avoid failing the entire order process
+  }
+};
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -111,6 +154,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('COD order created successfully:', newOrder.id);
+      
+      // Send confirmation email (fire and forget)
+      sendConfirmationEmail(supabaseClient, newOrder.id, orderData);
 
       return new Response(JSON.stringify({ 
         success: true,
@@ -254,6 +300,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       console.log('Order created successfully:', newOrder.id);
+      
+      // Send confirmation email (fire and forget)
+      sendConfirmationEmail(supabaseClient, newOrder.id, orderData);
 
       return new Response(JSON.stringify({ 
         success: true,

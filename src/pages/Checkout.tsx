@@ -8,6 +8,7 @@ import { CheckoutSkeleton } from '@/components/skeletons/CheckoutSkeleton';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { OrderSummary } from '@/components/checkout/OrderSummary';
 import { useCheckout } from '@/hooks/useCheckout';
+import FullScreenLoader from '@/components/checkout/FullScreenLoader';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ const Checkout: React.FC = () => {
 
   return (
     <ResponsiveLayout maxWidth="7xl" padding="md">
+      {isLoading && <FullScreenLoader message="Processing your order..." />}
       <div className="max-w-4xl mx-auto">
         <Button 
           variant="ghost" 

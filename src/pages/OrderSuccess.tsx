@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -43,7 +42,7 @@ const OrderSuccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { orderId, orderItems, total, customerInfo, paymentInfo, estimatedDelivery } = location.state as LocationState;
+  const { orderId, orderItems, total, customerInfo, paymentInfo, estimatedDelivery } = (location.state as LocationState) || {};
 
   // Redirect if no order data
   useEffect(() => {
@@ -67,25 +66,11 @@ const OrderSuccess = () => {
   };
 
   const handleDownloadInvoice = () => {
-    // Generate secure invoice URL
-    const invoiceUrl = `/invoice/${orderId}?token=${btoa(orderId + customerInfo.email)}`;
-    window.open(invoiceUrl, '_blank');
-    
-    toast({
-      title: "Opening Invoice",
-      description: "Your invoice is being generated and will open in a new tab.",
-    });
+    navigate(`/invoice/${orderId}`);
   };
 
   const handleCorrectOrder = () => {
-    // Generate secure correction URL (valid for 24 hours)
-    const correctionUrl = `/order/correct/${orderId}?token=${btoa(orderId + customerInfo.email)}`;
-    window.open(correctionUrl, '_blank');
-    
-    toast({
-      title: "Order Correction",
-      description: "Opening order correction form. Changes allowed for 24 hours.",
-    });
+    navigate(`/correct-order/${orderId}`);
   };
 
   const handleContinueShopping = () => {

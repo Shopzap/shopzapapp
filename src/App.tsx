@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -44,6 +43,8 @@ import EmbedButton from "./pages/EmbedButton";
 // Lazy loaded components with better fallbacks
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+const InvoicePage = lazy(() => import("./pages/InvoicePage"));
+const CorrectionPage = lazy(() => import("./pages/CorrectionPage"));
 
 // Core e-commerce pages - CRITICAL ROUTES - DO NOT REMOVE
 import Cart from "./pages/Cart";
@@ -163,6 +164,8 @@ const AppContent = () => {
       <Route path="/order" element={<ResponsiveLayout><OrderRedirect /></ResponsiveLayout>} />
       <Route path="/track-order" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
       <Route path="/track-order/:orderId" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
+      <Route path="/invoice/:orderId" element={<Suspense fallback={<div>Loading...</div>}><InvoicePage /></Suspense>} />
+      <Route path="/correct-order/:orderId" element={<Suspense fallback={<div>Loading...</div>}><CorrectionPage /></Suspense>} />
       {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */}
       
       {/* Store routes wrapped with CartProvider and proper error handling */}

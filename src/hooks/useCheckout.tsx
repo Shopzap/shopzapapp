@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -150,6 +149,7 @@ export const useCheckout = () => {
         description: "Store information is not available. Please try again.",
         variant: "destructive"
       });
+      setIsLoading(false);
       return;
     }
     
@@ -158,6 +158,7 @@ export const useCheckout = () => {
     try {
       const orderData = {
         storeId: storeData.id,
+        storeName: storeData.name,
         buyerName: values.fullName,
         buyerEmail: values.email,
         buyerPhone: values.phone,
@@ -166,7 +167,9 @@ export const useCheckout = () => {
         items: orderItems.map(item => ({
           productId: `product-${item.id}`,
           quantity: item.quantity,
-          priceAtPurchase: item.price
+          priceAtPurchase: item.price,
+          name: item.name,
+          image: item.image
         }))
       };
 
@@ -250,21 +253,7 @@ export const useCheckout = () => {
                 // Update referral if exists
                 await updateReferralOnOrder(verificationData.orderId);
 
-                navigate('/order-success', {
-                  state: {
-                    orderId: verificationData.orderId,
-                    orderItems,
-                    total,
-                    customerInfo: values,
-                    paymentInfo: {
-                      paymentId: response.razorpay_payment_id,
-                      paymentMethod: 'Razorpay',
-                      paymentTime: new Date().toISOString(),
-                      paymentStatus: 'Paid'
-                    },
-                    estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
-                  }
-                });
+                navigate(`/thank-you?order_id=${verificationData.orderId}`);
               } catch (error) {
                 console.error('Error in payment handler:', error);
                 toast({
@@ -344,19 +333,7 @@ export const useCheckout = () => {
           // Update referral if exists
           await updateReferralOnOrder(orderResult.orderId);
           
-          navigate('/order-success', {
-            state: {
-              orderId: orderResult.orderId,
-              orderItems,
-              total,
-              customerInfo: values,
-              paymentInfo: {
-                paymentMethod: 'Cash on Delivery',
-                paymentStatus: 'Pending'
-              },
-              estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
-            }
-          });
+          navigate(`/thank-you?order_id=${orderResult.orderId}`);
         } catch (codError) {
           console.error('COD order error:', codError);
           toast({

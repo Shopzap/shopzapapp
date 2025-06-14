@@ -147,6 +147,15 @@ const ThankYou = () => {
     fetchOrderDetails();
   }, [paymentId, orderId]);
 
+  useEffect(() => {
+    if (orderDetails && !loading && !error) {
+      toast({
+        title: "🎉 Your order was placed successfully!",
+        description: "We've sent a confirmation to your email.",
+      });
+    }
+  }, [orderDetails, loading, error, toast]);
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({

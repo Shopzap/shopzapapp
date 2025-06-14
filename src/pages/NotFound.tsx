@@ -1,28 +1,14 @@
 
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Home, ArrowLeft, Store } from 'lucide-react';
+import { Home, ArrowLeft, Frown } from 'lucide-react';
 
 const NotFound = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Check if user came from a store route
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  const isFromStore = pathSegments[0] === 'store' && pathSegments[1];
-  const storeName = isFromStore ? pathSegments[1] : null;
 
   const handleGoHome = () => {
     navigate('/');
-  };
-
-  const handleBackToStore = () => {
-    if (storeName) {
-      navigate(`/store/${storeName}`);
-    } else {
-      navigate('/');
-    }
   };
 
   const handleGoBack = () => {
@@ -30,44 +16,28 @@ const NotFound = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full text-center space-y-6">
-        <div className="text-9xl font-bold text-gray-300">404</div>
-        
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Page Not Found</h1>
-          <p className="text-gray-600">
-            The page you're looking for doesn't exist or has been moved.
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 text-center">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <Frown className="mx-auto h-24 w-24 text-gray-400" />
+          <h1 className="mt-6 text-6xl font-extrabold text-gray-900 tracking-tight sm:text-7xl">
+            404
+          </h1>
+          <h2 className="mt-2 text-2xl font-bold text-gray-800">Page Not Found</h2>
+          <p className="mt-2 text-base text-gray-600">
+            Oops! The page you’re looking for doesn’t exist. It might have been moved or deleted.
           </p>
         </div>
-
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          {isFromStore && storeName && (
-            <Button onClick={handleBackToStore}>
-              <Store className="w-4 h-4 mr-2" />
-              Back to {storeName}
-            </Button>
-          )}
-          
-          <Button variant="outline" onClick={handleGoBack}>
+          <Button onClick={handleGoBack} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
           </Button>
-          
-          <Button variant="outline" onClick={handleGoHome}>
+          <Button onClick={handleGoHome}>
             <Home className="w-4 h-4 mr-2" />
-            Go Home
+            Take me Home
           </Button>
         </div>
-
-        {isFromStore && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            <p>
-              Looking for a specific product or page in this store? 
-              Try browsing from the store homepage.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
