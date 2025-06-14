@@ -1,0 +1,304 @@
+
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { paymentConfig } from '@/config/payment';
+
+interface FormData {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  specialInstructions?: string;
+}
+
+interface OrderItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+}
+
+export const useCheckout = () => {
+  const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const [storeData, setStoreData] = useState<{ id: string; name: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
+  const [razorpayAvailable, setRazorpayAvailable] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
+
+  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
+    {
+      id: 1,
+      name: 'Wireless Earbuds',
+      price: 1999,
+      quantity: 1,
+      image: 'https://placehold.co/80x80'
+    },
+    {
+      id: 2,
+      name: 'Phone Case',
+      price: 499,
+      quantity: 2,
+      image: 'https://placehold.co/80x80'
+    }
+  ]);
+
+  const subtotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const shipping = 0;
+  const total = subtotal + shipping;
+
+  // Check Razorpay availability
+  useEffect(() => {
+    const checkRazorpayAvailability = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-razorpay-keys');
+        if (!error && data?.available) {
+          setRazorpayAvailable(true);
+          setPaymentMode(data.mode || 'test');
+        }
+      } catch (error) {
+        console.log('Razorpay not configured');
+      }
+    };
+
+    checkRazorpayAvailability();
+  }, []);
+
+  // Fetch store data
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      try {
+        setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
+      } catch (error) {
+        console.error('Failed to fetch store data:', error);
+        toast({
+          title: "Store Error",
+          description: "Failed to load store information. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchStoreData();
+  }, []);
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePlaceOrder = async (values: FormData) => {
+    if (orderItems.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before checking out.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const orderData = {
+        storeId: storeData?.id || 'demo-store-id',
+        buyerName: values.fullName,
+        buyerEmail: values.email,
+        buyerPhone: values.phone,
+        buyerAddress: `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`,
+        totalPrice: total,
+        items: orderItems.map(item => ({
+          productId: `product-${item.id}`,
+          quantity: item.quantity,
+          priceAtPurchase: item.price
+        }))
+      };
+
+      if (paymentMethod === 'online') {
+        const razorpay = await loadRazorpay();
+
+        if (!razorpay) {
+          toast({
+            title: "Payment Error",
+            description: "Razorpay SDK failed to load. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
+          body: {
+            amount: total * 100,
+            currency: 'INR',
+            receipt: `order_${Date.now()}`
+          }
+        });
+
+        if (razorpayError) {
+          console.error('Razorpay order creation failed:', razorpayError);
+          toast({
+            title: "Payment Error",
+            description: "Failed to initiate online payment. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const options = {
+          key: paymentConfig.razorpay.keyId,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: storeData?.name || 'ShopZap Store',
+          description: 'Secure online payment',
+          order_id: razorpayOrder.id,
+          handler: async function (response: any) {
+            const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-razorpay-signature', {
+              body: {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: razorpayOrder.id,
+                razorpay_signature: response.razorpay_signature
+              }
+            });
+
+            if (verificationError) {
+              console.error('Razorpay signature verification failed:', verificationError);
+              toast({
+                title: "Payment Verification Failed",
+                description: "Payment could not be verified. Please contact support.",
+                variant: "destructive"
+              });
+              setIsLoading(false);
+              return;
+            }
+
+            const apiResponse = await fetch('/api/orders', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+              },
+              body: JSON.stringify({
+                ...orderData,
+                paymentMethod: 'online',
+                razorpayPaymentId: response.razorpay_payment_id
+              })
+            });
+
+            if (!apiResponse.ok) {
+              throw new Error('Failed to create order after payment');
+            }
+
+            const result = await apiResponse.json();
+
+            navigate('/order-success', {
+              state: {
+                orderId: result.orderId,
+                orderItems,
+                total,
+                customerInfo: values,
+                paymentInfo: {
+                  paymentId: response.razorpay_payment_id,
+                  paymentMethod: 'Razorpay',
+                  paymentTime: new Date().toISOString(),
+                  paymentStatus: 'Paid'
+                },
+                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+              }
+            });
+          },
+          prefill: {
+            name: values.fullName,
+            email: values.email,
+            contact: values.phone
+          },
+          notes: {
+            order_id: razorpayOrder.orderId
+          },
+          theme: {
+            color: '#7b3fe4'
+          }
+        };
+
+        const rzp1 = new (window as any).Razorpay(options);
+        rzp1.on('payment.failed', function (response: any) {
+          console.error('Razorpay payment failed:', response);
+          toast({
+            title: "Payment Failed",
+            description: "Your payment failed. Please try again or use a different payment method.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+        });
+        rzp1.open();
+      } else {
+        const apiResponse = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify(orderData)
+        });
+
+        if (!apiResponse.ok) {
+          throw new Error('Failed to create order');
+        }
+
+        const result = await apiResponse.json();
+        
+        navigate('/order-success', {
+          state: {
+            orderId: result.orderId,
+            orderItems,
+            total,
+            customerInfo: values,
+            paymentInfo: {
+              paymentMethod: 'Cash on Delivery',
+              paymentStatus: 'Pending'
+            },
+            estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      toast({
+        title: "Order Failed",
+        description: "There was an error creating your order. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    storeData,
+    isLoading,
+    paymentMethod,
+    setPaymentMethod,
+    razorpayAvailable,
+    paymentMode,
+    orderItems,
+    subtotal,
+    shipping,
+    total,
+    handlePlaceOrder
+  };
+};
