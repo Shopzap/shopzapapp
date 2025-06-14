@@ -53,27 +53,30 @@ export type Database = {
           id: string
           product_id: string
           quantity: number
-          session_id: string
+          session_id: string | null
           store_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           product_id: string
           quantity?: number
-          session_id: string
+          session_id?: string | null
           store_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           product_id?: string
           quantity?: number
-          session_id?: string
+          session_id?: string | null
           store_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -413,15 +416,18 @@ export type Database = {
           estimated_delivery_date: string | null
           id: string
           notes: string | null
+          order_notes: string | null
           paid_at: string | null
           payment_gateway: string | null
           payment_method: string | null
           payment_status: string | null
+          preferred_delivery_time: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           razorpay_signature: string | null
           shipped_at: string | null
           shipping_carrier: string | null
+          special_instructions: string | null
           status: string
           store_id: string
           total_price: number
@@ -438,15 +444,18 @@ export type Database = {
           estimated_delivery_date?: string | null
           id?: string
           notes?: string | null
+          order_notes?: string | null
           paid_at?: string | null
           payment_gateway?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          preferred_delivery_time?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
           shipped_at?: string | null
           shipping_carrier?: string | null
+          special_instructions?: string | null
           status?: string
           store_id: string
           total_price?: number
@@ -463,15 +472,18 @@ export type Database = {
           estimated_delivery_date?: string | null
           id?: string
           notes?: string | null
+          order_notes?: string | null
           paid_at?: string | null
           payment_gateway?: string | null
           payment_method?: string | null
           payment_status?: string | null
+          preferred_delivery_time?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
           shipped_at?: string | null
           shipping_carrier?: string | null
+          special_instructions?: string | null
           status?: string
           store_id?: string
           total_price?: number
@@ -579,61 +591,76 @@ export type Database = {
       }
       stores: {
         Row: {
+          about_description: string | null
           address: string | null
           banner_image: string | null
           business_email: string
           created_at: string | null
           description: string | null
           font_style: string | null
+          founding_story: string | null
           id: string
           is_active: boolean | null
           logo_image: string | null
+          mission_statement: string | null
           name: string
           phone_number: string
           plan: string
+          social_media_links: Json | null
           tagline: string | null
           theme: Json | null
           updated_at: string | null
           user_id: string
           username: string
+          vision_statement: string | null
         }
         Insert: {
+          about_description?: string | null
           address?: string | null
           banner_image?: string | null
           business_email: string
           created_at?: string | null
           description?: string | null
           font_style?: string | null
+          founding_story?: string | null
           id?: string
           is_active?: boolean | null
           logo_image?: string | null
+          mission_statement?: string | null
           name: string
           phone_number: string
           plan?: string
+          social_media_links?: Json | null
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
           user_id: string
           username: string
+          vision_statement?: string | null
         }
         Update: {
+          about_description?: string | null
           address?: string | null
           banner_image?: string | null
           business_email?: string
           created_at?: string | null
           description?: string | null
           font_style?: string | null
+          founding_story?: string | null
           id?: string
           is_active?: boolean | null
           logo_image?: string | null
+          mission_statement?: string | null
           name?: string
           phone_number?: string
           plan?: string
+          social_media_links?: Json | null
           tagline?: string | null
           theme?: Json | null
           updated_at?: string | null
           user_id?: string
           username?: string
+          vision_statement?: string | null
         }
         Relationships: []
       }

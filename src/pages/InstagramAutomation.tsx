@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Instagram, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Instagram, Plus, Trash2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const InstagramAutomation = () => {
   const { toast } = useToast();
@@ -106,38 +106,80 @@ const InstagramAutomation = () => {
   }, [navigate, toast]);
 
   useEffect(() => {
-    // Handle OAuth callback messages
+    // Handle OAuth callback results
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     
     if (success === 'connected') {
       toast({
-        title: "Instagram connected successfully",
-        description: "You can now create automations",
+        title: "Instagram connected successfully!",
+        description: "You can now create automation triggers for your Instagram account.",
       });
-      // Refresh the page to load connection data
+      // Remove search params and refresh data
+      window.history.replaceState({}, '', '/dashboard/instagram-automation');
       window.location.reload();
     }
     
     if (error) {
+      let errorMessage = "Connection failed. Please try again.";
+      
+      switch (error) {
+        case 'no_code':
+          errorMessage = "Authorization was cancelled or failed.";
+          break;
+        case 'token_exchange_failed':
+          errorMessage = "Failed to exchange authorization code. Please try again.";
+          break;
+        case 'account_fetch_failed':
+          errorMessage = "Could not fetch Instagram account information.";
+          break;
+        case 'no_instagram_accounts':
+          errorMessage = "No Instagram business accounts found. Please ensure you have a business account.";
+          break;
+        case 'database_error':
+          errorMessage = "Failed to save connection. Please try again.";
+          break;
+        default:
+          errorMessage = "An unexpected error occurred during connection.";
+      }
+      
       toast({
         title: "Connection failed",
-        description: decodeURIComponent(error),
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      // Remove error param from URL
+      window.history.replaceState({}, '', '/dashboard/instagram-automation');
     }
   }, [searchParams, toast]);
 
   const handleConnectInstagram = () => {
-    if (!storeData) return;
+    if (!storeData) {
+      toast({
+        title: "Error",
+        description: "Store data not loaded. Please refresh the page.",
+        variant: "destructive"
+      });
+      return;
+    }
     
+    // Create state parameter with store and user info
     const state = btoa(JSON.stringify({
       store_id: storeData.id,
       user_id: storeData.user_id
     }));
     
-    const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?client_id=${process.env.SENDPULSE_CLIENT_ID}&response_type=code&scope=instagram&redirect_uri=${encodeURIComponent(`${window.location.origin}/functions/v1/sendpulse-oauth`)}&state=${state}`;
+    // SendPulse OAuth URL - using the correct callback URL
+    const callbackUrl = `${window.location.origin}/functions/v1/sendpulse-callback`;
+    const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?` +
+      `client_id=${import.meta.env.VITE_SENDPULSE_CLIENT_ID || 'your-client-id'}` +
+      `&response_type=code` +
+      `&scope=chatbots,user_data` +
+      `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
+      `&state=${state}`;
     
+    console.log('Redirecting to SendPulse OAuth:', sendpulseAuthUrl);
     window.location.href = sendpulseAuthUrl;
   };
 
@@ -272,9 +314,23 @@ const InstagramAutomation = () => {
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Instagram Automation</h1>
         <p className="text-muted-foreground">
-          Connect your Instagram account to enable auto DMs & product promotions
+          Connect your Instagram Business Account via SendPulse to enable auto-replies and DM automation
         </p>
       </div>
+
+      {/* SendPulse App Status Notice */}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Note:</strong> Our SendPulse integration app is currently under review. 
+          You can test the connection, but full functionality will be available once approved.
+          <Button variant="link" className="p-0 h-auto ml-2" asChild>
+            <a href="https://sendpulse.com/integrations/api" target="_blank" rel="noopener noreferrer">
+              View SendPulse Developer Portal <ExternalLink className="h-3 w-3 ml-1" />
+            </a>
+          </Button>
+        </AlertDescription>
+      </Alert>
 
       {/* Section 1: Instagram Connection Status */}
       <Card>
@@ -284,7 +340,7 @@ const InstagramAutomation = () => {
             <span>Instagram Connection</span>
           </CardTitle>
           <CardDescription>
-            Connect your Instagram account via SendPulse to start automating DMs
+            Connect your Instagram Business Account via SendPulse to enable automation features
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -295,7 +351,10 @@ const InstagramAutomation = () => {
                 <div>
                   <p className="font-medium text-green-900">Connected as @{igConnection.ig_username}</p>
                   <p className="text-sm text-green-700">
-                    Last synced: {new Date(igConnection.connected_at).toLocaleDateString()}
+                    Connected: {new Date(igConnection.connected_at).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs text-green-600">
+                    Page: {igConnection.page_name}
                   </p>
                 </div>
               </div>
@@ -310,12 +369,12 @@ const InstagramAutomation = () => {
                 <div>
                   <p className="font-medium text-orange-900">Instagram not connected</p>
                   <p className="text-sm text-orange-700">
-                    Connect your account to start creating automations
+                    Connect your Instagram Business Account to start automating DMs and replies
                   </p>
                 </div>
               </div>
               <Button onClick={handleConnectInstagram}>
-                Connect Instagram via SendPulse
+                Connect Instagram
               </Button>
             </div>
           )}
