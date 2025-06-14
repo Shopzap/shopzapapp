@@ -34,6 +34,7 @@ export const useCheckout = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
     {
@@ -56,7 +57,7 @@ export const useCheckout = () => {
   const shipping = 0;
   const total = subtotal + shipping;
 
-  // Check Razorpay availability
+  // Check Razorpay availability and fetch key
   useEffect(() => {
     const checkRazorpayAvailability = async () => {
       try {
@@ -64,9 +65,15 @@ export const useCheckout = () => {
         if (!error && data?.available) {
           setRazorpayAvailable(true);
           setPaymentMode(data.mode || 'test');
+          setRazorpayKeyId(data.keyId || 'rzp_test_UGces6yKSJViJa');
+          console.log('Razorpay configured with key:', data.keyId);
+        } else {
+          console.log('Razorpay not available:', error);
+          setRazorpayKeyId('rzp_test_UGces6yKSJViJa'); // Fallback test key
         }
       } catch (error) {
-        console.log('Razorpay not configured');
+        console.log('Razorpay not configured, using fallback key');
+        setRazorpayKeyId('rzp_test_UGces6yKSJViJa'); // Fallback test key
       }
     };
 
@@ -141,6 +148,18 @@ export const useCheckout = () => {
           return;
         }
 
+        if (!razorpayKeyId) {
+          toast({
+            title: "Payment Error", 
+            description: "Razorpay key not configured. Please try again or use Cash on Delivery.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Creating Razorpay order with key:', razorpayKeyId);
+
         const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
           body: {
             amount: total * 100,
@@ -161,66 +180,62 @@ export const useCheckout = () => {
         }
 
         const options = {
-          key: paymentConfig.razorpay.keyId,
+          key: razorpayKeyId, // Use the dynamically fetched key
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
           name: storeData?.name || 'ShopZap Store',
           description: 'Secure online payment',
           order_id: razorpayOrder.id,
           handler: async function (response: any) {
-            const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-razorpay-signature', {
-              body: {
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: razorpayOrder.id,
-                razorpay_signature: response.razorpay_signature
-              }
-            });
+            try {
+              console.log('Payment successful, verifying...', response);
+              
+              const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-payment', {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderData
+                }
+              });
 
-            if (verificationError) {
-              console.error('Razorpay signature verification failed:', verificationError);
+              if (verificationError) {
+                console.error('Payment verification failed:', verificationError);
+                toast({
+                  title: "Payment Verification Failed",
+                  description: "Payment could not be verified. Please contact support.",
+                  variant: "destructive"
+                });
+                setIsLoading(false);
+                return;
+              }
+
+              console.log('Payment verified successfully:', verificationData);
+
+              navigate('/order-success', {
+                state: {
+                  orderId: verificationData.orderId,
+                  orderItems,
+                  total,
+                  customerInfo: values,
+                  paymentInfo: {
+                    paymentId: response.razorpay_payment_id,
+                    paymentMethod: 'Razorpay',
+                    paymentTime: new Date().toISOString(),
+                    paymentStatus: 'Paid'
+                  },
+                  estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
+                }
+              });
+            } catch (error) {
+              console.error('Error in payment handler:', error);
               toast({
-                title: "Payment Verification Failed",
-                description: "Payment could not be verified. Please contact support.",
+                title: "Payment Processing Error",
+                description: "There was an error processing your payment. Please contact support.",
                 variant: "destructive"
               });
               setIsLoading(false);
-              return;
             }
-
-            const apiResponse = await fetch('/api/orders', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
-              },
-              body: JSON.stringify({
-                ...orderData,
-                paymentMethod: 'online',
-                razorpayPaymentId: response.razorpay_payment_id
-              })
-            });
-
-            if (!apiResponse.ok) {
-              throw new Error('Failed to create order after payment');
-            }
-
-            const result = await apiResponse.json();
-
-            navigate('/order-success', {
-              state: {
-                orderId: result.orderId,
-                orderItems,
-                total,
-                customerInfo: values,
-                paymentInfo: {
-                  paymentId: response.razorpay_payment_id,
-                  paymentMethod: 'Razorpay',
-                  paymentTime: new Date().toISOString(),
-                  paymentStatus: 'Paid'
-                },
-                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toDateString()
-              }
-            });
           },
           prefill: {
             name: values.fullName,
@@ -228,13 +243,14 @@ export const useCheckout = () => {
             contact: values.phone
           },
           notes: {
-            order_id: razorpayOrder.orderId
+            order_id: razorpayOrder.id
           },
           theme: {
             color: '#7b3fe4'
           }
         };
 
+        console.log('Opening Razorpay with options:', options);
         const rzp1 = new (window as any).Razorpay(options);
         rzp1.on('payment.failed', function (response: any) {
           console.error('Razorpay payment failed:', response);
@@ -247,24 +263,26 @@ export const useCheckout = () => {
         });
         rzp1.open();
       } else {
-        const apiResponse = await fetch('/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await (await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify(orderData)
+        // COD Order
+        const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
+          body: {
+            razorpay_order_id: '',
+            razorpay_payment_id: '',
+            razorpay_signature: '',
+            orderData: {
+              ...orderData,
+              paymentMethod: 'cod'
+            }
+          }
         });
 
-        if (!apiResponse.ok) {
-          throw new Error('Failed to create order');
+        if (orderError) {
+          throw new Error('Failed to create COD order');
         }
-
-        const result = await apiResponse.json();
         
         navigate('/order-success', {
           state: {
-            orderId: result.orderId,
+            orderId: orderResult.orderId,
             orderItems,
             total,
             customerInfo: values,
