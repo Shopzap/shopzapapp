@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,6 +10,7 @@ import { useDelayedLoading } from '@/hooks/useDelayedLoading';
 import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ResponsiveLayout from '@/components/ResponsiveLayout';
+import { useToast } from '@/hooks/use-toast';
 
 const ProductDetails: React.FC = () => {
   const { storeName: storeUsername, productSlug } = useParams<{ 
@@ -16,7 +18,9 @@ const ProductDetails: React.FC = () => {
     productSlug: string; 
   }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   const { retry, canRetry } = useSmartRetry({
     maxRetries: 2,
@@ -144,12 +148,16 @@ const ProductDetails: React.FC = () => {
   });
 
   const { shouldShowLoading, hasTimedOut } = useDelayedLoading(isLoading, {
-    delay: 300,
+    delay: 200,
     timeout: 8000
   });
 
-  const handleBuyNow = () => {
-    if (product) {
+  const handleBuyNow = async () => {
+    if (!product || isBuyingNow) return;
+    
+    setIsBuyingNow(true);
+    
+    try {
       const orderItem = {
         id: product.id,
         name: product.name,
@@ -158,11 +166,29 @@ const ProductDetails: React.FC = () => {
         image: product.image_url || 'https://placehold.co/80x80'
       };
       
-      navigate(`/store/${storeUsername}/checkout`, { 
-        state: { 
-          orderItems: [orderItem]
-        } 
+      // Show success toast
+      toast({
+        title: "Added to Cart",
+        description: `${product.name} has been added to your cart`,
       });
+      
+      // Navigate to checkout with small delay for better UX
+      setTimeout(() => {
+        navigate(`/store/${storeUsername}/checkout`, { 
+          state: { 
+            orderItems: [orderItem],
+            fromBuyNow: true
+          } 
+        });
+      }, 500);
+    } catch (error) {
+      console.error('Error during buy now:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart. Please try again.",
+        variant: "destructive"
+      });
+      setIsBuyingNow(false);
     }
   };
 
@@ -208,6 +234,7 @@ const ProductDetails: React.FC = () => {
             product={product} 
             handleBuyNow={handleBuyNow}
             handleBack={handleBack}
+            isBuyingNow={isBuyingNow}
           />
         </ErrorBoundary>
       </ResponsiveLayout>

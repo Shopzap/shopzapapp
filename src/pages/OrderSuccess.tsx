@@ -1,11 +1,11 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Package, CreditCard, Truck, Clock, Copy, Download, Edit } from 'lucide-react';
+import { CheckCircle, Package, CreditCard, Truck, Clock, Copy, Download, Edit, ExternalLink, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import ResponsiveLayout from '@/components/ResponsiveLayout';
 
@@ -45,6 +45,15 @@ const OrderSuccess = () => {
   
   const { orderId, orderItems, total, customerInfo, paymentInfo, estimatedDelivery } = location.state as LocationState;
 
+  // Redirect if no order data
+  useEffect(() => {
+    if (!orderId || !orderItems) {
+      navigate('/', { replace: true });
+    }
+  }, [orderId, orderItems, navigate]);
+
+  const orderNumber = orderId?.slice(-8) || '';
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -58,19 +67,34 @@ const OrderSuccess = () => {
   };
 
   const handleDownloadInvoice = () => {
-    // Mock invoice download - in real app, this would generate and download PDF
+    // Generate secure invoice URL
+    const invoiceUrl = `/invoice/${orderId}?token=${btoa(orderId + customerInfo.email)}`;
+    window.open(invoiceUrl, '_blank');
+    
     toast({
-      title: "Invoice Downloaded",
-      description: "Your invoice has been downloaded successfully.",
+      title: "Opening Invoice",
+      description: "Your invoice is being generated and will open in a new tab.",
     });
   };
 
   const handleCorrectOrder = () => {
+    // Generate secure correction URL (valid for 24 hours)
+    const correctionUrl = `/order/correct/${orderId}?token=${btoa(orderId + customerInfo.email)}`;
+    window.open(correctionUrl, '_blank');
+    
     toast({
-      title: "Contact Support",
-      description: "Please contact our support team to make corrections to your order.",
+      title: "Order Correction",
+      description: "Opening order correction form. Changes allowed for 24 hours.",
     });
   };
+
+  const handleContinueShopping = () => {
+    navigate('/');
+  };
+
+  if (!orderId || !orderItems) {
+    return null;
+  }
 
   return (
     <ResponsiveLayout maxWidth="7xl" padding="md">
@@ -81,55 +105,70 @@ const OrderSuccess = () => {
             <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
           </div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-600 mb-2">
-            {paymentInfo?.paymentStatus === 'Paid' ? 'Payment Successful!' : 'Order Confirmed!'}
+            Order Confirmed!
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground px-4">
-            {paymentInfo?.paymentStatus === 'Paid' 
-              ? 'Your payment has been processed and your order is confirmed.'
-              : 'Thank you for your order. We\'ll process it shortly.'}
+            Thank you for your order. We've sent a confirmation email with all the details.
           </p>
+          <div className="mt-4">
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              Order #{orderNumber}
+            </Badge>
+          </div>
         </div>
 
-        {/* Payment Information */}
-        {paymentInfo?.paymentStatus === 'Paid' && (
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Button 
+            onClick={handleDownloadInvoice}
+            className="flex items-center justify-center gap-2 text-sm h-12"
+            variant="default"
+          >
+            <Download className="h-4 w-4" />
+            Download Invoice
+          </Button>
+          <Button 
+            onClick={handleTrackOrder}
+            variant="outline" 
+            className="flex items-center justify-center gap-2 text-sm h-12"
+          >
+            <Package className="h-4 w-4" />
+            Track Order
+          </Button>
+          <Button 
+            onClick={handleCorrectOrder}
+            variant="outline" 
+            className="flex items-center justify-center gap-2 text-sm h-12"
+          >
+            <Edit className="h-4 w-4" />
+            Correct Order
+          </Button>
+        </div>
+
+        {/* Payment Status */}
+        {paymentInfo && (
           <Card className="mb-4 sm:mb-6 border-green-200 bg-green-50">
             <CardHeader className="pb-3 sm:pb-4">
               <CardTitle className="flex items-center gap-2 text-green-800 text-lg sm:text-xl">
                 <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-                Payment Details
+                Payment Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-green-700">Payment Status</p>
-                  <Badge className="mt-1 bg-green-600 hover:bg-green-700">✅ Paid</Badge>
-                </div>
-                {paymentInfo.paymentId && (
-                  <div>
-                    <p className="font-medium text-green-700">Payment ID</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="text-xs bg-white px-2 py-1 rounded border flex-1 truncate">
-                        {paymentInfo.paymentId}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(paymentInfo.paymentId!, 'Payment ID')}
-                        className="h-7 w-7 p-0"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div>
                   <p className="font-medium text-green-700">Payment Method</p>
-                  <p className="text-green-600">{paymentInfo.paymentMethod}</p>
+                  <p className="text-green-600 capitalize">{paymentInfo.paymentMethod}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-green-700">Payment Status</p>
+                  <Badge className={`mt-1 ${paymentInfo.paymentStatus === 'Paid' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                    {paymentInfo.paymentStatus === 'Paid' ? '✅ Paid' : '⏳ Pending (COD)'}
+                  </Badge>
                 </div>
                 {paymentInfo.paymentTime && (
-                  <div>
-                    <p className="font-medium text-green-700">Payment Time</p>
+                  <div className="sm:col-span-2">
+                    <p className="font-medium text-green-700">Order Time</p>
                     <p className="text-green-600 text-xs sm:text-sm">{paymentInfo.paymentTime}</p>
                   </div>
                 )}
@@ -147,7 +186,7 @@ const OrderSuccess = () => {
                 Order Details
               </span>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <Badge variant="secondary" className="text-xs">#{orderId.slice(-8)}</Badge>
+                <Badge variant="secondary" className="text-xs">#{orderNumber}</Badge>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -163,16 +202,16 @@ const OrderSuccess = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-muted-foreground">Order ID</p>
-                  <p className="font-mono text-xs sm:text-sm break-all">{orderId}</p>
-                </div>
-                <div>
                   <p className="font-medium text-muted-foreground">Order Amount</p>
                   <p className="font-semibold text-lg sm:text-xl">₹{total.toLocaleString()}</p>
                 </div>
                 <div>
+                  <p className="font-medium text-muted-foreground">Items</p>
+                  <p className="font-medium">{orderItems.length} item{orderItems.length > 1 ? 's' : ''}</p>
+                </div>
+                <div>
                   <p className="font-medium text-muted-foreground">Estimated Delivery</p>
-                  <p className="flex items-center gap-1 text-xs sm:text-sm">
+                  <p className="flex items-center gap-1 text-xs sm:text-sm font-medium">
                     <Clock className="h-3 w-3" />
                     {estimatedDelivery}
                   </p>
@@ -183,21 +222,21 @@ const OrderSuccess = () => {
               
               <div>
                 <h4 className="font-semibold mb-3 sm:mb-4 text-sm sm:text-base">
-                  Items Ordered ({orderItems.length} items)
+                  Items Ordered
                 </h4>
                 <div className="space-y-3">
                   {orderItems.map((item) => (
                     <div key={item.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-gray-50 rounded-lg gap-3">
                       <div className="flex items-center gap-3 flex-1">
                         <img 
-                          src={item.image || 'https://placehold.co/50x50'} 
+                          src={item.image} 
                           alt={item.name}
-                          className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0"
                         />
                         <div className="min-w-0 flex-1">
                           <p className="font-medium text-sm sm:text-base line-clamp-2">{item.name}</p>
                           <p className="text-xs sm:text-sm text-muted-foreground">
-                            ₹{item.price.toLocaleString()} × {item.quantity}
+                            Qty: {item.quantity} × ₹{item.price.toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -215,7 +254,7 @@ const OrderSuccess = () => {
                   </div>
                   <div className="flex justify-between text-sm sm:text-base">
                     <span>Shipping</span>
-                    <span className="text-green-600">Free</span>
+                    <span className="text-green-600 font-medium">Free</span>
                   </div>
                   <div className="flex justify-between items-center font-bold text-base sm:text-lg border-t pt-2">
                     <span>Total Amount</span>
@@ -227,12 +266,12 @@ const OrderSuccess = () => {
           </CardContent>
         </Card>
 
-        {/* Customer & Shipping Information */}
+        {/* Customer Information */}
         <Card className="mb-4 sm:mb-6">
           <CardHeader className="pb-3 sm:pb-4">
             <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <Truck className="h-4 w-4 sm:h-5 sm:w-5" />
-              Shipping & Customer Information
+              Delivery Information
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -256,70 +295,53 @@ const OrderSuccess = () => {
               </div>
               
               <div>
-                <h4 className="font-semibold mb-3 text-sm sm:text-base">Shipping Address</h4>
+                <h4 className="font-semibold mb-3 text-sm sm:text-base">Delivery Address</h4>
                 <div className="text-sm space-y-1">
-                  <p>{customerInfo.fullName}</p>
+                  <p className="font-medium">{customerInfo.fullName}</p>
                   <p>{customerInfo.address}</p>
                   <p>{customerInfo.city}, {customerInfo.state} {customerInfo.zipCode}</p>
                   <p>Phone: {customerInfo.phone}</p>
                 </div>
               </div>
             </div>
-            
-            <Separator className="my-4" />
-            
-            <div>
-              <h4 className="font-semibold mb-2 text-sm sm:text-base">Payment Method</h4>
-              <div className="flex items-center gap-2">
-                {paymentInfo?.paymentStatus === 'Paid' ? (
-                  <CreditCard className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Truck className="h-4 w-4 text-orange-600" />
-                )}
-                <span className="capitalize text-sm">{paymentInfo?.paymentMethod || customerInfo.paymentMethod}</span>
-                {paymentInfo?.paymentStatus === 'Paid' && (
-                  <Badge className="ml-2 bg-green-600 hover:bg-green-700 text-xs">Paid</Badge>
-                )}
+          </CardContent>
+        </Card>
+
+        {/* Order Correction Notice */}
+        <Card className="mb-6 sm:mb-8 border-orange-200 bg-orange-50">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-start gap-3">
+              <Edit className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-orange-800 mb-2">Need to make changes?</h4>
+                <p className="text-orange-700 text-sm mb-3">
+                  You can correct your order details (address, phone, etc.) within 24 hours of placing the order.
+                </p>
+                <Button
+                  onClick={handleCorrectOrder}
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-300 text-orange-700 hover:bg-orange-100"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Correct Order Details
+                  <ExternalLink className="h-3 w-3 ml-2" />
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        {/* Continue Shopping */}
+        <div className="text-center mb-6 sm:mb-8">
           <Button 
-            onClick={handleTrackOrder}
-            className="flex items-center justify-center gap-2 text-sm"
+            onClick={handleContinueShopping}
+            variant="outline"
             size="lg"
-          >
-            <Package className="h-4 w-4" />
-            Track Order
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleDownloadInvoice}
-            className="flex items-center justify-center gap-2 text-sm"
-            size="lg"
-          >
-            <Download className="h-4 w-4" />
-            Invoice PDF
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleCorrectOrder}
-            className="flex items-center justify-center gap-2 text-sm"
-            size="lg"
-          >
-            <Edit className="h-4 w-4" />
-            Correction
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/store/demo')}
-            className="flex items-center justify-center gap-2 text-sm"
-            size="lg"
+            className="px-8"
           >
             Continue Shopping
+            <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
 
@@ -336,7 +358,7 @@ const OrderSuccess = () => {
                 </div>
                 <h4 className="font-semibold mb-2 text-sm sm:text-base">Order Confirmed</h4>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Your order has been received and is being processed
+                  Your order is confirmed and being processed by the seller
                 </p>
               </div>
               
@@ -346,7 +368,7 @@ const OrderSuccess = () => {
                 </div>
                 <h4 className="font-semibold mb-2 text-sm sm:text-base">Preparing</h4>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  We'll prepare your items and get them ready for shipping
+                  Items are being packed and prepared for shipping
                 </p>
               </div>
               

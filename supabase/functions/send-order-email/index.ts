@@ -17,72 +17,112 @@ serve(async (req) => {
     
     console.log('Sending order emails for:', { orderId, buyerEmail, sellerEmail, storeName });
 
+    // Generate secure URLs (in production, these would be signed URLs with expiration)
+    const baseUrl = 'https://shopzap.io';
+    const orderNumber = orderId.slice(-8);
+    const invoiceUrl = `${baseUrl}/invoice/${orderId}?token=${btoa(orderId + buyerEmail)}`;
+    const trackingUrl = `${baseUrl}/track-order/${orderId}`;
+    const correctionUrl = `${baseUrl}/order/correct/${orderId}?token=${btoa(orderId + buyerEmail)}`;
+
     // Create detailed item list
     const itemsList = products.map((p: any) => 
-      `<div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f3f4;">
-        <div>
-          <strong>${p.name}</strong><br>
-          <span style="color: #666; font-size: 14px;">Qty: ${p.quantity} × ₹${p.price}</span>
+      `<div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f1f3f4;">
+        <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
+          <img src="${p.image || 'https://placehold.co/50x50'}" alt="${p.name}" style="width: 50px; height: 50px; border-radius: 8px; object-fit: cover;">
+          <div>
+            <div style="font-weight: 600; margin-bottom: 5px;">${p.name}</div>
+            <div style="color: #666; font-size: 14px;">Qty: ${p.quantity} × ₹${p.price.toLocaleString()}</div>
+          </div>
         </div>
-        <div style="font-weight: 600;">₹${p.price * p.quantity}</div>
+        <div style="font-weight: 600; color: #222;">₹${(p.price * p.quantity).toLocaleString()}</div>
       </div>`
     ).join("");
 
-    // Buyer confirmation email
+    // Buyer confirmation email with enhanced features
     const buyerHtml = `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
         <div style="background: linear-gradient(135deg, #7b3fe4 0%, #9b59e6 100%); color: white; padding: 30px 20px; text-align: center;">
           <div style="font-size: 28px; font-weight: 700; margin-bottom: 10px;">ShopZap</div>
-          <div style="font-size: 16px; opacity: 0.9;">Your order has been confirmed!</div>
+          <div style="font-size: 16px; opacity: 0.9;">🎉 Your order has been confirmed!</div>
         </div>
         
+        <!-- Content -->
         <div style="padding: 30px 20px;">
           <div style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #222;">Hi ${buyerName},</div>
           
-          <p style="margin-bottom: 20px; color: #666;">
+          <p style="margin-bottom: 20px; color: #666; line-height: 1.6;">
             Thank you for your order! We're excited to get your items to you. Here's a summary of your order:
           </p>
           
+          <!-- Order Info -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">Order ID: <span style="color: #7b3fe4;">#${orderId}</span></div>
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">Order ID: <span style="color: #7b3fe4;">#${orderNumber}</span></div>
             <div style="font-size: 16px; color: #7b3fe4; font-weight: 500;">Thank you for shopping with ${storeName}</div>
+            <div style="font-size: 14px; color: #666; margin-top: 8px;">Order Date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
           </div>
           
+          <!-- Order Summary -->
           <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Order Summary</div>
           <div style="border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; margin-bottom: 25px;">
             <div style="background-color: #f8f9fa; padding: 15px 20px; font-weight: 600; border-bottom: 1px solid #e9ecef;">Items Ordered</div>
             ${itemsList}
           </div>
           
+          <!-- Total Section -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
               <span>Subtotal:</span>
-              <span>₹${totalAmount}</span>
+              <span>₹${totalAmount.toLocaleString()}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
               <span>Shipping:</span>
-              <span style="color: #28a745;">Free</span>
+              <span style="color: #28a745; font-weight: 600;">Free</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: #7b3fe4; border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 15px;">
               <span>Total Amount:</span>
-              <span>₹${totalAmount}</span>
+              <span>₹${totalAmount.toLocaleString()}</span>
             </div>
           </div>
           
-          <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
-            <h3 style="color: #0066cc; margin-bottom: 10px;">What's Next?</h3>
-            <p style="color: #666; margin-bottom: 10px;">• We'll send you shipping updates via email</p>
-            <p style="color: #666; margin-bottom: 10px;">• Expected delivery: 3-7 business days</p>
-            <p style="color: #666;">• You can contact us anytime for updates</p>
+          <!-- Action Buttons -->
+          <div style="display: flex; gap: 15px; margin: 30px 0; flex-wrap: wrap;">
+            <a href="${invoiceUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7b3fe4; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+              🧾 Download Invoice
+            </a>
+            <a href="${trackingUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #7b3fe4; text-decoration: none; border: 2px solid #7b3fe4; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+              📦 Track Order
+            </a>
+            <a href="${correctionUrl}" style="display: inline-block; padding: 12px 24px; background-color: white; color: #e67e22; text-decoration: none; border: 2px solid #e67e22; border-radius: 6px; font-weight: 600; font-size: 14px; text-align: center; flex: 1; min-width: 140px;">
+              ✏️ Correct Order
+            </a>
           </div>
           
+          <!-- What's Next -->
+          <div style="background-color: #e7f3ff; padding: 20px; border-radius: 8px; margin: 25px 0;">
+            <h3 style="color: #0066cc; margin-bottom: 10px; font-size: 16px;">📋 What's Next?</h3>
+            <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• Order confirmed and being processed</p>
+            <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• We'll send shipping updates via email</p>
+            <p style="color: #666; margin-bottom: 8px; font-size: 14px;">• Expected delivery: 3-7 business days</p>
+            <p style="color: #666; font-size: 14px;">• Track your order anytime using the link above</p>
+          </div>
+          
+          <!-- Order Correction Notice -->
+          <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+            <p style="margin: 0; color: #856404; font-size: 14px;">
+              <strong>Need to make changes?</strong> You can correct your order details within 24 hours using the "Correct Order" button above.
+            </p>
+          </div>
+          
+          <!-- Support Section -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;">
             <div style="font-weight: 600; margin-bottom: 10px;">Need Help?</div>
-            <div style="color: #666; margin-bottom: 15px;">If you have any questions about your order, feel free to contact our support team.</div>
+            <div style="color: #666; margin-bottom: 15px; font-size: 14px;">If you have any questions about your order, feel free to contact our support team.</div>
             <a href="mailto:support@shopzap.io" style="color: #7b3fe4; text-decoration: none; font-weight: 500;">support@shopzap.io</a>
           </div>
         </div>
         
+        <!-- Footer -->
         <div style="background-color: #222; color: white; padding: 20px; text-align: center; font-size: 14px;">
           <div style="margin-bottom: 15px;">
             <a href="https://shopzap.io/help" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
@@ -94,49 +134,59 @@ serve(async (req) => {
       </div>
     `;
 
-    // Seller notification email (same design, different messaging)
+    // Enhanced seller notification email
     const sellerHtml = `
-      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+      <div style="font-family: 'Poppins', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
         <div style="background: linear-gradient(135deg, #7b3fe4 0%, #9b59e6 100%); color: white; padding: 30px 20px; text-align: center;">
           <div style="font-size: 28px; font-weight: 700; margin-bottom: 10px;">ShopZap</div>
-          <div style="font-size: 16px; opacity: 0.9;">New order received!</div>
+          <div style="font-size: 16px; opacity: 0.9;">💰 New order received!</div>
           <div style="background-color: #ff6b6b; color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; margin-top: 15px; display: inline-block;">⚡ Action Required</div>
         </div>
         
+        <!-- Content -->
         <div style="padding: 30px 20px;">
           <div style="font-size: 20px; font-weight: 600; margin-bottom: 20px; color: #222;">Hi ${storeName} Team,</div>
           
-          <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-            <div style="font-weight: 600; color: #856404; margin-bottom: 10px; font-size: 16px;">🎉 Congratulations! You have a new order</div>
-            <div style="color: #856404; font-size: 14px;">A customer just placed an order on your store. Please review the details below and process the order promptly.</div>
+          <!-- Success Alert -->
+          <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+            <div style="font-weight: 600; color: #155724; margin-bottom: 10px; font-size: 16px;">🎉 Congratulations! New Order Received</div>
+            <div style="color: #155724; font-size: 14px;">A customer just placed an order on your store. Please review the details below and process the order promptly.</div>
           </div>
           
+          <!-- Order Details -->
           <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Order Details</div>
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
               <span style="font-weight: 600; color: #666;">Order ID:</span>
-              <span style="font-weight: 500; color: #7b3fe4; font-weight: 600;">#${orderId}</span>
+              <span style="font-weight: 600; color: #7b3fe4;">#${orderNumber}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
+              <span style="font-weight: 600; color: #666;">Order Date:</span>
+              <span style="font-weight: 500; color: #222;">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;">
               <span style="font-weight: 600; color: #666;">Payment Status:</span>
-              <span style="font-weight: 500; color: #28a745; font-weight: 600;">✅ Paid</span>
+              <span style="color: #28a745; font-weight: 600;">✅ Payment Pending (COD)</span>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0;">
               <span style="font-weight: 600; color: #666;">Customer:</span>
               <span style="font-weight: 500; color: #222;">${buyerName}</span>
             </div>
           </div>
           
-          <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Order Summary</div>
+          <!-- Order Items -->
+          <div style="font-size: 18px; font-weight: 600; margin: 25px 0 15px 0; color: #222;">Items to Pack & Ship</div>
           <div style="border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; margin-bottom: 25px;">
-            <div style="background-color: #f8f9fa; padding: 15px 20px; font-weight: 600; border-bottom: 1px solid #e9ecef;">Items to Pack & Ship</div>
+            <div style="background-color: #f8f9fa; padding: 15px 20px; font-weight: 600; border-bottom: 1px solid #e9ecef;">Products Ordered</div>
             ${itemsList}
           </div>
           
+          <!-- Total -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
               <span>Subtotal:</span>
-              <span>₹${totalAmount}</span>
+              <span>₹${totalAmount.toLocaleString()}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
               <span>Shipping:</span>
@@ -144,36 +194,41 @@ serve(async (req) => {
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: #7b3fe4; border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 15px;">
               <span>Total Amount:</span>
-              <span>₹${totalAmount}</span>
+              <span>₹${totalAmount.toLocaleString()}</span>
             </div>
           </div>
           
+          <!-- Next Steps -->
           <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 20px; border-radius: 8px; margin: 25px 0;">
-            <div style="font-weight: 600; color: #0c5460; margin-bottom: 10px;">📦 Next Steps</div>
-            <div style="color: #0c5460;">
-              Please pack and fulfill this order promptly. Your customer is excited to receive their items! Make sure to update the order status and tracking information in your dashboard.
-            </div>
+            <div style="font-weight: 600; color: #0c5460; margin-bottom: 15px; font-size: 16px;">📦 Next Steps</div>
+            <div style="color: #0c5460; margin-bottom: 12px;">1. ✅ <strong>Confirm the order</strong> in your dashboard</div>
+            <div style="color: #0c5460; margin-bottom: 12px;">2. 📦 <strong>Pack the items</strong> securely for shipping</div>
+            <div style="color: #0c5460; margin-bottom: 12px;">3. 🚚 <strong>Update tracking information</strong> once shipped</div>
+            <div style="color: #0c5460;">4. 💰 <strong>Collect payment</strong> upon delivery (COD)</div>
           </div>
           
+          <!-- Pro Tips -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-            <h3 style="color: #7b3fe4; margin-bottom: 15px;">💡 Pro Tips for Order Fulfillment</h3>
-            <div style="color: #666; margin-bottom: 10px;">• Pack items securely to prevent damage during shipping</div>
-            <div style="color: #666; margin-bottom: 10px;">• Update tracking information as soon as you ship</div>
-            <div style="color: #666; margin-bottom: 10px;">• Include a thank you note for better customer experience</div>
-            <div style="color: #666;">• Process orders within 24 hours for best customer satisfaction</div>
+            <h3 style="color: #7b3fe4; margin-bottom: 15px; font-size: 16px;">💡 Pro Tips for Order Fulfillment</h3>
+            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Process orders within 24 hours for best customer satisfaction</div>
+            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Pack items securely to prevent damage during shipping</div>
+            <div style="color: #666; margin-bottom: 8px; font-size: 14px;">• Update tracking information as soon as you ship</div>
+            <div style="color: #666; font-size: 14px;">• Include a thank you note for better customer experience</div>
           </div>
           
+          <!-- Support -->
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;">
             <div style="font-weight: 600; margin-bottom: 10px;">Need Help?</div>
-            <div style="color: #666; margin-bottom: 15px;">If you have any questions about order fulfillment or need assistance, our support team is here to help.</div>
+            <div style="color: #666; margin-bottom: 15px; font-size: 14px;">If you have any questions about order fulfillment, our support team is here to help.</div>
             <a href="mailto:support@shopzap.io" style="color: #7b3fe4; text-decoration: none; font-weight: 500;">support@shopzap.io</a>
           </div>
         </div>
         
+        <!-- Footer -->
         <div style="background-color: #222; color: white; padding: 20px; text-align: center; font-size: 14px;">
           <div style="margin-bottom: 15px;">
-            <a href="https://shopzap.io/help" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
             <a href="https://shopzap.io/dashboard" style="color: #ccc; text-decoration: none; margin: 0 10px;">Dashboard</a>
+            <a href="https://shopzap.io/help" style="color: #ccc; text-decoration: none; margin: 0 10px;">Help Center</a>
             <a href="https://shopzap.io/tutorials" style="color: #ccc; text-decoration: none; margin: 0 10px;">Tutorials</a>
           </div>
           <div>© 2025 ShopZap.io | All rights reserved</div>
@@ -191,7 +246,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: "orders@shopzap.io",
         to: [buyerEmail],
-        subject: `🎉 Order Confirmed - ${storeName} | Order #${orderId.slice(-8)}`,
+        subject: `🎉 Order Confirmed #${orderNumber} - ${storeName}`,
         html: buyerHtml,
       }),
     });
@@ -211,7 +266,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: "orders@shopzap.io",
           to: [sellerEmail],
-          subject: `🧾 New Order Received from ${buyerName} | Order #${orderId.slice(-8)}`,
+          subject: `💰 New Order #${orderNumber} from ${buyerName} - ${storeName}`,
           html: sellerHtml,
         }),
       });
@@ -224,7 +279,11 @@ serve(async (req) => {
       sent: true, 
       buyerStatus: buyerResult,
       sellerStatus: sellerResult,
-      message: 'Order emails sent successfully'
+      message: 'Order emails sent successfully',
+      orderNumber,
+      invoiceUrl,
+      trackingUrl,
+      correctionUrl
     }), {
       headers: { 
         "Content-Type": "application/json",
