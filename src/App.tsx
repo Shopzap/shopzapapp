@@ -39,9 +39,9 @@ function ErrorFallback({ error }: { error: Error }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <StoreProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <StoreProvider>
             <div className="min-h-screen bg-background font-sans antialiased">
               <Toaster />
               <ErrorBoundary fallbackRender={ErrorFallback}>
@@ -67,9 +67,9 @@ function App() {
                 </Routes>
               </ErrorBoundary>
             </div>
-          </Router>
-        </StoreProvider>
-      </AuthProvider>
+          </StoreProvider>
+        </AuthProvider>
+      </Router>
     </QueryClientProvider>
   );
 }
