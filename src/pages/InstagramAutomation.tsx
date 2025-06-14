@@ -112,8 +112,8 @@ const InstagramAutomation = () => {
     
     if (success === 'connected') {
       toast({
-        title: "Instagram connected successfully!",
-        description: "You can now create automation triggers for your Instagram account.",
+        title: "Instagram Connected Successfully! ✅",
+        description: "Your Instagram Business Account is now connected. You can create automation triggers.",
       });
       // Remove search params and refresh data
       window.history.replaceState({}, '', '/dashboard/instagram-automation');
@@ -127,6 +127,12 @@ const InstagramAutomation = () => {
         case 'no_code':
           errorMessage = "Authorization was cancelled or failed.";
           break;
+        case 'invalid_state':
+          errorMessage = "Invalid request state. Please try connecting again.";
+          break;
+        case 'already_connected':
+          errorMessage = "An Instagram account is already connected to this store.";
+          break;
         case 'token_exchange_failed':
           errorMessage = "Failed to exchange authorization code. Please try again.";
           break;
@@ -134,7 +140,7 @@ const InstagramAutomation = () => {
           errorMessage = "Could not fetch Instagram account information.";
           break;
         case 'no_instagram_accounts':
-          errorMessage = "No Instagram business accounts found. Please ensure you have a business account.";
+          errorMessage = "No Instagram business accounts found. Please ensure you have a business account connected to SendPulse.";
           break;
         case 'database_error':
           errorMessage = "Failed to save connection. Please try again.";
@@ -144,7 +150,7 @@ const InstagramAutomation = () => {
       }
       
       toast({
-        title: "Connection failed",
+        title: "Connection Failed",
         description: errorMessage,
         variant: "destructive"
       });
@@ -154,11 +160,28 @@ const InstagramAutomation = () => {
     }
   }, [searchParams, toast]);
 
-  const handleConnectInstagram = () => {
+  const handleConnectInstagram = async () => {
     if (!storeData) {
       toast({
         title: "Error",
         description: "Store data not loaded. Please refresh the page.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check for existing connection before proceeding
+    const { data: existingConnection } = await supabase
+      .from('instagram_connections')
+      .select('*')
+      .eq('store_id', storeData.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (existingConnection) {
+      toast({
+        title: "Already Connected",
+        description: `Instagram account @${existingConnection.ig_username} is already connected.`,
         variant: "destructive"
       });
       return;
@@ -171,9 +194,9 @@ const InstagramAutomation = () => {
     }));
     
     // SendPulse OAuth URL - using the correct callback URL
-    const callbackUrl = `${window.location.origin}/functions/v1/sendpulse-callback`;
+    const callbackUrl = `https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback`;
     const sendpulseAuthUrl = `https://oauth.sendpulse.com/authorize?` +
-      `client_id=${import.meta.env.VITE_SENDPULSE_CLIENT_ID || 'your-client-id'}` +
+      `client_id=your-client-id` +
       `&response_type=code` +
       `&scope=chatbots,user_data` +
       `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
