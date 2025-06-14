@@ -1,15 +1,16 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster"
 import { ErrorBoundary } from 'react-error-boundary'
 import { AuthProvider } from './contexts/AuthContext';
 import { StoreProvider } from './contexts/StoreContext';
-import { QueryClient } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Auth from './pages/Auth';
 import Onboarding from './pages/Onboarding';
 import Storefront from './pages/Storefront';
-import ProductDetail from './pages/ProductDetail';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProductDetails from './pages/ProductDetails';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import DashboardPage from './pages/dashboard';
 import ProductsPage from './pages/dashboard/products';
 import OrdersPage from './pages/dashboard/orders';
@@ -22,20 +23,33 @@ import AcademyPage from './pages/dashboard/academy';
 import SettingsPage from './pages/dashboard/settings';
 import PlanPage from './pages/dashboard/plan';
 
+const queryClient = new QueryClient();
+
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-red-600 mb-2">Something went wrong</h2>
+        <p className="text-gray-600">{error.message}</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
-    <QueryClient>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <StoreProvider>
           <Router>
             <div className="min-h-screen bg-background font-sans antialiased">
               <Toaster />
-              <ErrorBoundary>
+              <ErrorBoundary fallbackRender={ErrorFallback}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                   <Route path="/" element={<Storefront />} />
-                  <Route path="/product/:productId" element={<ProductDetail />} />
+                  <Route path="/product/:productId" element={<ProductDetails />} />
                   
                   {/* New Dashboard Routes */}
                   <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -56,7 +70,7 @@ function App() {
           </Router>
         </StoreProvider>
       </AuthProvider>
-    </QueryClient>
+    </QueryClientProvider>
   );
 }
 
