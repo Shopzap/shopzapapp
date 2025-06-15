@@ -46,7 +46,8 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       description: product.description || '',
       price: product.price.toString(),
       status: product.status,
-      payment_method: product.payment_method || 'online'
+      payment_method: product.payment_method || 'online',
+      category: product.category || ''
     }
   });
 
@@ -216,6 +217,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         images: finalImages,
         image_url: finalImages[0] || null,
         updated_at: new Date().toISOString(),
+        category: data.category,
         inventory_count: productType === 'simple'
           ? product.inventory_count // This should come from a form field if editable for simple products
           : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0),
@@ -349,6 +351,28 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
                 placeholder="Enter product description"
                 rows={3}
               />
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select
+                value={watch('category') || ''}
+                onValueChange={(value: string) => setValue('category', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Electronics">Electronics</SelectItem>
+                  <SelectItem value="Clothing">Clothing</SelectItem>
+                  <SelectItem value="Home & Kitchen">Home & Kitchen</SelectItem>
+                  <SelectItem value="Beauty & Personal Care">Beauty & Personal Care</SelectItem>
+                  <SelectItem value="Books">Books</SelectItem>
+                  <SelectItem value="Toys & Games">Toys & Games</SelectItem>
+                  <SelectItem value="Sports & Outdoors">Sports & Outdoors</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

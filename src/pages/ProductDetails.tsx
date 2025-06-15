@@ -72,6 +72,7 @@ const ProductDetails: React.FC = () => {
           slug,
           inventory_count,
           payment_method,
+          category,
           created_at,
           updated_at
         `)
@@ -98,6 +99,7 @@ const ProductDetails: React.FC = () => {
             slug,
             inventory_count,
             payment_method,
+            category,
             created_at,
             updated_at
           `)
