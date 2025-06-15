@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -38,6 +37,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
   );
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [initialVariants, setInitialVariants] = useState<ProductVariant[]>([]);
   
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -67,6 +67,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
               options: (typeof v.options === 'object' && v.options && !Array.isArray(v.options) ? v.options : {}) as { [key: string]: string }
             }));
             setVariants(fetchedVariants);
+            setInitialVariants(fetchedVariants);
           }
         });
     }
@@ -212,7 +213,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           updated_at: new Date().toISOString(),
           inventory_count: productType === 'simple'
             ? product.inventory_count // This should come from a form field if editable for simple products
-            : variants.reduce((acc, v) => acc + v.inventory_count, 0),
+            : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0),
         })
         .eq('id', product.id);
         
@@ -221,6 +222,60 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         throw error;
       }
       
+      if (productType === 'variant') {
+        console.log('Upserting variants...');
+
+        const variantsToCreate = variants.filter(v => !v.id);
+        const variantsToUpdate = variants.filter(v => v.id) as (ProductVariant & { id: string })[];
+
+        const initialVariantIds = initialVariants.map(v => v.id).filter(id => !!id);
+        const currentVariantIds = variantsToUpdate.map(v => v.id);
+        const variantIdsToDelete = initialVariantIds.filter(id => id && !currentVariantIds.includes(id));
+        
+        // CREATE new variants
+        if (variantsToCreate.length > 0) {
+          const newVariantData = variantsToCreate.map(({ id, ...v }) => ({
+            ...v,
+            product_id: product.id,
+          }));
+          const { error: createError } = await supabase.from('product_variants').insert(newVariantData);
+          if (createError) {
+            console.error('Error creating variants:', createError);
+            throw createError;
+          }
+          console.log('Created variants:', variantsToCreate.length);
+        }
+
+        // UPDATE existing variants
+        if (variantsToUpdate.length > 0) {
+          for (const variant of variantsToUpdate) {
+            const { id, product_id, created_at, updated_at, ...updateData } = variant;
+            const { error: updateError } = await supabase
+              .from('product_variants')
+              .update(updateData)
+              .eq('id', id);
+            if (updateError) {
+              console.error(`Error updating variant ${id}:`, updateError);
+              throw updateError;
+            }
+          }
+          console.log('Updated variants:', variantsToUpdate.length);
+        }
+
+        // DELETE removed variants
+        if (variantIdsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('product_variants')
+            .delete()
+            .in('id', variantIdsToDelete);
+          if (deleteError) {
+            console.error('Error deleting variants:', deleteError);
+            throw deleteError;
+          }
+          console.log('Deleted variants:', variantIdsToDelete.length);
+        }
+      }
+
       console.log('Product updated successfully');
       toast({ title: "Product updated successfully!" });
       onSuccess();

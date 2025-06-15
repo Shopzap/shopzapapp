@@ -48,11 +48,13 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
       return;
     }
 
-    const optionValues = options.map(opt => opt.values).filter(v => v.length > 0);
-    if (optionValues.length !== options.length) {
-        return;
+    const allOptionsHaveValues = options.every(opt => opt.values.length > 0);
+    if (!allOptionsHaveValues) {
+      setVariants([]);
+      return;
     }
 
+    const optionValues = options.map(opt => opt.values);
     const keys = options.map(opt => opt.name);
     
     const combinations = optionValues.reduce((acc, values) => {
@@ -66,13 +68,18 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
         return acc;
       }, {} as { [key: string]: string });
 
-      const existingVariant = variants.find(v => 
-        JSON.stringify(v.options) === JSON.stringify(comboOptions)
-      );
+      const existingVariant = variants.find(v => {
+        if (!v.options) return false;
+        const vKeys = Object.keys(v.options);
+        const comboKeys = Object.keys(comboOptions);
+        if (vKeys.length !== comboKeys.length) return false;
+        return comboKeys.every(key => v.options[key] === comboOptions[key]);
+      });
 
       return {
-        price: existingVariant?.price || parseFloat(basePrice) || 0,
-        inventory_count: existingVariant?.inventory_count || 0,
+        id: existingVariant?.id,
+        price: existingVariant?.price ?? parseFloat(basePrice) || 0,
+        inventory_count: existingVariant?.inventory_count ?? 0,
         sku: existingVariant?.sku || '',
         options: comboOptions,
       };
