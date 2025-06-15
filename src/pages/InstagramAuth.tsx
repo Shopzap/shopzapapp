@@ -53,7 +53,7 @@ const InstagramAuth = () => {
           return;
         }
 
-        // Get SendPulse Client ID from Supabase secrets via edge function
+        // Get SendPulse Client ID from edge function
         const { data: { session } } = await supabase.auth.getSession();
         
         const { data: secretData, error: secretError } = await supabase.functions.invoke('get-sendpulse-config', {
@@ -118,8 +118,8 @@ const InstagramAuth = () => {
       }
 
       // Get basic redirect with minimal params for manual fallback
-      const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
-      const fallbackUrl = `https://oauth.sendpulse.com/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      const redirectUri = 'https://shopzap.io/api/sendpulse-callback';
+      const fallbackUrl = `https://oauth.sendpulse.com/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=9f2289e6-8526-4ea6-b113-d2ef794298e4`;
       
       window.open(fallbackUrl, '_blank');
     } catch (err) {
