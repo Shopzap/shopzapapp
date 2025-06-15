@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { generateUniqueProductSlug } from '@/utils/slugHelpers';
 
 interface EditProductFormProps {
   product: Product;
@@ -110,6 +111,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           description: "Please add at least one product image",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -134,6 +136,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           description: "Please try logging in again",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -144,6 +147,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           description: "Please login to update products",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -153,7 +157,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       console.log('Fetching store data...');
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
-        .select('id')
+        .select('id, username')
         .eq('user_id', session.session.user.id)
         .maybeSingle();
 
@@ -164,6 +168,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           description: "Unable to access store information",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -174,6 +179,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           description: "Please complete the onboarding process",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -194,27 +200,52 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
             description: "Please try again with smaller images",
             variant: "destructive"
           });
+          setIsSubmitting(false);
           return;
         }
       }
       
+      console.log('Preparing product update...');
+      const updatePayload: { [key: string]: any } = {
+        name: data.name,
+        description: data.description,
+        price: parseFloat(data.price),
+        status: data.status,
+        payment_method: data.payment_method,
+        is_published: isPublished,
+        images: finalImages,
+        image_url: finalImages[0] || null,
+        updated_at: new Date().toISOString(),
+        inventory_count: productType === 'simple'
+          ? product.inventory_count // This should come from a form field if editable for simple products
+          : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0),
+      };
+      
+      // Regenerate slug if product name changes
+      if (data.name !== product.name) {
+        if (!storeData?.username) {
+          toast({
+            title: "Error",
+            description: "Could not find store username to generate slug.",
+            variant: "destructive"
+          });
+          setIsSubmitting(false);
+          return;
+        }
+        console.log("Product name changed, regenerating slug...");
+        updatePayload.slug = await generateUniqueProductSlug(
+          storeData.username,
+          data.name,
+          supabase,
+          product.id
+        );
+        console.log("New slug:", updatePayload.slug);
+      }
+
       console.log('Updating product in database...');
       const { error } = await supabase
         .from('products')
-        .update({
-          name: data.name,
-          description: data.description,
-          price: parseFloat(data.price),
-          status: data.status,
-          payment_method: data.payment_method,
-          is_published: isPublished,
-          images: finalImages,
-          image_url: finalImages[0] || null,
-          updated_at: new Date().toISOString(),
-          inventory_count: productType === 'simple'
-            ? product.inventory_count // This should come from a form field if editable for simple products
-            : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0),
-        })
+        .update(updatePayload)
         .eq('id', product.id);
         
       if (error) {

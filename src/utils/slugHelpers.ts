@@ -32,7 +32,7 @@ export const generateUniqueProductSlug = async (
     .from('stores')
     .select('id')
     .eq('username', storeName)
-    .single();
+    .maybeSingle();
 
   if (!store) {
     return slug;
