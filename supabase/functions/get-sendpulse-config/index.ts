@@ -38,8 +38,19 @@ serve(async (req) => {
       )
     }
 
-    // Get SendPulse client ID - using the correct UUID
-    const clientId = '9f2289e6-8526-4ea6-b113-d2ef794298e4'
+    // Get SendPulse client ID from Supabase secrets
+    const clientId = Deno.env.get('SENDPULSE_CLIENT_ID');
+
+    if (!clientId) {
+      console.error('SENDPULSE_CLIENT_ID is not set in Supabase secrets.');
+      return new Response(
+        JSON.stringify({ error: 'SendPulse configuration error. Please contact support.' }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     console.log('SendPulse config retrieved for user:', user.id)
 
