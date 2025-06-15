@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +50,6 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
 
     const optionValues = options.map(opt => opt.values).filter(v => v.length > 0);
     if (optionValues.length !== options.length) {
-        setVariants([]);
         return;
     }
 
