@@ -189,6 +189,13 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
         </div>
       </div>
       
+      {options.length > 0 && variants.length === 0 && (
+        <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground bg-accent/40">
+          <p>Variants will be generated automatically once you add values for each option.</p>
+          <p className="text-xs">For example, for a "Color" option, add values like "Red", "Blue", etc.</p>
+        </div>
+      )}
+
       {variants.length > 0 && (
         <div className="space-y-4">
             <h3 className="font-medium">Variant Pricing & Inventory</h3>
