@@ -78,7 +78,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
 
       return {
         id: existingVariant?.id,
-        price: existingVariant?.price ?? parseFloat(basePrice) || 0,
+        price: existingVariant?.price ?? (parseFloat(basePrice) || 0),
         inventory_count: existingVariant?.inventory_count ?? 0,
         sku: existingVariant?.sku || '',
         options: comboOptions,
