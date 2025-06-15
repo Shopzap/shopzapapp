@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,11 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
             console.error("Error fetching variants:", error);
             toast({ title: "Error fetching variants", variant: "destructive" });
           } else {
-            setVariants(data || []);
+            const fetchedVariants = (data || []).map(v => ({
+              ...v,
+              options: (typeof v.options === 'object' && v.options && !Array.isArray(v.options) ? v.options : {}) as { [key: string]: string }
+            }));
+            setVariants(fetchedVariants);
           }
         });
     }

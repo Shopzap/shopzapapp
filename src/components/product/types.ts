@@ -7,7 +7,8 @@ export interface ProductVariant {
   sku?: string;
   image_url?: string;
   options: { [key: string]: string };
-  [key: string]: any;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Product {
