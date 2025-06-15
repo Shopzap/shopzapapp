@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader, Upload, X } from 'lucide-react';
+import { Plus, Loader } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from '@/contexts/StoreContext';
 import { generateUniqueProductSlug } from '@/utils/slugHelpers';
@@ -17,6 +17,7 @@ import { AutoProductImport } from '@/components/product/AutoProductImport';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import VariantManager from './VariantManager';
 import { ProductVariant } from './types';
+import MultiImageUploader from './MultiImageUploader';
 
 interface AddProductModalProps {
   onProductAdded: () => void;
@@ -33,8 +34,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const { storeData } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [images, setImages] = useState<string[]>([]);
+  const [newFiles, setNewFiles] = useState<File[]>([]);
   const [productType, setProductType] = useState<'simple' | 'variant'>('simple');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   
@@ -86,30 +87,29 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setImagePreview(null);
   };
 
-  const uploadImage = async (file: File, storeId: string): Promise<string | null> => {
-    try {
+  const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
+    const uploadPromises = files.map(async (file) => {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${storeId}/${fileName}`;
-
+      
       const { error: uploadError } = await supabase.storage
         .from('product-images')
         .upload(filePath, file);
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
-        return null;
+        throw uploadError;
       }
 
-      const { data } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('product-images')
         .getPublicUrl(filePath);
+      
+      return publicUrl;
+    });
 
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      return null;
-    }
+    return Promise.all(uploadPromises);
   };
 
   const handleProductImport = (importedData: any) => {
@@ -119,7 +119,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       description: importedData.description,
       price: importedData.price,
     }));
-    setImagePreview(importedData.image_url);
+    if (importedData.image_url) {
+      setImages([importedData.image_url]);
+    } else {
+      setImages([]);
+    }
+    setNewFiles([]);
   };
 
   const handleAIDescriptionGenerated = (description: string) => {
@@ -150,26 +155,35 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         return;
     }
 
+    if (images.length === 0 && newFiles.length === 0) {
+      toast({
+        title: "Images required",
+        description: "Please add at least one product image",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      let imageUrl = null;
+      let finalImages: string[] = [...images];
 
       // Upload image if selected
-      if (imageFile) {
-        imageUrl = await uploadImage(imageFile, storeData.id);
-        if (!imageUrl) {
-          toast({
-            title: "Error",
-            description: "Failed to upload image. Please try again.",
-            variant: "destructive"
-          });
-          setIsLoading(false);
-          return;
+      if (newFiles.length > 0) {
+        try {
+            const uploadedUrls = await uploadImages(newFiles, storeData.id);
+            finalImages = [...finalImages, ...uploadedUrls];
+        } catch(uploadError) {
+            console.error("Error uploading images", uploadError);
+            toast({
+                title: "Error",
+                description: "Failed to upload images. Please try again.",
+                variant: "destructive"
+            });
+            setIsLoading(false);
+            return;
         }
-      } else if (imagePreview && !imageFile) {
-        // Use imported image URL
-        imageUrl = imagePreview;
       }
 
       // Generate unique slug for the product
@@ -183,7 +197,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price) || 0,
-        image_url: imageUrl,
+        images: finalImages,
+        image_url: finalImages[0] || null,
         payment_method: formData.payment_method,
         store_id: storeData.id,
         user_id: storeData.user_id,
@@ -235,8 +250,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         payment_method: 'cod',
         category: ''
       });
-      setImageFile(null);
-      setImagePreview(null);
+      setImages([]);
+      setNewFiles([]);
       setProductType('simple');
       setVariants([]);
 
@@ -402,46 +417,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="image">Product Image</Label>
-                {!imagePreview ? (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                    <input
-                      id="image"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                    <label htmlFor="image" className="cursor-pointer">
-                      <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-600">
-                        Click to upload an image
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        PNG, JPG, WEBP up to 5MB
-                      </p>
-                    </label>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Product preview"
-                      className="w-full h-48 object-cover rounded-lg border"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={removeImage}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <MultiImageUploader
+                images={images}
+                onImagesChange={setImages}
+                onFilesChange={setNewFiles}
+                disabled={isLoading}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="payment_method">Payment Method</Label>
