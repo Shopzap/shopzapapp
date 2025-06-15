@@ -57,63 +57,36 @@ const ProductDetails: React.FC = () => {
 
       console.log('Store found:', storeData);
 
+      const productSelectQuery = `
+        id, name, description, price, image_url, images, status, is_published, 
+        store_id, slug, inventory_count, payment_method, category, created_at, updated_at
+      `;
+
       let { data: productData, error: productError } = await supabase
         .from('products')
-        .select(`
-          id, 
-          name, 
-          description, 
-          price, 
-          image_url, 
-          images, 
-          status, 
-          is_published, 
-          store_id, 
-          slug,
-          inventory_count,
-          payment_method,
-          category,
-          created_at,
-          updated_at
-        `)
+        .select(productSelectQuery)
         .eq('store_id', storeData.id)
         .eq('slug', productSlug)
         .eq('status', 'active')
         .eq('is_published', true)
         .maybeSingle();
 
+      // If not found by slug and it looks like a UUID, try by ID as a fallback
       if (!productData && !productError && productSlug.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        console.log('Slug looks like UUID, trying to fetch by ID as fallback');
+        console.log('Product not found by slug, trying ID fallback.');
         const fallbackResult = await supabase
           .from('products')
-          .select(`
-            id, 
-            name, 
-            description, 
-            price, 
-            image_url, 
-            images, 
-            status, 
-            is_published, 
-            store_id, 
-            slug,
-            inventory_count,
-            payment_method,
-            category,
-            created_at,
-            updated_at
-          `)
+          .select(productSelectQuery)
           .eq('store_id', storeData.id)
           .eq('id', productSlug)
           .eq('status', 'active')
           .eq('is_published', true)
           .maybeSingle();
-
-        if (fallbackResult.data && !fallbackResult.error) {
-          const correctSlug = fallbackResult.data.slug;
-          console.log('Found product by UUID, redirecting to slug-based URL:', correctSlug);
-          navigate(`/store/${storeUsername}/product/${correctSlug}`, { replace: true });
-          return fallbackResult.data;
+        
+        productData = fallbackResult.data;
+        if (fallbackResult.error) {
+            console.error('Product fallback query error:', fallbackResult.error);
+            productError = fallbackResult.error;
         }
       }
 
@@ -147,6 +120,15 @@ const ProductDetails: React.FC = () => {
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  useEffect(() => {
+    // If the query is successful and the product slug doesn't match the URL slug,
+    // it means we fetched via UUID and need to redirect to the correct slug-based URL.
+    if (product && product.slug && productSlug && product.slug !== productSlug) {
+      console.log(`URL slug "${productSlug}" is not correct. Redirecting to "${product.slug}".`);
+      navigate(`/store/${storeUsername}/product/${product.slug}`, { replace: true });
+    }
+  }, [product, productSlug, storeUsername, navigate]);
 
   const { shouldShowLoading, hasTimedOut } = useDelayedLoading(isLoading, {
     delay: 200,
