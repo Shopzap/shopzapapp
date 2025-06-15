@@ -42,7 +42,7 @@ const ProductDetails: React.FC = () => {
       const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id, name, username')
-        .or(`username.eq.${normalizedStoreUsername},name.ilike.${storeUsername}`)
+        .eq('username', normalizedStoreUsername)
         .maybeSingle();
 
       if (storeError) {
