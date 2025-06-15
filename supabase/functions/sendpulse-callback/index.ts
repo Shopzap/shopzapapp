@@ -13,48 +13,56 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const url = new URL(req.url);
+  const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  
+  let origin = 'https://shopzap.io'; // Default fallback
+  let stateData: { store_id?: string, user_id?: string, origin?: string } = {};
+
+  if (state) {
+    try {
+      stateData = JSON.parse(atob(state));
+      if (stateData.origin) {
+        origin = stateData.origin;
+      }
+    } catch (e) {
+      console.error("Failed to parse state", e);
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, 'Location': `${origin}/dashboard/instagram-automation?error=invalid_state` }
+      });
+    }
+  }
+
+  const redirectToError = (error: string) => {
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, 'Location': `${origin}/dashboard/instagram-automation?error=${error}` }
+    });
+  };
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    const url = new URL(req.url)
-    const code = url.searchParams.get('code')
-    const state = url.searchParams.get('state')
+    );
     
-    console.log('SendPulse OAuth callback received:', { code: !!code, state })
+    console.log('SendPulse OAuth callback received:', { code: !!code, state: !!state });
 
     if (!code) {
-      console.error('No authorization code received')
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=no_code'
-        }
-      })
+      console.error('No authorization code received');
+      return redirectToError('no_code');
     }
 
-    // Decode state to get store_id and user_id
-    let storeId, userId
-    if (state) {
-      try {
-        const stateData = JSON.parse(atob(state))
-        storeId = stateData.store_id
-        userId = stateData.user_id
-        console.log('Decoded state:', { storeId, userId })
-      } catch (err) {
-        console.error('Error decoding state:', err)
-        return new Response(null, {
-          status: 302,
-          headers: {
-            ...corsHeaders,
-            'Location': 'https://shopzap.io/dashboard/instagram-automation?error=invalid_state'
-          }
-        })
-      }
+    const { store_id: storeId, user_id: userId } = stateData;
+
+    if (!storeId || !userId) {
+      console.error('Invalid state: missing store_id or user_id');
+      return redirectToError('invalid_state');
     }
+    console.log('Decoded state:', { storeId, userId, origin });
+
 
     // Check for existing active connection for this store
     const { data: existingConnection } = await supabase
@@ -62,17 +70,11 @@ serve(async (req) => {
       .select('*')
       .eq('store_id', storeId)
       .eq('is_active', true)
-      .maybeSingle()
+      .maybeSingle();
 
     if (existingConnection) {
-      console.log('Store already has an active Instagram connection')
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=already_connected'
-        }
-      })
+      console.log('Store already has an active Instagram connection');
+      return redirectToError('already_connected');
     }
 
     // Exchange code for access token using Supabase secrets
@@ -88,60 +90,42 @@ serve(async (req) => {
         code: code,
         redirect_uri: `https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback`
       })
-    })
+    });
 
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text()
-      console.error('Token exchange failed:', errorText)
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=token_exchange_failed'
-        }
-      })
+      const errorText = await tokenResponse.text();
+      console.error('Token exchange failed:', errorText);
+      return redirectToError('token_exchange_failed');
     }
 
-    const tokenData = await tokenResponse.json()
-    console.log('Token exchange successful, access token received')
+    const tokenData = await tokenResponse.json();
+    console.log('Token exchange successful, access token received');
 
     // Get user's Instagram pages/accounts
     const pagesResponse = await fetch('https://api.sendpulse.com/instagram/accounts', {
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`
       }
-    })
+    });
 
     if (!pagesResponse.ok) {
-      console.error('Failed to fetch Instagram accounts')
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=account_fetch_failed'
-        }
-      })
+      console.error('Failed to fetch Instagram accounts');
+      return redirectToError('account_fetch_failed');
     }
 
-    const pagesData = await pagesResponse.json()
-    console.log('Instagram accounts fetched:', pagesData.length || 0, 'accounts')
+    const pagesData = await pagesResponse.json();
+    console.log('Instagram accounts fetched:', pagesData.length || 0, 'accounts');
 
     // Use the first Instagram account (or let user choose later)
-    const instagramAccount = pagesData[0]
+    const instagramAccount = pagesData[0];
     
     if (!instagramAccount) {
-      console.error('No Instagram accounts found')
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=no_instagram_accounts'
-        }
-      })
+      console.error('No Instagram accounts found');
+      return redirectToError('no_instagram_accounts');
     }
 
     // Encrypt/hash the access token for security (base64 obfuscation)
-    const encryptedToken = btoa(tokenData.access_token)
+    const encryptedToken = btoa(tokenData.access_token);
 
     // Save connection to database
     const connectionData = {
@@ -154,46 +138,33 @@ serve(async (req) => {
       access_token: encryptedToken, // Store encrypted token
       is_active: true,
       connected_at: new Date().toISOString()
-    }
+    };
 
     const { error: dbError } = await supabase
       .from('instagram_connections')
       .upsert(connectionData, {
         onConflict: 'store_id',
         ignoreDuplicates: false
-      })
+      });
 
     if (dbError) {
-      console.error('Database error:', dbError)
-      return new Response(null, {
-        status: 302,
-        headers: {
-          ...corsHeaders,
-          'Location': 'https://shopzap.io/dashboard/instagram-automation?error=database_error'
-        }
-      })
+      console.error('Database error:', dbError);
+      return redirectToError('database_error');
     }
 
-    console.log('Instagram connection saved successfully for store:', storeId)
+    console.log('Instagram connection saved successfully for store:', storeId);
 
     // Redirect back to dashboard with success
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
-        'Location': 'https://shopzap.io/dashboard/instagram-automation?success=connected'
+        'Location': `${origin}/dashboard/instagram-automation?success=connected`
       }
-    })
+    });
 
   } catch (error) {
-    console.error('OAuth callback error:', error)
-    
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...corsHeaders,
-        'Location': 'https://shopzap.io/dashboard/instagram-automation?error=unexpected_error'
-      }
-    })
+    console.error('OAuth callback error:', error);
+    return redirectToError('unexpected_error');
   }
 })

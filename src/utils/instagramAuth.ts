@@ -1,4 +1,3 @@
-
 /**
  * Helper utilities for Instagram OAuth with SendPulse
  */
@@ -7,6 +6,7 @@ export interface OAuthState {
   store_id: string;
   user_id: string;
   timestamp: number;
+  origin: string;
 }
 
 /**

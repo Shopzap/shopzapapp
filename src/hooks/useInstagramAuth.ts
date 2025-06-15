@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -68,7 +67,8 @@ export const useInstagramAuth = () => {
         const oauthState: OAuthState = {
           store_id: store.id,
           user_id: user.id,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          origin: window.location.origin,
         };
 
         const oauthUrl = constructOAuthUrl(secretData.client_id, oauthState);
@@ -129,7 +129,8 @@ export const useInstagramAuth = () => {
       const oauthState: OAuthState = {
         store_id: store.id,
         user_id: user.id,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        origin: window.location.origin,
       };
 
       const oauthUrl = constructOAuthUrl(clientId, oauthState);
