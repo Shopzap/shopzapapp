@@ -26,7 +26,7 @@ export function base64EncodeState(state: OAuthState): string {
  * Construct the SendPulse OAuth URL with proper parameters
  */
 export function constructOAuthUrl(clientId: string, state: OAuthState): string {
-  const redirectUri = 'https://shopzap.io/api/sendpulse-callback';
+  const redirectUri = 'https://fyftegalhvigtrieldan.supabase.co/functions/v1/sendpulse-callback';
   const scope = 'chatbots,user_data';
   const responseType = 'code';
   
