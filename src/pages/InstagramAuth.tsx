@@ -119,7 +119,7 @@ const InstagramAuth = () => {
 
       // Get basic redirect with minimal params for manual fallback
       const redirectUri = 'https://shopzap.io/api/sendpulse-callback';
-      const fallbackUrl = `https://oauth.sendpulse.com/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=9f2289e6-8526-4ea6-b113-d2ef794298e4`;
+      const fallbackUrl = `https://login.sendpulse.com/oauth/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=9f2289e6-8526-4ea6-b113-d2ef794298e4`;
       
       window.open(fallbackUrl, '_blank');
     } catch (err) {

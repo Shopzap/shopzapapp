@@ -32,7 +32,7 @@ export function constructOAuthUrl(clientId: string, state: OAuthState): string {
   
   const encodedState = base64EncodeState(state);
   
-  const oauthUrl = new URL('https://oauth.sendpulse.com/authorize');
+  const oauthUrl = new URL('https://login.sendpulse.com/oauth/authorize');
   oauthUrl.searchParams.set('client_id', clientId);
   oauthUrl.searchParams.set('redirect_uri', redirectUri);
   oauthUrl.searchParams.set('response_type', responseType);
