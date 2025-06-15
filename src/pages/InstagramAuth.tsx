@@ -13,6 +13,7 @@ const InstagramAuth = () => {
   const [isRedirecting, setIsRedirecting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [clientId, setClientId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -69,6 +70,8 @@ const InstagramAuth = () => {
           return;
         }
 
+        setClientId(secretData.client_id);
+
         // Create OAuth state
         const oauthState: OAuthState = {
           store_id: store.id,
@@ -109,19 +112,39 @@ const InstagramAuth = () => {
   };
 
   const handleManualRedirect = async () => {
+    if (!clientId) {
+      toast({
+        title: "Client ID not available",
+        description: "Please retry the authorization first to fetch the necessary configuration.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const sessionValidation = await validateSupabaseSession(supabase);
       
       if (!sessionValidation.isValid) {
-        navigate('/auth');
+        setError(sessionValidation.error); // Show error in the main UI
+        toast({
+          title: "Session Error",
+          description: sessionValidation.error || 'Session validation failed.',
+          variant: "destructive"
+        });
         return;
       }
 
-      // Get basic redirect with minimal params for manual fallback
-      const redirectUri = 'https://shopzap.io/api/sendpulse-callback';
-      const fallbackUrl = `https://login.sendpulse.com/oauth/authorize?response_type=code&scope=chatbots,user_data&redirect_uri=${encodeURIComponent(redirectUri)}&client_id=9f2289e6-8526-4ea6-b113-d2ef794298e4`;
+      const { user, store } = sessionValidation;
+
+      const oauthState: OAuthState = {
+        store_id: store.id,
+        user_id: user.id,
+        timestamp: Date.now()
+      };
+
+      const oauthUrl = constructOAuthUrl(clientId, oauthState);
       
-      window.open(fallbackUrl, '_blank');
+      window.open(oauthUrl, '_blank');
     } catch (err) {
       console.error('Manual redirect error:', err);
       toast({
