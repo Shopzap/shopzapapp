@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader } from 'lucide-react';
 import ProductVisibilityToggle from './ProductVisibilityToggle';
 import MultiImageUploader from './MultiImageUploader';
-import { Product } from './types';
+import { Product, ProductVariant } from './types';
+import VariantManager from './VariantManager';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       : (product.image_url ? [product.image_url] : [])
   );
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     defaultValues: {
@@ -45,6 +47,25 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
       payment_method: product.payment_method || 'online'
     }
   });
+
+  const productType = product.product_type || 'simple';
+
+  useEffect(() => {
+    if (productType === 'variant') {
+      supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', product.id)
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching variants:", error);
+            toast({ title: "Error fetching variants", variant: "destructive" });
+          } else {
+            setVariants(data || []);
+          }
+        });
+    }
+  }, [product, productType, toast]);
 
   const uploadImages = async (files: File[], storeId: string): Promise<string[]> => {
     console.log('Uploading images for store:', storeId);
@@ -86,6 +107,16 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
         return;
       }
 
+      if (productType === 'variant' && variants.length === 0) {
+        toast({
+            title: "Variants required",
+            description: "A product with variants must have at least one variant defined.",
+            variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Get user's session
       console.log('Getting user session...');
       const { data: session, error: sessionError } = await supabase.auth.getSession();
@@ -173,7 +204,10 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           is_published: isPublished,
           images: finalImages,
           image_url: finalImages[0] || null,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          inventory_count: productType === 'simple'
+            ? product.inventory_count // This should come from a form field if editable for simple products
+            : variants.reduce((acc, v) => acc + v.inventory_count, 0),
         })
         .eq('id', product.id);
         
@@ -204,7 +238,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
           <DialogTitle>Edit Product</DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+        <div className="p-1 pr-3 space-y-6 max-h-[70vh] overflow-y-auto">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <Label htmlFor="name">Product Name</Label>
@@ -227,7 +261,9 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
             </div>
 
             <div>
-              <Label htmlFor="price">Price (₹)</Label>
+              <Label htmlFor="price">
+                {productType === 'variant' ? 'Default Price (₹)' : 'Price (₹)'}
+              </Label>
               <Input
                 id="price"
                 type="number"
@@ -239,6 +275,7 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
                 placeholder="0.00"
               />
               {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>}
+              {productType === 'variant' && <p className="text-xs text-muted-foreground mt-1">Used as a base price for new variants.</p>}
             </div>
 
             <MultiImageUploader
@@ -247,6 +284,14 @@ const EditProductForm: React.FC<EditProductFormProps> = ({ product, onSuccess, o
               onFilesChange={setNewFiles}
               disabled={isSubmitting}
             />
+
+            {productType === 'variant' && (
+                <VariantManager 
+                    initialVariants={variants} 
+                    onVariantsChange={setVariants} 
+                    basePrice={watch('price')}
+                />
+            )}
 
             <div>
               <Label htmlFor="status">Status</Label>

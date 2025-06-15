@@ -435,6 +435,7 @@ export type Database = {
           order_id: string
           price_at_purchase: number
           product_id: string
+          product_variant_id: string | null
           quantity: number
         }
         Insert: {
@@ -442,6 +443,7 @@ export type Database = {
           order_id: string
           price_at_purchase?: number
           product_id: string
+          product_variant_id?: string | null
           quantity?: number
         }
         Update: {
@@ -449,6 +451,7 @@ export type Database = {
           order_id?: string
           price_at_purchase?: number
           product_id?: string
+          product_variant_id?: string | null
           quantity?: number
         }
         Relationships: [
@@ -464,6 +467,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_variant_id_fkey"
+            columns: ["product_variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -652,6 +662,50 @@ export type Database = {
           },
         ]
       }
+      product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          inventory_count: number
+          options: Json | null
+          price: number
+          product_id: string
+          sku: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          inventory_count?: number
+          options?: Json | null
+          price: number
+          product_id: string
+          sku?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          inventory_count?: number
+          options?: Json | null
+          price?: number
+          product_id?: string
+          sku?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           created_at: string | null
@@ -664,6 +718,7 @@ export type Database = {
           name: string
           payment_method: string | null
           price: number
+          product_type: string
           slug: string
           status: string
           store_id: string
@@ -681,6 +736,7 @@ export type Database = {
           name: string
           payment_method?: string | null
           price?: number
+          product_type?: string
           slug: string
           status?: string
           store_id: string
@@ -698,6 +754,7 @@ export type Database = {
           name?: string
           payment_method?: string | null
           price?: number
+          product_type?: string
           slug?: string
           status?: string
           store_id?: string

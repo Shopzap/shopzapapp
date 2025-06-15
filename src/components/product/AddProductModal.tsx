@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,9 @@ import { generateUniqueProductSlug } from '@/utils/slugHelpers';
 import { AIDescriptionGenerator } from '@/components/ai/AIDescriptionGenerator';
 import { SmartPricingBadge } from '@/components/ai/SmartPricingBadge';
 import { AutoProductImport } from '@/components/product/AutoProductImport';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import VariantManager from './VariantManager';
+import { ProductVariant } from './types';
 
 interface AddProductModalProps {
   onProductAdded: () => void;
@@ -33,6 +35,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [productType, setProductType] = useState<'simple' | 'variant'>('simple');
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -137,6 +141,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       return;
     }
 
+    if (productType === 'variant' && variants.length === 0) {
+        toast({
+            title: "Variants required",
+            description: "Please define and generate at least one product variant.",
+            variant: "destructive"
+        });
+        return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -166,26 +179,47 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         supabase
       );
 
-      const { data, error } = await supabase
+      const productPayload = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price) || 0,
+        image_url: imageUrl,
+        payment_method: formData.payment_method,
+        store_id: storeData.id,
+        user_id: storeData.user_id,
+        slug: slug,
+        status: 'active',
+        is_published: true,
+        product_type: productType,
+        category: formData.category,
+        inventory_count: productType === 'simple' 
+          ? parseInt(formData.inventory_count) || 0 
+          : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0)
+      };
+
+      const { data: newProduct, error } = await supabase
         .from('products')
-        .insert([
-          {
-            name: formData.name,
-            description: formData.description,
-            price: parseFloat(formData.price),
-            inventory_count: parseInt(formData.inventory_count) || 0,
-            image_url: imageUrl,
-            payment_method: formData.payment_method,
-            store_id: storeData.id,
-            user_id: storeData.user_id,
-            slug: slug,
-            status: 'active',
-            is_published: true
-          }
-        ])
-        .select();
+        .insert([productPayload])
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      if (productType === 'variant' && newProduct) {
+        const variantsPayload = variants.map(variant => ({
+          ...variant,
+          product_id: newProduct.id,
+          price: parseFloat(variant.price as any) || 0,
+          inventory_count: parseInt(variant.inventory_count as any) || 0
+        }));
+
+        const { error: variantError } = await supabase
+          .from('product_variants')
+          .insert(variantsPayload);
+
+        if (variantError) throw variantError;
+      }
+
 
       toast({
         title: "Success",
@@ -203,6 +237,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       });
       setImageFile(null);
       setImagePreview(null);
+      setProductType('simple');
+      setVariants([]);
 
       setIsOpen(false);
       onProductAdded();
@@ -298,34 +334,73 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price (₹)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    required
-                  />
-                  <SmartPricingBadge category={formData.category} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="inventory">Inventory</Label>
-                  <Input
-                    id="inventory"
-                    type="number"
-                    value={formData.inventory_count}
-                    onChange={(e) => setFormData({ ...formData, inventory_count: e.target.value })}
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Product Type</Label>
+                <RadioGroup 
+                  defaultValue="simple" 
+                  value={productType}
+                  onValueChange={(value: 'simple' | 'variant') => setProductType(value)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="simple" id="simple" />
+                    <Label htmlFor="simple">Simple Product</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="variant" id="variant" />
+                    <Label htmlFor="variant">Product with Variants</Label>
+                  </div>
+                </RadioGroup>
               </div>
+
+              {productType === 'simple' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price (₹)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <SmartPricingBadge category={formData.category} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="inventory">Inventory</Label>
+                    <Input
+                      id="inventory"
+                      type="number"
+                      value={formData.inventory_count}
+                      onChange={(e) => setFormData({ ...formData, inventory_count: e.target.value })}
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                 <div className="space-y-2">
+                    <Label htmlFor="price">Default Price (₹)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">This will be the default price for new variants.</p>
+                  </div>
+                  <VariantManager onVariantsChange={setVariants} basePrice={formData.price} />
+                </>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="image">Product Image</Label>
