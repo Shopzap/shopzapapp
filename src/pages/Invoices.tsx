@@ -72,33 +72,36 @@ const Invoices = () => {
 
   const handleDownloadInvoice = async (order: any) => {
     try {
+      toast({ title: "Generating invoice...", description: "Please wait a moment." });
+      
       const { data, error } = await supabase.functions.invoke('generate-invoice', {
         body: { orderId: order.id }
       });
 
       if (error) throw error;
 
-      // Create blob and download
-      const blob = new Blob([data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `invoice-${order.id.slice(-8)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      if (data.downloadUrl) {
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = data.downloadUrl;
+        a.download = `invoice-${order.id.slice(-8)}.html`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(a.href);
+        document.body.removeChild(a);
 
-      toast({
-        title: "Invoice Downloaded",
-        description: "Invoice has been downloaded successfully.",
-      });
-    } catch (error) {
+        toast({
+          title: "Invoice Download Started",
+          description: "Your invoice HTML file should be in your downloads.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to generate invoice download URL.');
+      }
+    } catch (error: any) {
       console.error('Error downloading invoice:', error);
       toast({
         title: "Download Failed",
-        description: "Failed to download invoice. Please try again.",
+        description: error.message || "Failed to download invoice. Please try again.",
         variant: "destructive",
       });
     }

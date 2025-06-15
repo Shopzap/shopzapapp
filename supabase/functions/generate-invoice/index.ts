@@ -13,14 +13,55 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, orderDetails } = await req.json();
+    const { orderId } = await req.json();
     
+    if (!orderId) {
+      return new Response(JSON.stringify({ error: 'orderId is required' }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     console.log('Generating invoice for order:', orderId);
 
     // Create the supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch order details from database
+    const { data: orderDetails, error: orderError } = await supabase
+      .from('orders')
+      .select(`
+        *,
+        order_items (
+          id,
+          quantity,
+          price_at_purchase,
+          products (
+            id,
+            name,
+            image_url
+          )
+        ),
+        stores (
+          name,
+          business_email,
+          phone_number,
+          address
+        )
+      `)
+      .eq('id', orderId)
+      .single();
+
+    if (orderError) throw orderError;
+
+    if (!orderDetails) {
+      return new Response(JSON.stringify({ error: 'Order not found' }), {
+        status: 404,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
 
     // Generate HTML invoice
     const invoiceHtml = generateInvoiceHTML(orderDetails);

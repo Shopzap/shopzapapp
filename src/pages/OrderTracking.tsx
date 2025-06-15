@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,19 +46,24 @@ interface Order {
 }
 
 const OrderTracking = () => {
-  const { orderId } = useParams();
+  const { orderId: orderIdFromParams } = useParams();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchOrderId, setSearchOrderId] = useState('');
+
+  const orderIdFromQuery = searchParams.get('order_id');
+  const effectiveOrderId = orderIdFromParams || orderIdFromQuery;
+
+  const [searchOrderId, setSearchOrderId] = useState(effectiveOrderId || '');
 
   useEffect(() => {
-    if (orderId) {
-      fetchOrder(orderId);
+    if (effectiveOrderId) {
+      fetchOrder(effectiveOrderId);
     } else {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [effectiveOrderId]);
 
   const fetchOrder = async (id: string) => {
     try {
@@ -84,6 +88,7 @@ const OrderTracking = () => {
           description: "We couldn't find an order with that ID.",
           variant: "destructive",
         });
+        setOrder(null);
         return;
       }
 
@@ -185,7 +190,7 @@ const OrderTracking = () => {
     );
   }
 
-  if (!orderId || !order) {
+  if (!effectiveOrderId || !order) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card>
