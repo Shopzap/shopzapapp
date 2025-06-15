@@ -1,16 +1,4 @@
+
 User-agent: *
 Allow: /
-
-# Social Media Crawlers
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
-# Sitemap
 Sitemap: https://shopzap.io/sitemap.xml
-Allow: /
-
-User-agent: *
-Allow: /

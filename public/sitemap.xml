@@ -1,23 +1,10 @@
+
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://shopzap.io/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://shopzap.io/features</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://shopzap.io/pricing</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://shopzap.io/contact</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
+  <url><loc>https://shopzap.io/</loc></url>
+  <url><loc>https://shopzap.io/signup</loc></url>
+  <url><loc>https://shopzap.io/dashboard</loc></url>
+  <url><loc>https://shopzap.io/pricing</loc></url>
+  <url><loc>https://shopzap.io/docs</loc></url>
+  <url><loc>https://shopzap.io/instagram-automation</loc></url>
 </urlset>
