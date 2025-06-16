@@ -10,25 +10,41 @@ interface PaymentMethodSelectorProps {
   onPaymentMethodChange: (method: 'cod' | 'online') => void;
   razorpayAvailable: boolean;
   paymentMode: 'test' | 'live';
+  sellerAllowsCOD?: boolean;
 }
 
 export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   paymentMethod,
   onPaymentMethodChange,
   razorpayAvailable,
-  paymentMode
+  paymentMode,
+  sellerAllowsCOD = true
 }) => {
   return (
     <div className="space-y-3">
       <h4 className="font-medium">Payment Method</h4>
       <RadioGroup value={paymentMethod} onValueChange={onPaymentMethodChange}>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="cod" id="cod" />
-          <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer">
-            <Truck className="h-4 w-4" />
-            Cash on Delivery
-          </Label>
-        </div>
+        {sellerAllowsCOD ? (
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value="cod" id="cod" />
+            <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer">
+              <Truck className="h-4 w-4" />
+              Cash on Delivery
+            </Label>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-2 opacity-50">
+            <RadioGroupItem value="cod" id="cod-disabled" disabled />
+            <Label htmlFor="cod-disabled" className="flex items-center gap-2">
+              <Truck className="h-4 w-4" />
+              Cash on Delivery
+              <Badge variant="outline" className="flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Not Available
+              </Badge>
+            </Label>
+          </div>
+        )}
         
         {razorpayAvailable ? (
           <div className="flex items-center space-x-2">
@@ -52,6 +68,15 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           </div>
         )}
       </RadioGroup>
+      
+      {!sellerAllowsCOD && (
+        <div className="text-sm text-muted-foreground p-3 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-orange-600" />
+            <span>This seller only accepts online payments. Cash on Delivery is not available.</span>
+          </div>
+        </div>
+      )}
       
       {razorpayAvailable && paymentMethod === 'online' && (
         <div className="text-sm text-muted-foreground p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -80,11 +105,11 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         </div>
       )}
       
-      {!razorpayAvailable && (
-        <div className="text-sm text-muted-foreground p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+      {!razorpayAvailable && !sellerAllowsCOD && (
+        <div className="text-sm text-muted-foreground p-3 bg-red-50 border border-red-200 rounded-lg">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <span>Online payment is currently unavailable. Please use Cash on Delivery.</span>
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <span>No payment methods are currently available. Please contact the seller.</span>
           </div>
         </div>
       )}

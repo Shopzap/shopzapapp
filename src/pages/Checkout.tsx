@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,8 @@ const Checkout: React.FC = () => {
     subtotal,
     shipping,
     total,
-    handlePlaceOrder
+    handlePlaceOrder,
+    sellerAllowsCOD
   } = useCheckout();
 
   return (
@@ -54,6 +56,7 @@ const Checkout: React.FC = () => {
                 onPaymentMethodChange={setPaymentMethod}
                 razorpayAvailable={razorpayAvailable}
                 paymentMode={paymentMode}
+                sellerAllowsCOD={sellerAllowsCOD}
               />
 
               {/* Customer Information */}

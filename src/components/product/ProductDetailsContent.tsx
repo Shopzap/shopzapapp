@@ -206,12 +206,15 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
         <div className="space-y-3">
           <Button 
             onClick={handleBuyNowClick}
-            disabled={!canAddToCart() || isBuyingNow}
+            disabled={!canAddToCart() || isBuyingNow || (isVariantProduct && !selectedVariant)}
             className="w-full"
             size="lg"
           >
             <ShoppingCart className="mr-2 h-5 w-5" />
-            {isBuyingNow ? 'Adding...' : !canAddToCart() ? 'Out of Stock' : 'Buy Now'}
+            {isBuyingNow ? 'Adding...' : 
+             !canAddToCart() ? 'Out of Stock' : 
+             (isVariantProduct && !selectedVariant) ? 'Select Options First' : 
+             'Buy Now'}
           </Button>
           
           <div className="grid grid-cols-2 gap-2">

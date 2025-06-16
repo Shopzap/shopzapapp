@@ -21,6 +21,11 @@ interface OrderItem {
   price: number;
   quantity: number;
   image: string;
+  variant?: {
+    id: string;
+    options: any;
+    name: string;
+  };
 }
 
 export const useCheckout = () => {
@@ -29,12 +34,13 @@ export const useCheckout = () => {
   const navigate = useNavigate();
   const { storeData: contextStoreData } = useStore();
   
-  const [storeData, setStoreData] = useState<{ id: string; name: string } | null>(null);
+  const [storeData, setStoreData] = useState<{ id: string; name: string; payment_settings?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
   const [razorpayAvailable, setRazorpayAvailable] = useState(false);
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
+  const [sellerAllowsCOD, setSellerAllowsCOD] = useState(true);
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
     {
@@ -85,19 +91,37 @@ export const useCheckout = () => {
     checkRazorpayAvailability();
   }, []);
 
-  // Use real store data from context
+  // Use real store data from context and check payment settings
   useEffect(() => {
-    if (contextStoreData) {
-      console.log('Using real store data:', contextStoreData);
-      setStoreData({
-        id: contextStoreData.id,
-        name: contextStoreData.name
-      });
-    } else {
-      console.log('No store data available in context');
-      // Only use demo data if no real store data is available
-      setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
-    }
+    const fetchStorePaymentSettings = async () => {
+      if (contextStoreData) {
+        console.log('Using real store data:', contextStoreData);
+        
+        // Check if store has payment settings
+        const storeSettings = contextStoreData.theme && typeof contextStoreData.theme === 'object' 
+          ? (contextStoreData.theme as any) 
+          : {};
+        
+        const allowsCOD = storeSettings.allow_cod !== false; // Default to true if not set
+        setSellerAllowsCOD(allowsCOD);
+        
+        // If seller doesn't allow COD, force online payment
+        if (!allowsCOD) {
+          setPaymentMethod('online');
+        }
+        
+        setStoreData({
+          id: contextStoreData.id,
+          name: contextStoreData.name,
+          payment_settings: storeSettings
+        });
+      } else {
+        console.log('No store data available in context');
+        setStoreData({ id: 'demo-store-id', name: 'Demo Store' });
+      }
+    };
+
+    fetchStorePaymentSettings();
   }, [contextStoreData]);
 
   const loadRazorpay = () => {
@@ -169,7 +193,12 @@ export const useCheckout = () => {
           quantity: item.quantity,
           priceAtPurchase: item.price,
           name: item.name,
-          image: item.image
+          image: item.image,
+          variant: item.variant ? {
+            id: item.variant.id,
+            name: item.variant.name,
+            options: item.variant.options
+          } : undefined
         }))
       };
 
@@ -366,6 +395,7 @@ export const useCheckout = () => {
     subtotal,
     shipping,
     total,
-    handlePlaceOrder
+    handlePlaceOrder,
+    sellerAllowsCOD
   };
 };
