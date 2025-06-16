@@ -61,6 +61,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        shopzap: {
+          primary: "hsl(var(--shopzap-primary))",
+          secondary: "hsl(var(--shopzap-secondary))",
+          accent: "hsl(var(--shopzap-accent))",
+          success: "hsl(var(--shopzap-success))",
+          warning: "hsl(var(--shopzap-warning))",
+          error: "hsl(var(--shopzap-error))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -76,10 +84,32 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "slide-in-up": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(30px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
+        "fade-in-scale": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.9)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "slide-in-up": "slide-in-up 0.6s ease-out",
+        "fade-in-scale": "fade-in-scale 0.4s ease-out",
       },
     },
   },

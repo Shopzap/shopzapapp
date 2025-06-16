@@ -218,8 +218,8 @@ const AppContent = () => {
       } />
       <Route path="/dashboard/*" element={
         <ProtectedRoute>
-          <Routes>
-            <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+          <DashboardLayout>
+            <Routes>
               <Route index element={<Dashboard />} />
               <Route path="products" element={<ProductManager />} />
               <Route path="orders" element={<Orders />} />
@@ -229,8 +229,8 @@ const AppContent = () => {
               <Route path="analytics" element={<Analytics />} />
               <Route path="settings" element={<Settings />} />
               <Route path="bank-details" element={<BankDetails />} />
-            </Route>
-          </Routes>
+            </Routes>
+          </DashboardLayout>
         </ProtectedRoute>
       } />
 
