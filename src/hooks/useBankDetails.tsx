@@ -36,6 +36,14 @@ export const useBankDetails = () => {
         throw error;
       }
 
+      // Type cast the payout_method to ensure it matches our interface
+      if (data) {
+        return {
+          ...data,
+          payout_method: data.payout_method as 'bank_transfer' | 'upi'
+        } as BankDetails;
+      }
+
       return data;
     },
   });

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -20,6 +21,7 @@ import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
 import Settings from "./pages/Settings";
 import BankDetails from "./pages/BankDetails";
+import InstagramAutomation from "./pages/InstagramAutomation";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
