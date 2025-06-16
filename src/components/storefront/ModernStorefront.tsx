@@ -1,192 +1,265 @@
 
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Filter, Grid, List } from 'lucide-react';
+import { Filter, Grid, List, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import ModernStorefrontHeader from './ModernStorefrontHeader';
-import ModernProductCard from './ModernProductCard';
-import ProductGridSkeleton from './ProductGridSkeleton';
-import OptimizedImage from './StoreImageOptimizer';
-import { useCart } from '@/hooks/useCart';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tables } from '@/integrations/supabase/types';
+import ModernStorefrontHeader from './ModernStorefrontHeader';
+import ModernProductGrid from './ModernProductGrid';
+import StorefrontFilters from './StorefrontFilters';
 
 interface ModernStorefrontProps {
-  store: any;
+  store: Tables<'stores'> & {
+    primaryColor?: string;
+    textColor?: string;
+    buttonColor?: string;
+    buttonTextColor?: string;
+    accentColor?: string;
+    theme_style?: string;
+    font_style?: string;
+  };
   products: Tables<'products'>[];
   isLoading?: boolean;
 }
 
-const ModernStorefront: React.FC<ModernStorefrontProps> = ({ 
-  store, 
-  products, 
-  isLoading = false 
+const ModernStorefront: React.FC<ModernStorefrontProps> = ({
+  store,
+  products,
+  isLoading = false
 }) => {
-  const navigate = useNavigate();
-  const { getItemCount } = useCart();
-  const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState('newest');
+  const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
-  // Memoized filtered products for better performance
-  const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) return products;
+  // Get available categories and max price from products
+  const { availableCategories, maxPrice } = useMemo(() => {
+    if (!products || products.length === 0) return { availableCategories: [], maxPrice: 10000 };
     
-    return products.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [products, searchTerm]);
+    const categories = [...new Set(products.map(p => p.category).filter(Boolean))] as string[];
+    const max = Math.max(...products.map(p => p.price), 10000);
+    return { availableCategories: categories, maxPrice: max };
+  }, [products]);
 
-  const handleCartClick = () => {
-    navigate(`/store/${store.name}/cart`);
+  // Initialize price range based on actual product prices
+  React.useEffect(() => {
+    if (maxPrice > 0) {
+      setPriceRange([0, maxPrice]);
+    }
+  }, [maxPrice]);
+
+  // Filter and sort products
+  const filteredAndSortedProducts = useMemo(() => {
+    if (!products || products.length === 0) return [];
+
+    let filtered = products.filter(product => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesName = product.name.toLowerCase().includes(searchLower);
+        const matchesDescription = product.description?.toLowerCase().includes(searchLower);
+        if (!matchesName && !matchesDescription) return false;
+      }
+
+      // Price filter
+      if (product.price < priceRange[0] || product.price > priceRange[1]) {
+        return false;
+      }
+      
+      // Category filter
+      if (selectedCategories.length > 0 && product.category) {
+        if (!selectedCategories.includes(product.category)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
+    // Sort products
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'price-asc':
+          return a.price - b.price;
+        case 'price-desc':
+          return b.price - a.price;
+        case 'oldest':
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        case 'newest':
+        default:
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+    });
+
+    return filtered;
+  }, [products, searchTerm, priceRange, selectedCategories, sortBy]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setPriceRange([0, maxPrice]);
+    setSelectedCategories([]);
   };
 
-  const totalItems = getItemCount();
-  
-  // Extract colors from theme with fallbacks
-  const theme = store.theme || {};
-  const primaryColor = theme.primaryColor || store.primaryColor || '#6c5ce7';
-  const buttonColor = theme.buttonColor || store.buttonColor || '#6c5ce7';
-  const buttonTextColor = theme.buttonTextColor || store.buttonTextColor || '#FFFFFF';
-  const fontFamily = store.font_style || theme.font_style || 'Poppins';
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <ModernStorefrontHeader store={store} />
-        <div className="container mx-auto px-4 py-8">
-          <ProductGridSkeleton count={8} />
-        </div>
-      </div>
-    );
-  }
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm) count++;
+    if (priceRange[0] > 0 || priceRange[1] < maxPrice) count++;
+    if (selectedCategories.length > 0) count++;
+    return count;
+  }, [searchTerm, priceRange, selectedCategories, maxPrice]);
 
   return (
-    <div 
-      className="min-h-screen bg-gray-50"
-      style={{ fontFamily }}
-    >
+    <div className="min-h-screen bg-gray-50">
       <ModernStorefrontHeader store={store} />
       
-      {/* Hero Banner */}
-      {store.banner_image && (
-        <div className="relative h-48 md:h-64 overflow-hidden">
-          <OptimizedImage
-            src={store.banner_image}
-            alt={`${store.name} banner`}
-            className="w-full h-full object-cover"
-            loading="eager"
-            width={1200}
-            height={400}
-          />
-          <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="text-center text-white">
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">{store.name}</h1>
-              {store.tagline && (
-                <p className="text-lg md:text-xl opacity-90">{store.tagline}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Filters
-            </Button>
-            
-            <div className="flex border rounded-md">
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="rounded-r-none"
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-l-none"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <Button
-              onClick={handleCartClick}
-              className="relative flex items-center gap-2"
-              style={{
-                backgroundColor: buttonColor,
-                color: buttonTextColor,
-              }}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Cart
-              {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-gray-400 mb-4">
-              <Search className="h-16 w-16 mx-auto" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              {searchTerm ? 'No products found' : 'No products available'}
-            </h3>
-            <p className="text-gray-500">
-              {searchTerm 
-                ? 'Try adjusting your search terms'
-                : 'Check back later for new products'
-              }
-            </p>
-          </div>
-        ) : (
-          <div className={
-            viewMode === 'grid' 
-              ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
-              : "space-y-4"
-          }>
-            {filteredProducts.map((product) => (
-              <ModernProductCard
-                key={product.id}
-                product={product}
-                storeName={store.name}
-                buttonColor={buttonColor}
-                buttonTextColor={buttonTextColor}
+      {/* Search and Controls */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            {/* Search Bar */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-10"
               />
-            ))}
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+
+            {/* Controls */}
+            <div className="flex items-center gap-2">
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="oldest">Oldest</SelectItem>
+                  <SelectItem value="name-asc">A to Z</SelectItem>
+                  <SelectItem value="name-desc">Z to A</SelectItem>
+                  <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                  <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* View Mode */}
+              <div className="flex border rounded-md">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-r-none"
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Filters */}
+              <Sheet open={showFilters} onOpenChange={setShowFilters}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="relative">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                  <SheetHeader>
+                    <SheetTitle>Filter Products</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-6">
+                    <StorefrontFilters
+                      priceRange={priceRange}
+                      maxPrice={maxPrice}
+                      onPriceChange={setPriceRange}
+                      selectedCategories={selectedCategories}
+                      onCategoryChange={setSelectedCategories}
+                      availableCategories={availableCategories}
+                      onClearFilters={handleClearFilters}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
-        )}
+
+          {/* Active Filters Display */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {searchTerm && (
+                <Card className="px-3 py-1">
+                  <span className="text-sm">Search: "{searchTerm}"</span>
+                  <button onClick={() => setSearchTerm('')} className="ml-2">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Card>
+              )}
+              {selectedCategories.map(category => (
+                <Card key={category} className="px-3 py-1">
+                  <span className="text-sm">Category: {category}</span>
+                  <button 
+                    onClick={() => setSelectedCategories(prev => prev.filter(c => c !== category))} 
+                    className="ml-2"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Products Section */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-2">
+            {filteredAndSortedProducts.length} Product{filteredAndSortedProducts.length !== 1 ? 's' : ''}
+            {searchTerm && ` for "${searchTerm}"`}
+          </h2>
+          {filteredAndSortedProducts.length === 0 && products.length > 0 && (
+            <p className="text-gray-600">No products match your current filters. Try adjusting your search criteria.</p>
+          )}
+        </div>
+
+        <ModernProductGrid
+          products={filteredAndSortedProducts}
+          storeName={store.username || store.name}
+          viewMode={viewMode}
+          buttonColor={store.buttonColor}
+          buttonTextColor={store.buttonTextColor}
+        />
       </div>
     </div>
   );

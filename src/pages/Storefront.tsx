@@ -80,7 +80,7 @@ const Storefront: React.FC = () => {
   // Extract store from the data structure
   const store = storeData?.store;
   
-  // Fetch products with caching - FIXED to show ALL published products
+  // Fetch products with caching - FIXED to show ALL published products including variants
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
@@ -92,13 +92,13 @@ const Storefront: React.FC = () => {
       }
       
       try {
+        // Fetch ALL products (both simple and variant types)
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', store.id)
           .eq('status', 'active')
           .eq('is_published', true)
-          .not('slug', 'is', null) // Ensure products have slugs
           .order('created_at', { ascending: false });
           
         if (error) {

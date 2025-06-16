@@ -18,6 +18,8 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
   buttonColor,
   buttonTextColor 
 }) => {
+  console.log('ModernProductGrid: Rendering with', products.length, 'products');
+
   if (!products || products.length === 0) {
     return (
       <div className="text-center py-12 sm:py-16">
