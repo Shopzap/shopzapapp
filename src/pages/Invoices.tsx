@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -80,22 +79,18 @@ const Invoices = () => {
 
       if (error) throw error;
 
-      if (data.downloadUrl) {
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = data.downloadUrl;
-        a.download = `invoice-${order.id.slice(-8)}.html`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(a.href);
-        document.body.removeChild(a);
-
+      // Open the HTML page with auto-download
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.write(data);
+        newWindow.document.close();
+        
         toast({
-          title: "Invoice Download Started",
-          description: "Your invoice HTML file should be in your downloads.",
+          title: "Invoice Generated",
+          description: "Invoice opened in new tab. Click the download button to save as PDF.",
         });
       } else {
-        throw new Error(data.error || 'Failed to generate invoice download URL.');
+        throw new Error('Unable to open new window. Please check your popup blocker.');
       }
     } catch (error: any) {
       console.error('Error downloading invoice:', error);

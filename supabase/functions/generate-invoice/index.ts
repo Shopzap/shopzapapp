@@ -63,13 +63,18 @@ serve(async (req) => {
       });
     }
 
-    // Generate HTML invoice
-    const invoiceHtml = generateInvoiceHTML(orderDetails);
+    // Generate PDF using jsPDF via CDN
+    const htmlContent = generateInvoiceHTML(orderDetails);
     
-    // For now, we'll return a data URL that can be used to download the invoice
-    // In a production environment, you might want to use a PDF generation service
-    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(invoiceHtml)}`;
-    
+    // Return HTML content that will be converted to PDF client-side
+    const response = new Response(htmlContent, {
+      headers: { 
+        "Content-Type": "text/html",
+        "Content-Disposition": `inline; filename="invoice-${orderId.slice(-8)}.html"`,
+        ...corsHeaders 
+      },
+    });
+
     // Log the invoice generation
     await supabase.from('email_logs').insert({
       order_id: orderId,
@@ -79,16 +84,7 @@ serve(async (req) => {
       status: 'completed'
     });
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      downloadUrl: dataUrl,
-      message: 'Invoice generated successfully' 
-    }), {
-      headers: { 
-        "Content-Type": "application/json",
-        ...corsHeaders 
-      },
-    });
+    return response;
   } catch (error) {
     console.error('Error generating invoice:', error);
     return new Response(
@@ -111,10 +107,11 @@ function generateInvoiceHTML(orderDetails: any): string {
     <head>
         <meta charset="UTF-8">
         <title>Invoice #${orderNumber}</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .invoice-container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; }
+            .invoice-container { max-width: 800px; margin: 0 auto; }
             .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #7b3fe4; padding-bottom: 20px; }
             .logo { font-size: 24px; font-weight: bold; color: #7b3fe4; }
             .invoice-title { font-size: 28px; color: #333; }
@@ -131,11 +128,15 @@ function generateInvoiceHTML(orderDetails: any): string {
             .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 5px 0; }
             .total-final { font-size: 18px; font-weight: bold; color: #7b3fe4; border-top: 2px solid #7b3fe4; padding-top: 15px; margin-top: 15px; }
             .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
-            @media print { body { margin: 0; } .invoice-container { max-width: none; } }
+            .download-btn { background: #7b3fe4; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 20px 0; font-size: 16px; }
+            .download-btn:hover { background: #5a2bb8; }
+            @media print { body { margin: 0; } .invoice-container { max-width: none; } .download-btn { display: none; } }
         </style>
     </head>
     <body>
         <div class="invoice-container">
+            <button onclick="downloadPDF()" class="download-btn">Download PDF</button>
+            
             <!-- Header -->
             <div class="header">
                 <div class="logo">ShopZap</div>
@@ -152,15 +153,15 @@ function generateInvoiceHTML(orderDetails: any): string {
                     </div>
                     <div class="info-row">
                         <span class="info-label">Email:</span>
-                        <span>${orderDetails.buyer_email}</span>
+                        <span>${orderDetails.buyer_email || 'N/A'}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Phone:</span>
-                        <span>${orderDetails.buyer_phone}</span>
+                        <span>${orderDetails.buyer_phone || 'N/A'}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Address:</span>
-                        <span>${orderDetails.buyer_address}</span>
+                        <span>${orderDetails.buyer_address || 'N/A'}</span>
                     </div>
                 </div>
 
@@ -180,7 +181,7 @@ function generateInvoiceHTML(orderDetails: any): string {
                     </div>
                     <div class="info-row">
                         <span class="info-label">Payment Status:</span>
-                        <span style="color: #28a745; font-weight: bold;">Paid</span>
+                        <span style="color: #28a745; font-weight: bold;">${orderDetails.payment_status === 'paid' ? 'Paid' : 'Pending'}</span>
                     </div>
                 </div>
             </div>
@@ -256,9 +257,45 @@ function generateInvoiceHTML(orderDetails: any): string {
         </div>
 
         <script>
-            // Auto-print when opened in new window
-            if (window.location.href.startsWith('data:')) {
-                setTimeout(() => window.print(), 500);
+            function downloadPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Add content to PDF
+                doc.setFontSize(20);
+                doc.text('INVOICE', 20, 30);
+                
+                doc.setFontSize(12);
+                doc.text('ShopZap', 20, 50);
+                doc.text('Invoice #: ${orderNumber}', 20, 70);
+                doc.text('Date: ${orderDate}', 20, 80);
+                doc.text('Store: ${orderDetails.stores.name}', 20, 90);
+                
+                doc.text('Bill To:', 20, 110);
+                doc.text('${orderDetails.buyer_name}', 20, 120);
+                doc.text('${orderDetails.buyer_email || "N/A"}', 20, 130);
+                doc.text('${orderDetails.buyer_phone || "N/A"}', 20, 140);
+                
+                let yPos = 160;
+                doc.text('Items:', 20, yPos);
+                yPos += 10;
+                
+                ${orderDetails.order_items.map((item: any, index: number) => `
+                doc.text('${index + 1}. ${item.products.name} - Qty: ${item.quantity} - ₹${Number(item.price_at_purchase).toLocaleString()}', 20, ${yPos + (index * 10)});
+                `).join('')}
+                
+                yPos += ${orderDetails.order_items.length * 10 + 20};
+                doc.text('Total: ₹${Number(orderDetails.total_price).toLocaleString()}', 20, yPos);
+                
+                doc.text('Thank you for shopping with ${orderDetails.stores.name} on ShopZap!', 20, yPos + 20);
+                
+                // Save the PDF
+                doc.save('invoice-${orderNumber}.pdf');
+            }
+            
+            // Auto-download if URL contains download parameter
+            if (window.location.href.includes('?download=true')) {
+                setTimeout(downloadPDF, 1000);
             }
         </script>
     </body>
