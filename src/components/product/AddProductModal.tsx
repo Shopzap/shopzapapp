@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ interface AddProductModalProps {
 const AddProductModal: React.FC<AddProductModalProps> = ({ 
   onProductAdded, 
   disabled = false, 
-  title = "Upgrade your plan to add more products" 
+  title = "Add a new product" 
 }) => {
   const { toast } = useToast();
   const { storeData } = useStore();
@@ -263,8 +262,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          disabled={disabled}
-          title={disabled ? title : "Add a new product"}
           className="w-full sm:w-auto"
         >
           <Plus className="mr-2 h-4 w-4" />

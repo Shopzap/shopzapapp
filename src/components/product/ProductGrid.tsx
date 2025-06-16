@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import EditProductForm from './EditProductForm';
 import ProductCard from './ProductCard';
 import ProductSkeleton from './ProductSkeleton';
@@ -25,21 +26,48 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [deleteConfirmProduct, setDeleteConfirmProduct] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
 
   const handleDeleteProduct = async () => {
     if (!deleteConfirmProduct) return;
     
     try {
       setIsDeleting(true);
+      
+      // First delete any associated variants if it's a variant product
+      if (deleteConfirmProduct.product_type === 'variant') {
+        const { error: variantError } = await supabase
+          .from('product_variants')
+          .delete()
+          .eq('product_id', deleteConfirmProduct.id);
+          
+        if (variantError) {
+          console.error('Error deleting variants:', variantError);
+          throw variantError;
+        }
+      }
+      
+      // Then delete the product
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', deleteConfirmProduct.id);
         
       if (error) throw error;
+      
+      toast({
+        title: "Product deleted",
+        description: "Your product has been deleted successfully",
+      });
+      
       onDelete();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting product:', error);
+      toast({
+        title: "Error deleting product",
+        description: error.message || "Please try again later",
+        variant: "destructive"
+      });
     } finally {
       setIsDeleting(false);
       setDeleteConfirmProduct(null);

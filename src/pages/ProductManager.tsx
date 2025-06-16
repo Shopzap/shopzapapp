@@ -153,8 +153,6 @@ const ProductManager: React.FC = () => {
   };
 
   const isFreePlan = storePlan === 'free';
-  const freeProductLimit = 5;
-  const isAtProductLimit = isFreePlan && products.length >= freeProductLimit;
 
   if (isLoading) {
     return (
@@ -175,8 +173,8 @@ const ProductManager: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <AddProductModal 
               onProductAdded={handleProductAdded}
-              disabled={isAtProductLimit}
-              title={isAtProductLimit ? "Upgrade your plan to add more products" : "Add a new product"}
+              disabled={false}
+              title="Add a new product"
             />
             
             {!isFreePlan && (
@@ -190,15 +188,6 @@ const ProductManager: React.FC = () => {
             )}
           </div>
         </div>
-        
-        {isFreePlan && (
-          <div className="mb-4 p-4 bg-accent/40 rounded-md border border-accent">
-            <p className="text-sm">
-              Free plan: {products.length}/{freeProductLimit} products used. 
-              {isAtProductLimit ? " Upgrade to add more products." : ""}
-            </p>
-          </div>
-        )}
         
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row gap-2">
