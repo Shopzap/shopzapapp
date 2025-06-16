@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,7 +26,6 @@ import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
 import ThankYou from "./pages/ThankYou";
 import Invoices from "./pages/Invoices";
-import InstagramAuth from "./pages/InstagramAuth";
 
 // Legal pages
 import Terms from "./pages/Terms";
@@ -152,9 +150,6 @@ const AppContent = () => {
       <Route path="/auth" element={<ResponsiveLayout><Auth /></ResponsiveLayout>} />
       <Route path="/verify" element={<ResponsiveLayout><Verify /></ResponsiveLayout>} /> 
       <Route path="/auth-callback" element={<ResponsiveLayout><AuthCallback /></ResponsiveLayout>} />
-      
-      {/* Instagram OAuth route - Production ready with proper security */}
-      <Route path="/instagram-auth" element={<InstagramAuth />} />
       
       {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
       {/* Global cart route - handles both store-specific and general cart access */}
