@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PaymentMethodSelector } from './PaymentMethodSelector';
 
 interface OrderItem {
@@ -27,6 +28,7 @@ interface OrderSummaryProps {
   razorpayAvailable: boolean;
   paymentMode: 'test' | 'live';
   sellerAllowsCOD?: boolean;
+  sellerAllowsOnline?: boolean;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -39,93 +41,80 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onPaymentMethodChange,
   razorpayAvailable,
   paymentMode,
-  sellerAllowsCOD = true
+  sellerAllowsCOD = true,
+  sellerAllowsOnline = true
 }) => {
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatVariantName = (variant: any) => {
-    if (!variant?.options) return '';
-    
-    const options = typeof variant.options === 'object' ? variant.options : {};
-    return Object.values(options).join(' - ');
-  };
-
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Order Summary</CardTitle>
-          <p className="text-sm text-muted-foreground">From {storeName}</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Order Items */}
-          <div className="space-y-3">
-            {orderItems.map((item) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <img
-                  src={item.image}
+    <Card className="sticky top-4">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>Order Summary</span>
+          <Badge variant="outline">{storeName}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Order Items */}
+        <div className="space-y-3">
+          {orderItems.map((item) => (
+            <div key={item.id} className="flex gap-3">
+              <div className="relative">
+                <img 
+                  src={item.image} 
                   alt={item.name}
-                  className="w-12 h-12 object-cover rounded-lg"
+                  className="w-12 h-12 object-cover rounded-md"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=200&fit=crop';
+                  }}
                 />
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-sm line-clamp-1">{item.name}</h4>
-                  {item.variant && (
-                    <p className="text-xs text-muted-foreground">
-                      {formatVariantName(item.variant)}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Qty: {item.quantity}</span>
-                    <span>•</span>
-                    <span>{formatPrice(item.price)}</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium text-sm">
-                    {formatPrice(item.price * item.quantity)}
-                  </p>
-                </div>
+                <Badge 
+                  variant="secondary" 
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                >
+                  {item.quantity}
+                </Badge>
               </div>
-            ))}
-          </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-medium text-sm truncate">{item.name}</h4>
+                {item.variant && (
+                  <p className="text-xs text-muted-foreground">
+                    {Object.entries(item.variant.options).map(([key, value]) => 
+                      `${key}: ${value}`
+                    ).join(', ')}
+                  </p>
+                )}
+                <p className="text-sm font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          {/* Price Breakdown */}
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Shipping</span>
-              <span className="text-green-600 font-medium">
-                {shipping > 0 ? formatPrice(shipping) : 'Free'}
-              </span>
-            </div>
-            <div className="flex justify-between font-semibold text-base border-t pt-2">
-              <span>Total</span>
-              <span>{formatPrice(total)}</span>
-            </div>
-          </div>
+        {/* Payment Method Selection */}
+        <PaymentMethodSelector
+          paymentMethod={paymentMethod}
+          onPaymentMethodChange={onPaymentMethodChange}
+          razorpayAvailable={razorpayAvailable}
+          paymentMode={paymentMode}
+          sellerAllowsCOD={sellerAllowsCOD}
+          sellerAllowsOnline={sellerAllowsOnline}
+        />
 
-          {/* Payment Method */}
-          <div className="border-t pt-4">
-            <PaymentMethodSelector
-              paymentMethod={paymentMethod}
-              onPaymentMethodChange={onPaymentMethodChange}
-              razorpayAvailable={razorpayAvailable}
-              paymentMode={paymentMode}
-              sellerAllowsCOD={sellerAllowsCOD}
-            />
+        {/* Price Breakdown */}
+        <div className="space-y-2 pt-4 border-t">
+          <div className="flex justify-between text-sm">
+            <span>Subtotal</span>
+            <span>₹{subtotal.toLocaleString()}</span>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="flex justify-between text-sm">
+            <span>Shipping</span>
+            <span className="text-green-600">FREE</span>
+          </div>
+          <div className="flex justify-between font-semibold text-lg border-t pt-2">
+            <span>Total</span>
+            <span>₹{total.toLocaleString()}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

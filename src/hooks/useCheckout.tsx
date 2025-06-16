@@ -41,6 +41,7 @@ export const useCheckout = () => {
   const [paymentMode, setPaymentMode] = useState<'test' | 'live'>('test');
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
   const [sellerAllowsCOD, setSellerAllowsCOD] = useState(true);
+  const [sellerAllowsOnline, setSellerAllowsOnline] = useState(true);
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
     {
@@ -91,23 +92,37 @@ export const useCheckout = () => {
     checkRazorpayAvailability();
   }, []);
 
-  // Use real store data from context and check payment settings
+  // Fetch store payment settings and set initial payment method
   useEffect(() => {
     const fetchStorePaymentSettings = async () => {
       if (contextStoreData) {
         console.log('Using real store data:', contextStoreData);
         
-        // Check if store has payment settings
+        // Get payment settings from store theme/settings
         const storeSettings = contextStoreData.theme && typeof contextStoreData.theme === 'object' 
           ? (contextStoreData.theme as any) 
           : {};
         
+        // Check what payment methods the seller allows
         const allowsCOD = storeSettings.allow_cod !== false; // Default to true if not set
-        setSellerAllowsCOD(allowsCOD);
+        const allowsOnline = storeSettings.allow_online !== false; // Default to true if not set
         
-        // If seller doesn't allow COD, force online payment
-        if (!allowsCOD) {
+        console.log('Store payment settings:', { allowsCOD, allowsOnline, storeSettings });
+        
+        setSellerAllowsCOD(allowsCOD);
+        setSellerAllowsOnline(allowsOnline);
+        
+        // Set default payment method based on what's available
+        if (allowsCOD && !allowsOnline) {
+          setPaymentMethod('cod');
+        } else if (!allowsCOD && allowsOnline) {
           setPaymentMethod('online');
+        } else if (allowsCOD && allowsOnline) {
+          setPaymentMethod('cod'); // Default to COD if both are allowed
+        } else {
+          // Neither is allowed - this shouldn't happen, but default to COD
+          setPaymentMethod('cod');
+          console.warn('No payment methods are enabled for this store');
         }
         
         setStoreData({
@@ -205,7 +220,17 @@ export const useCheckout = () => {
       console.log('Order data prepared:', orderData);
 
       if (paymentMethod === 'online') {
-        // Check if Razorpay is available and key is set
+        // Check if seller allows online payment and Razorpay is available
+        if (!sellerAllowsOnline) {
+          toast({
+            title: "Payment Method Not Available",
+            description: "This seller does not accept online payments. Please use Cash on Delivery.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
         if (!razorpayAvailable || !razorpayKeyId) {
           toast({
             title: "Payment Unavailable",
@@ -338,6 +363,16 @@ export const useCheckout = () => {
         }
       } else {
         // COD Order
+        if (!sellerAllowsCOD) {
+          toast({
+            title: "Payment Method Not Available",
+            description: "This seller does not accept Cash on Delivery. Please use online payment.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
         try {
           console.log('Creating COD order...');
           const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
@@ -396,6 +431,7 @@ export const useCheckout = () => {
     shipping,
     total,
     handlePlaceOrder,
-    sellerAllowsCOD
+    sellerAllowsCOD,
+    sellerAllowsOnline
   };
 };

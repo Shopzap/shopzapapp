@@ -24,7 +24,8 @@ const Checkout: React.FC = () => {
     shipping,
     total,
     handlePlaceOrder,
-    sellerAllowsCOD
+    sellerAllowsCOD,
+    sellerAllowsOnline
   } = useCheckout();
 
   return (
@@ -57,6 +58,7 @@ const Checkout: React.FC = () => {
                 razorpayAvailable={razorpayAvailable}
                 paymentMode={paymentMode}
                 sellerAllowsCOD={sellerAllowsCOD}
+                sellerAllowsOnline={sellerAllowsOnline}
               />
 
               {/* Customer Information */}
