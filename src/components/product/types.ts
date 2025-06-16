@@ -1,4 +1,6 @@
 
+import { Json } from '@/integrations/supabase/types';
+
 export interface ProductVariant {
   id?: string;
   product_id?: string;
@@ -6,7 +8,7 @@ export interface ProductVariant {
   inventory_count: number;
   sku?: string;
   image_url?: string;
-  options: { [key: string]: string };
+  options: Json;
   created_at?: string;
   updated_at?: string;
 }

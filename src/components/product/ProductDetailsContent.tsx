@@ -92,8 +92,15 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
     : images;
 
   const getWhatsAppLink = () => {
+    const parseOptions = (options: any): Record<string, string> => {
+      if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
+        return options as Record<string, string>;
+      }
+      return {};
+    };
+
     const message = selectedVariant
-      ? `Hi! I'm interested in "${product.name}" - ${Object.values(selectedVariant.options).join(' / ')} (₹${currentPrice})`
+      ? `Hi! I'm interested in "${product.name}" - ${Object.values(parseOptions(selectedVariant.options)).join(' / ')} (₹${currentPrice})`
       : `Hi! I'm interested in "${product.name}" (₹${currentPrice})`;
     return `https://wa.me/?text=${encodeURIComponent(message)}`;
   };

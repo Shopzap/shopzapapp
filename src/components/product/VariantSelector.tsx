@@ -20,6 +20,14 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [availableOptions, setAvailableOptions] = useState<Record<string, string[]>>({});
 
+  // Helper function to safely parse options
+  const parseOptions = (options: any): Record<string, string> => {
+    if (typeof options === 'object' && options !== null && !Array.isArray(options)) {
+      return options as Record<string, string>;
+    }
+    return {};
+  };
+
   // Extract all unique options from variants
   useEffect(() => {
     if (!variants || variants.length === 0) return;
@@ -27,14 +35,13 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
     const optionTypes: Record<string, Set<string>> = {};
     
     variants.forEach(variant => {
-      if (variant.options) {
-        Object.entries(variant.options).forEach(([key, value]) => {
-          if (!optionTypes[key]) {
-            optionTypes[key] = new Set();
-          }
-          optionTypes[key].add(value);
-        });
-      }
+      const parsedOptions = parseOptions(variant.options);
+      Object.entries(parsedOptions).forEach(([key, value]) => {
+        if (!optionTypes[key]) {
+          optionTypes[key] = new Set();
+        }
+        optionTypes[key].add(String(value));
+      });
     });
 
     const options: Record<string, string[]> = {};
@@ -52,8 +59,8 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
 
     if (hasAllSelections && optionKeys.length > 0) {
       const matchingVariant = variants.find(variant => {
-        if (!variant.options) return false;
-        return optionKeys.every(key => variant.options[key] === selections[key]);
+        const parsedOptions = parseOptions(variant.options);
+        return optionKeys.every(key => parsedOptions[key] === selections[key]);
       });
       onVariantSelect(matchingVariant || null);
     } else {
@@ -78,16 +85,17 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
     delete otherSelections[optionType];
 
     const availableVariants = variants.filter(variant => {
-      if (!variant.options) return false;
+      const parsedOptions = parseOptions(variant.options);
       return Object.entries(otherSelections).every(([key, value]) => 
-        variant.options[key] === value
+        parsedOptions[key] === value
       );
     });
 
     const availableValues = new Set<string>();
     availableVariants.forEach(variant => {
-      if (variant.options && variant.options[optionType]) {
-        availableValues.add(variant.options[optionType]);
+      const parsedOptions = parseOptions(variant.options);
+      if (parsedOptions[optionType]) {
+        availableValues.add(String(parsedOptions[optionType]));
       }
     });
 
@@ -97,9 +105,9 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
   const isValueAvailable = (optionType: string, value: string): boolean => {
     const testSelections = { ...selections, [optionType]: value };
     return variants.some(variant => {
-      if (!variant.options) return false;
+      const parsedOptions = parseOptions(variant.options);
       return Object.entries(testSelections).every(([key, val]) => 
-        variant.options[key] === val
+        parsedOptions[key] === val
       );
     });
   };
@@ -144,7 +152,7 @@ const VariantSelector: React.FC<VariantSelectorProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <Badge variant="secondary" className="mb-2">
-                {Object.values(selectedVariant.options).join(' • ')}
+                {Object.values(parseOptions(selectedVariant.options)).join(' • ')}
               </Badge>
               <p className="text-lg font-semibold">₹{selectedVariant.price}</p>
               <p className="text-sm text-muted-foreground">
