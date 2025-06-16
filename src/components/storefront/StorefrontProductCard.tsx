@@ -103,6 +103,8 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
           onWishlist={handleWishlist}
           onShare={handleShare}
           onViewDetails={handleViewDetails}
+          productName={product.name}
+          productPrice={product.price}
         />
       </div>
       <ProductCardContent
