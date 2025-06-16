@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import { useSmartRetry } from '@/hooks/useSmartRetry';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import ResponsiveLayout from '@/components/ResponsiveLayout';
 import { useToast } from '@/hooks/use-toast';
+import { ProductVariant } from '@/components/product/types';
 
 const ProductDetails: React.FC = () => {
   const { storeName: storeUsername, productSlug } = useParams<{ 
@@ -59,7 +61,7 @@ const ProductDetails: React.FC = () => {
 
       const productSelectQuery = `
         id, name, description, price, image_url, images, status, is_published, 
-        store_id, slug, inventory_count, payment_method, category, created_at, updated_at
+        store_id, slug, inventory_count, payment_method, category, created_at, updated_at, product_type
       `;
 
       let { data: productData, error: productError } = await supabase
@@ -135,7 +137,7 @@ const ProductDetails: React.FC = () => {
     timeout: 8000
   });
 
-  const handleBuyNow = async () => {
+  const handleBuyNow = async (selectedVariant?: ProductVariant) => {
     if (!product || isBuyingNow) return;
     
     setIsBuyingNow(true);
@@ -144,9 +146,14 @@ const ProductDetails: React.FC = () => {
       const orderItem = {
         id: product.id,
         name: product.name,
-        price: product.price,
+        price: selectedVariant ? selectedVariant.price : product.price,
         quantity: 1,
-        image: product.image_url || 'https://placehold.co/80x80'
+        image: selectedVariant?.image_url || product.image_url || 'https://placehold.co/80x80',
+        variant: selectedVariant ? {
+          id: selectedVariant.id || '',
+          options: selectedVariant.options,
+          name: Object.values(selectedVariant.options || {}).join(' / ')
+        } : undefined
       };
       
       // Show success toast
