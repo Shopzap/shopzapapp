@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     return Promise.all(uploadPromises);
   };
 
+  const validateVariants = (variants: ProductVariant[]): boolean => {
+    if (variants.length === 0) return false;
+    
+    return variants.every(variant => {
+      // Check if variant has required fields
+      const hasValidPrice = variant.price && parseFloat(variant.price.toString()) > 0;
+      const hasValidOptions = variant.options && Object.keys(variant.options).length > 0;
+      const hasValidInventory = variant.inventory_count !== undefined && variant.inventory_count >= 0;
+      
+      return hasValidPrice && hasValidOptions && hasValidInventory;
+    });
+  };
+
   const handleProductImport = (importedData: any) => {
     setFormData(prev => ({
       ...prev,
@@ -107,13 +121,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       return;
     }
 
-    if (productType === 'variant' && variants.length === 0) {
+    // Enhanced validation for variants
+    if (productType === 'variant') {
+      if (!validateVariants(variants)) {
         toast({
-            title: "Variants required",
-            description: "Please define and generate at least one product variant.",
-            variant: "destructive"
+          title: "Variants incomplete",
+          description: "Please ensure all variants have valid price, options, and inventory count.",
+          variant: "destructive"
         });
         return;
+      }
     }
 
     if (images.length === 0 && newFiles.length === 0) {
@@ -130,20 +147,20 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     try {
       let finalImages: string[] = [...images];
 
-      // Upload image if selected
+      // Upload new images if any
       if (newFiles.length > 0) {
         try {
-            const uploadedUrls = await uploadImages(newFiles, storeData.id);
-            finalImages = [...finalImages, ...uploadedUrls];
+          const uploadedUrls = await uploadImages(newFiles, storeData.id);
+          finalImages = [...finalImages, ...uploadedUrls];
         } catch(uploadError) {
-            console.error("Error uploading images", uploadError);
-            toast({
-                title: "Error",
-                description: "Failed to upload images. Please try again.",
-                variant: "destructive"
-            });
-            setIsLoading(false);
-            return;
+          console.error("Error uploading images", uploadError);
+          toast({
+            title: "Error",
+            description: "Failed to upload images. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
         }
       }
 
@@ -170,8 +187,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         category: formData.category,
         inventory_count: productType === 'simple' 
           ? parseInt(formData.inventory_count) || 0 
-          : variants.reduce((acc, v) => acc + (v.inventory_count || 0), 0)
+          : variants.reduce((acc, v) => acc + (parseInt(v.inventory_count?.toString() || '0') || 0), 0)
       };
+
+      console.log('Creating product with payload:', productPayload);
 
       const { data: newProduct, error } = await supabase
         .from('products')
@@ -179,27 +198,37 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Product creation error:', error);
+        throw error;
+      }
       
-      if (productType === 'variant' && newProduct) {
+      // Handle variants if it's a variant product
+      if (productType === 'variant' && newProduct && variants.length > 0) {
         const variantsPayload = variants.map(variant => ({
-          ...variant,
           product_id: newProduct.id,
-          price: parseFloat(variant.price as any) || 0,
-          inventory_count: parseInt(variant.inventory_count as any) || 0
+          price: parseFloat(variant.price?.toString() || '0') || 0,
+          inventory_count: parseInt(variant.inventory_count?.toString() || '0') || 0,
+          sku: variant.sku || `${newProduct.id.slice(0, 8)}-${Object.values(variant.options).join('-').toUpperCase()}`,
+          options: variant.options,
+          image_url: variant.image_url || finalImages[0] || null
         }));
+
+        console.log('Creating variants with payload:', variantsPayload);
 
         const { error: variantError } = await supabase
           .from('product_variants')
           .insert(variantsPayload);
 
-        if (variantError) throw variantError;
+        if (variantError) {
+          console.error('Variant creation error:', variantError);
+          throw variantError;
+        }
       }
-
 
       toast({
         title: "Success",
-        description: "Product added successfully",
+        description: `Product ${productType === 'variant' ? 'with variants' : ''} added successfully`,
       });
 
       // Reset form
@@ -242,7 +271,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           Add Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
@@ -315,7 +344,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 <RadioGroup 
                   defaultValue="simple" 
                   value={productType}
-                  onValueChange={(value: 'simple' | 'variant') => setProductType(value)}
+                  onValueChange={(value: 'simple' | 'variant') => {
+                    setProductType(value);
+                    if (value === 'simple') {
+                      setVariants([]);
+                    }
+                  }}
                   className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
@@ -360,7 +394,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
               ) : (
                 <>
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="price">Default Price (₹)</Label>
                     <Input
                       id="price"
@@ -374,7 +408,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     />
                     <p className="text-xs text-muted-foreground">This will be the default price for new variants.</p>
                   </div>
-                  <VariantManager onVariantsChange={setVariants} basePrice={formData.price} />
+                  <VariantManager 
+                    onVariantsChange={setVariants} 
+                    basePrice={formData.price}
+                    initialVariants={variants}
+                  />
                 </>
               )}
 

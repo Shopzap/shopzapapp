@@ -1,9 +1,8 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 interface MultiImageUploaderProps {
   images: string[];
@@ -20,159 +19,134 @@ const MultiImageUploader: React.FC<MultiImageUploaderProps> = ({
   disabled = false,
   maxImages = 5
 }) => {
-  const [newFiles, setNewFiles] = useState<File[]>([]);
-  const { toast } = useToast();
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    
-    if (files.length + images.length + newFiles.length > maxImages) {
-      toast({
-        title: "Too many images",
-        description: `Maximum ${maxImages} images allowed`,
-        variant: "destructive"
-      });
+    const totalImages = images.length + files.length;
+    if (totalImages > maxImages) {
+      alert(`Maximum ${maxImages} images allowed`);
       return;
     }
 
-    const validFiles: File[] = [];
-    const invalidFiles: string[] = [];
-
-    files.forEach(file => {
-      const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type);
-      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
-
-      if (!isValidType) {
-        invalidFiles.push(`${file.name}: Invalid format`);
-      } else if (!isValidSize) {
-        invalidFiles.push(`${file.name}: File too large (max 5MB)`);
-      } else {
-        validFiles.push(file);
-      }
+    // Validate file types
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB limit
+      return isValidType && isValidSize;
     });
 
-    if (invalidFiles.length > 0) {
-      toast({
-        title: "Invalid files",
-        description: invalidFiles.join(', '),
-        variant: "destructive"
-      });
+    if (validFiles.length !== files.length) {
+      alert('Please select only image files under 5MB');
     }
 
-    if (validFiles.length > 0) {
-      const updatedFiles = [...newFiles, ...validFiles];
-      setNewFiles(updatedFiles);
-      onFilesChange(updatedFiles);
-    }
+    onFilesChange(validFiles);
+
+    // Create preview URLs for immediate display
+    const newImageUrls = validFiles.map(file => URL.createObjectURL(file));
+    onImagesChange([...images, ...newImageUrls]);
 
     // Reset input
-    e.target.value = '';
-  }, [images.length, newFiles, maxImages, onFilesChange, toast]);
+    event.target.value = '';
+  }, [images, onImagesChange, onFilesChange, maxImages]);
 
-  const removeExistingImage = (index: number) => {
-    const updatedImages = images.filter((_, i) => i !== index);
-    onImagesChange(updatedImages);
-  };
-
-  const removeNewFile = (index: number) => {
-    const updatedFiles = newFiles.filter((_, i) => i !== index);
-    setNewFiles(updatedFiles);
-    onFilesChange(updatedFiles);
-  };
-
-  const totalImages = images.length + newFiles.length;
-  const canAddMore = totalImages < maxImages;
+  const removeImage = useCallback((index: number) => {
+    const newImages = images.filter((_, i) => i !== index);
+    onImagesChange(newImages);
+  }, [images, onImagesChange]);
 
   return (
     <div className="space-y-4">
-      <Label>Product Images ({totalImages}/{maxImages})</Label>
-      
-      {/* Image Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {/* Existing Images */}
-        {images.map((imageUrl, index) => (
-          <div key={`existing-${index}`} className="relative group">
-            <div className="aspect-square border rounded-lg overflow-hidden bg-gray-50">
-              <img
-                src={imageUrl}
-                alt={`Product image ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {!disabled && (
+      <div>
+        <Label className="text-sm font-medium">Product Images</Label>
+        <p className="text-xs text-muted-foreground">
+          • Minimum 1 image required
+        </p>
+        <p className="text-xs text-muted-foreground">
+          • Maximum {maxImages} images
+        </p>
+        <p className="text-xs text-muted-foreground">
+          • Formats: JPG, PNG, WebP
+        </p>
+        <p className="text-xs text-muted-foreground">
+          • Max size: 5MB per image
+        </p>
+        <p className="text-xs text-muted-foreground">
+          • First image will be used as cover image
+        </p>
+      </div>
+
+      {/* Image Preview Grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {images.map((image, index) => (
+            <div key={index} className="relative group">
+              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 border-dashed border-gray-300">
+                <img
+                  src={image}
+                  alt={`Product ${index + 1}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = 'https://placehold.co/150x150';
+                  }}
+                />
+              </div>
               <Button
                 type="button"
                 variant="destructive"
                 size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-100 group-hover:opacity-100 transition-opacity"
-                onClick={() => removeExistingImage(index)}
+                className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => removeImage(index)}
+                disabled={disabled}
               >
                 <X className="h-3 w-3" />
               </Button>
-            )}
-            {index === 0 && (
-              <div className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                Cover
-              </div>
-            )}
-          </div>
-        ))}
+              {index === 0 && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
+                    Cover
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        {/* New Files Preview */}
-        {newFiles.map((file, index) => (
-          <div key={`new-${index}`} className="relative group">
-            <div className="aspect-square border rounded-lg overflow-hidden bg-gray-50">
-              <img
-                src={URL.createObjectURL(file)}
-                alt={`New image ${index + 1}`}
-                className="w-full h-full object-cover"
+      {/* Upload Button */}
+      {images.length < maxImages && (
+        <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
+          <div className="text-center">
+            <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+            <div className="mt-4">
+              <label htmlFor="image-upload" className="cursor-pointer">
+                <Button type="button" disabled={disabled} asChild>
+                  <span>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Choose Images
+                  </span>
+                </Button>
+              </label>
+              <input
+                id="image-upload"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={disabled}
               />
             </div>
-            {!disabled && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-100 group-hover:opacity-100 transition-opacity"
-                onClick={() => removeNewFile(index)}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
-            {images.length === 0 && index === 0 && (
-              <div className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                Cover
-              </div>
-            )}
+            <p className="mt-2 text-sm text-gray-500">
+              {images.length > 0 
+                ? `Add ${maxImages - images.length} more image${maxImages - images.length !== 1 ? 's' : ''}`
+                : `Add up to ${maxImages} images`
+              }
+            </p>
           </div>
-        ))}
-
-        {/* Upload Button */}
-        {canAddMore && !disabled && (
-          <label className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors">
-            <input
-              type="file"
-              multiple
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-            <span className="text-sm text-gray-500 text-center px-2">
-              Add Images
-            </span>
-          </label>
-        )}
-      </div>
-
-      {/* Requirements */}
-      <div className="text-sm text-gray-500">
-        <p>• Minimum 1 image required</p>
-        <p>• Maximum {maxImages} images</p>
-        <p>• Formats: JPG, PNG, WebP</p>
-        <p>• Max size: 5MB per image</p>
-        <p>• First image will be used as cover image</p>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

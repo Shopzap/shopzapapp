@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,11 @@ interface VariantManagerProps {
   basePrice: string;
 }
 
-const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], onVariantsChange, basePrice }) => {
+const VariantManager: React.FC<VariantManagerProps> = ({ 
+  initialVariants = [], 
+  onVariantsChange, 
+  basePrice 
+}) => {
   const [options, setOptions] = useState<{ id: string; name: string; values: string[] }[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>(initialVariants);
   const [newOptionName, setNewOptionName] = useState('');
@@ -77,13 +82,14 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
       });
 
       return {
-        id: existingVariant?.id,
+        id: existingVariant?.id || uuidv4(),
         price: existingVariant?.price ?? (parseFloat(basePrice) || 0),
         inventory_count: existingVariant?.inventory_count ?? 0,
         sku: existingVariant?.sku || '',
         options: comboOptions,
       };
     });
+    
     setVariants(newVariants);
   };
   
@@ -128,12 +134,12 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
     }));
   };
 
-  const handleVariantChange = (index: number, field: keyof ProductVariant, value: string) => {
+  const handleVariantChange = (index: number, field: keyof ProductVariant, value: string | number) => {
     const updatedVariants = [...variants];
     const numericFields = ['price', 'inventory_count'];
     updatedVariants[index] = {
       ...updatedVariants[index],
-      [field]: numericFields.includes(field) ? parseFloat(value) || 0 : value
+      [field]: numericFields.includes(field) ? parseFloat(value.toString()) || 0 : value
     };
     setVariants(updatedVariants);
   };
@@ -159,7 +165,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
                 placeholder={`Add value for ${option.name}`}
                 value={newOptionValues[option.id] || ''}
                 onChange={e => setNewOptionValues({ ...newOptionValues, [option.id]: e.target.value })}
-                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOptionValue(option.id))}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOptionValue(option.id))}
               />
               <Button type="button" onClick={() => addOptionValue(option.id)}>Add</Button>
             </div>
@@ -177,7 +183,7 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
         ))}
         <div className="flex gap-2">
           <Input
-            placeholder="Add new option (e.g., Color)"
+            placeholder="Add new option (e.g., Color, Size)"
             value={newOptionName}
             onChange={e => setNewOptionName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
@@ -198,50 +204,55 @@ const VariantManager: React.FC<VariantManagerProps> = ({ initialVariants = [], o
 
       {variants.length > 0 && (
         <div className="space-y-4">
-            <h3 className="font-medium">Variant Pricing & Inventory</h3>
-            <div className="border rounded-lg overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Variant</TableHead>
-                            <TableHead>Price (₹)</TableHead>
-                            <TableHead>Inventory</TableHead>
-                            <TableHead>SKU</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {variants.map((variant, index) => (
-                        <TableRow key={index}>
-                            <TableCell className="font-medium">{variantDisplayName(variant)}</TableCell>
-                            <TableCell>
-                                <Input
-                                    type="number"
-                                    value={variant.price}
-                                    onChange={e => handleVariantChange(index, 'price', e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </TableCell>
-                            <TableCell>
-                                <Input
-                                    type="number"
-                                    value={variant.inventory_count}
-                                    onChange={e => handleVariantChange(index, 'inventory_count', e.target.value)}
-                                    placeholder="0"
-                                />
-                            </TableCell>
-                            <TableCell>
-                                <Input
-                                    type="text"
-                                    value={variant.sku || ''}
-                                    onChange={e => handleVariantChange(index, 'sku', e.target.value)}
-                                    placeholder="SKU"
-                                />
-                            </TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+          <h3 className="font-medium">Variant Pricing & Inventory ({variants.length} combinations)</h3>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Price (₹)</TableHead>
+                  <TableHead>Inventory</TableHead>
+                  <TableHead>SKU</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {variants.map((variant, index) => (
+                  <TableRow key={`${index}-${Object.values(variant.options).join('-')}`}>
+                    <TableCell className="font-medium">{variantDisplayName(variant)}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={variant.price}
+                        onChange={e => handleVariantChange(index, 'price', e.target.value)}
+                        placeholder="0.00"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={variant.inventory_count}
+                        onChange={e => handleVariantChange(index, 'inventory_count', e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        required
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="text"
+                        value={variant.sku || ''}
+                        onChange={e => handleVariantChange(index, 'sku', e.target.value)}
+                        placeholder="Auto-generated"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
     </div>
