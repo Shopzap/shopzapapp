@@ -19,7 +19,7 @@ import Analytics from './pages/Analytics';
 import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
 import Settings from "./pages/Settings";
-import InstagramAutomation from "./pages/InstagramAutomation";
+import BankDetails from "./pages/BankDetails";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
