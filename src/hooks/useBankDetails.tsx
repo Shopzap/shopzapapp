@@ -26,7 +26,7 @@ export const useBankDetails = () => {
   // Fetch bank details
   const { data: bankDetails, isLoading, error } = useQuery({
     queryKey: ['bankDetails'],
-    queryFn: async () => {
+    queryFn: async (): Promise<BankDetails | null> => {
       const { data, error } = await supabase
         .from('bank_details')
         .select('*')
@@ -44,7 +44,7 @@ export const useBankDetails = () => {
         } as BankDetails;
       }
 
-      return data;
+      return null;
     },
   });
 
