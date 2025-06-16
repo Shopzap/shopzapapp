@@ -103,7 +103,7 @@ const handler = async (req: Request): Promise<Response> => {
           buyer_address: orderData.buyerAddress,
           total_price: orderData.totalPrice,
           payment_status: 'pending',
-          payment_method: orderData.paymentMethod || 'cod',
+          payment_method: 'cod', // Explicitly set COD
           status: 'pending',
           notes: 'Cash on Delivery Order'
         })
@@ -243,8 +243,8 @@ const handler = async (req: Request): Promise<Response> => {
           buyer_phone: orderData.buyerPhone,
           buyer_address: orderData.buyerAddress,
           total_price: orderData.totalPrice,
-          payment_status: 'paid',
-          payment_method: 'online',
+          payment_status: 'paid', // Mark as paid for successful online payment
+          payment_method: 'online', // Explicitly set online payment
           payment_gateway: 'razorpay',
           razorpay_payment_id,
           razorpay_order_id,

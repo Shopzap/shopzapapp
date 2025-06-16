@@ -1,36 +1,297 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+interface InvoiceData {
+  orderId: string;
+  storeName: string;
+  storeEmail: string;
+  storePhone: string;
+  storeAddress: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  buyerAddress: string;
+  orderDate: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+    total: number;
+  }>;
+  subtotal: number;
+  shipping: number;
+  total: number;
+  paymentMethod: string;
+  paymentStatus: string;
+}
+
+const generateInvoiceHTML = (data: InvoiceData): string => {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - ${data.orderId}</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .invoice { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 20px; 
+        }
+        .logo { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #333; 
+        }
+        .invoice-details { 
+            text-align: right; 
+        }
+        .invoice-number { 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #666; 
+        }
+        .date { 
+            color: #888; 
+            margin-top: 5px; 
+        }
+        .parties { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 30px; 
+        }
+        .party { 
+            width: 45%; 
+        }
+        .party h3 { 
+            margin: 0 0 10px 0; 
+            color: #333; 
+            font-size: 16px; 
+        }
+        .party p { 
+            margin: 5px 0; 
+            color: #666; 
+            line-height: 1.4; 
+        }
+        .items-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 30px; 
+        }
+        .items-table th, .items-table td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #eee; 
+        }
+        .items-table th { 
+            background: #f8f9fa; 
+            font-weight: bold; 
+            color: #333; 
+        }
+        .items-table .text-right { 
+            text-align: right; 
+        }
+        .totals { 
+            margin-left: auto; 
+            width: 300px; 
+        }
+        .total-row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 8px 0; 
+            border-bottom: 1px solid #eee; 
+        }
+        .total-row.final { 
+            border-bottom: 2px solid #333; 
+            font-weight: bold; 
+            font-size: 18px; 
+            color: #333; 
+        }
+        .payment-info { 
+            margin-top: 30px; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-radius: 6px; 
+        }
+        .payment-info h3 { 
+            margin: 0 0 10px 0; 
+            color: #333; 
+        }
+        .payment-status { 
+            display: inline-block; 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+        }
+        .payment-status.paid { 
+            background: #d4edda; 
+            color: #155724; 
+        }
+        .payment-status.pending { 
+            background: #fff3cd; 
+            color: #856404; 
+        }
+        .footer { 
+            margin-top: 40px; 
+            text-align: center; 
+            color: #888; 
+            font-size: 14px; 
+        }
+        .download-btn { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: bold; 
+        }
+        .download-btn:hover { 
+            background: #0056b3; 
+        }
+        @media print {
+            body { background: white; }
+            .download-btn { display: none; }
+            .invoice { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="download-btn" onclick="window.print()">📄 Download PDF</button>
+    
+    <div class="invoice">
+        <div class="header">
+            <div class="logo">${data.storeName}</div>
+            <div class="invoice-details">
+                <div class="invoice-number">Invoice #${data.orderId.slice(-8)}</div>
+                <div class="date">${new Date(data.orderDate).toLocaleDateString()}</div>
+            </div>
+        </div>
+
+        <div class="parties">
+            <div class="party">
+                <h3>From:</h3>
+                <p><strong>${data.storeName}</strong></p>
+                <p>${data.storeEmail}</p>
+                <p>${data.storePhone}</p>
+                ${data.storeAddress ? `<p>${data.storeAddress}</p>` : ''}
+            </div>
+            <div class="party">
+                <h3>To:</h3>
+                <p><strong>${data.buyerName}</strong></p>
+                <p>${data.buyerEmail}</p>
+                <p>${data.buyerPhone}</p>
+                ${data.buyerAddress ? `<p>${data.buyerAddress}</p>` : ''}
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${data.items.map(item => `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td class="text-right">${item.quantity}</td>
+                        <td class="text-right">₹${item.price.toLocaleString()}</td>
+                        <td class="text-right">₹${item.total.toLocaleString()}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>₹${data.subtotal.toLocaleString()}</span>
+            </div>
+            <div class="total-row">
+                <span>Shipping:</span>
+                <span>₹${data.shipping.toLocaleString()}</span>
+            </div>
+            <div class="total-row final">
+                <span>Total:</span>
+                <span>₹${data.total.toLocaleString()}</span>
+            </div>
+        </div>
+
+        <div class="payment-info">
+            <h3>Payment Information</h3>
+            <p>
+                <strong>Method:</strong> ${data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
+                <span class="payment-status ${data.paymentStatus === 'paid' ? 'paid' : 'pending'}">
+                    ${data.paymentStatus}
+                </span>
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>This invoice was generated on ${new Date().toLocaleDateString()}</p>
+        </div>
+    </div>
+</body>
+</html>`;
+};
+
+const handler = async (req: Request): Promise<Response> => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const { orderId } = await req.json();
-    
+
     if (!orderId) {
-      return new Response(JSON.stringify({ error: 'orderId is required' }), {
-        status: 400,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+      throw new Error('Order ID is required');
     }
 
     console.log('Generating invoice for order:', orderId);
 
-    // Create the supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch order details from database
-    const { data: orderDetails, error: orderError } = await supabase
+    // Fetch order details with related data
+    const { data: order, error: orderError } = await supabaseClient
       .from('orders')
       .select(`
         *,
@@ -54,251 +315,68 @@ serve(async (req) => {
       .eq('id', orderId)
       .single();
 
-    if (orderError) throw orderError;
-
-    if (!orderDetails) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), {
-        status: 404,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    if (orderError) {
+      console.error('Error fetching order:', orderError);
+      throw new Error(`Failed to fetch order: ${orderError.message}`);
     }
 
-    // Generate PDF using jsPDF via CDN
-    const htmlContent = generateInvoiceHTML(orderDetails);
-    
-    // Return HTML content that will be converted to PDF client-side
-    const response = new Response(htmlContent, {
-      headers: { 
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    console.log('Order found:', { id: order.id, store: order.stores?.name });
+
+    // Prepare invoice data
+    const invoiceData: InvoiceData = {
+      orderId: order.id,
+      storeName: order.stores?.name || 'Unknown Store',
+      storeEmail: order.stores?.business_email || '',
+      storePhone: order.stores?.phone_number || '',
+      storeAddress: order.stores?.address || '',
+      buyerName: order.buyer_name,
+      buyerEmail: order.buyer_email || '',
+      buyerPhone: order.buyer_phone || '',
+      buyerAddress: order.buyer_address || '',
+      orderDate: order.created_at,
+      items: (order.order_items || []).map((item: any) => ({
+        name: item.products?.name || 'Unknown Product',
+        quantity: item.quantity,
+        price: Number(item.price_at_purchase),
+        total: Number(item.price_at_purchase) * item.quantity
+      })),
+      subtotal: Number(order.total_price),
+      shipping: 0,
+      total: Number(order.total_price),
+      paymentMethod: order.payment_method || 'cod',
+      paymentStatus: order.payment_status || 'pending'
+    };
+
+    console.log('Invoice data prepared for order:', orderId);
+
+    const htmlContent = generateInvoiceHTML(invoiceData);
+
+    return new Response(htmlContent, {
+      status: 200,
+      headers: {
         "Content-Type": "text/html",
-        "Content-Disposition": `inline; filename="invoice-${orderId.slice(-8)}.html"`,
-        ...corsHeaders 
+        ...corsHeaders,
       },
     });
 
-    // Log the invoice generation
-    await supabase.from('email_logs').insert({
-      order_id: orderId,
-      to_email: orderDetails.buyer_email,
-      subject: `Invoice for Order #${orderId.slice(-8)}`,
-      event_type: 'invoice_generated',
-      status: 'completed'
-    });
-
-    return response;
-  } catch (error) {
-    console.error('Error generating invoice:', error);
+  } catch (error: any) {
+    console.error("Error in generate-invoice function:", error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Invoice generation failed',
+        details: error.message 
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       }
     );
   }
-});
+};
 
-function generateInvoiceHTML(orderDetails: any): string {
-  const orderNumber = orderDetails.id.slice(-8);
-  const orderDate = new Date(orderDetails.created_at).toLocaleDateString('en-IN');
-  
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Invoice #${orderNumber}</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; }
-            .invoice-container { max-width: 800px; margin: 0 auto; }
-            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #7b3fe4; padding-bottom: 20px; }
-            .logo { font-size: 24px; font-weight: bold; color: #7b3fe4; }
-            .invoice-title { font-size: 28px; color: #333; }
-            .invoice-details { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-            .section { background: #f8f9fa; padding: 20px; border-radius: 8px; }
-            .section h3 { color: #7b3fe4; margin-bottom: 15px; font-size: 16px; }
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-            .info-label { font-weight: 600; color: #666; }
-            .items-table { width: 100%; border-collapse: collapse; margin: 30px 0; }
-            .items-table th, .items-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            .items-table th { background: #7b3fe4; color: white; font-weight: 600; }
-            .items-table tr:nth-child(even) { background: #f8f9fa; }
-            .total-section { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-top: 30px; }
-            .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 5px 0; }
-            .total-final { font-size: 18px; font-weight: bold; color: #7b3fe4; border-top: 2px solid #7b3fe4; padding-top: 15px; margin-top: 15px; }
-            .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
-            .download-btn { background: #7b3fe4; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 20px 0; font-size: 16px; }
-            .download-btn:hover { background: #5a2bb8; }
-            @media print { body { margin: 0; } .invoice-container { max-width: none; } .download-btn { display: none; } }
-        </style>
-    </head>
-    <body>
-        <div class="invoice-container">
-            <button onclick="downloadPDF()" class="download-btn">Download PDF</button>
-            
-            <!-- Header -->
-            <div class="header">
-                <div class="logo">ShopZap</div>
-                <div class="invoice-title">INVOICE</div>
-            </div>
-
-            <!-- Invoice Details -->
-            <div class="invoice-details">
-                <div class="section">
-                    <h3>Bill To</h3>
-                    <div class="info-row">
-                        <span class="info-label">Name:</span>
-                        <span>${orderDetails.buyer_name}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Email:</span>
-                        <span>${orderDetails.buyer_email || 'N/A'}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Phone:</span>
-                        <span>${orderDetails.buyer_phone || 'N/A'}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Address:</span>
-                        <span>${orderDetails.buyer_address || 'N/A'}</span>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h3>Invoice Details</h3>
-                    <div class="info-row">
-                        <span class="info-label">Invoice #:</span>
-                        <span>${orderNumber}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Order Date:</span>
-                        <span>${orderDate}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Store:</span>
-                        <span>${orderDetails.stores.name}</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Payment Status:</span>
-                        <span style="color: #28a745; font-weight: bold;">${orderDetails.payment_status === 'paid' ? 'Paid' : 'Pending'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Items Table -->
-            <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th style="text-align: center;">Qty</th>
-                        <th style="text-align: right;">Unit Price</th>
-                        <th style="text-align: right;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${orderDetails.order_items.map((item: any) => `
-                        <tr>
-                            <td>${item.products.name}</td>
-                            <td style="text-align: center;">${item.quantity}</td>
-                            <td style="text-align: right;">₹${Number(item.price_at_purchase).toLocaleString()}</td>
-                            <td style="text-align: right;">₹${(Number(item.price_at_purchase) * item.quantity).toLocaleString()}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-
-            <!-- Total Section -->
-            <div class="total-section">
-                <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>₹${Number(orderDetails.total_price).toLocaleString()}</span>
-                </div>
-                <div class="total-row">
-                    <span>Shipping:</span>
-                    <span style="color: #28a745;">Free</span>
-                </div>
-                <div class="total-row">
-                    <span>Tax:</span>
-                    <span>₹0</span>
-                </div>
-                <div class="total-row total-final">
-                    <span>Total Amount:</span>
-                    <span>₹${Number(orderDetails.total_price).toLocaleString()}</span>
-                </div>
-            </div>
-
-            <!-- Seller Information -->
-            <div class="section" style="margin-top: 30px;">
-                <h3>Seller Information</h3>
-                <div class="info-row">
-                    <span class="info-label">Store Name:</span>
-                    <span>${orderDetails.stores.name}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Contact Email:</span>
-                    <span>${orderDetails.stores.business_email}</span>
-                </div>
-                ${orderDetails.stores.phone_number ? `
-                <div class="info-row">
-                    <span class="info-label">Phone:</span>
-                    <span>${orderDetails.stores.phone_number}</span>
-                </div>
-                ` : ''}
-            </div>
-
-            <!-- Footer -->
-            <div class="footer">
-                <p>Thank you for shopping with ${orderDetails.stores.name} on ShopZap!</p>
-                <p style="margin-top: 10px; font-size: 12px;">
-                    For support, contact us at support@shopzap.io
-                </p>
-            </div>
-        </div>
-
-        <script>
-            function downloadPDF() {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Add content to PDF
-                doc.setFontSize(20);
-                doc.text('INVOICE', 20, 30);
-                
-                doc.setFontSize(12);
-                doc.text('ShopZap', 20, 50);
-                doc.text('Invoice #: ${orderNumber}', 20, 70);
-                doc.text('Date: ${orderDate}', 20, 80);
-                doc.text('Store: ${orderDetails.stores.name}', 20, 90);
-                
-                doc.text('Bill To:', 20, 110);
-                doc.text('${orderDetails.buyer_name}', 20, 120);
-                doc.text('${orderDetails.buyer_email || "N/A"}', 20, 130);
-                doc.text('${orderDetails.buyer_phone || "N/A"}', 20, 140);
-                
-                let yPos = 160;
-                doc.text('Items:', 20, yPos);
-                yPos += 10;
-                
-                ${orderDetails.order_items.map((item: any, index: number) => `
-                doc.text('${index + 1}. ${item.products.name} - Qty: ${item.quantity} - ₹${Number(item.price_at_purchase).toLocaleString()}', 20, ${yPos + (index * 10)});
-                `).join('')}
-                
-                yPos += ${orderDetails.order_items.length * 10 + 20};
-                doc.text('Total: ₹${Number(orderDetails.total_price).toLocaleString()}', 20, yPos);
-                
-                doc.text('Thank you for shopping with ${orderDetails.stores.name} on ShopZap!', 20, yPos + 20);
-                
-                // Save the PDF
-                doc.save('invoice-${orderNumber}.pdf');
-            }
-            
-            // Auto-download if URL contains download parameter
-            if (window.location.href.includes('?download=true')) {
-                setTimeout(downloadPDF, 1000);
-            }
-        </script>
-    </body>
-    </html>
-  `;
-}
+serve(handler);

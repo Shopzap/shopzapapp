@@ -203,6 +203,7 @@ export const useCheckout = () => {
         buyerPhone: values.phone,
         buyerAddress: `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`,
         totalPrice: total,
+        paymentMethod: paymentMethod, // This will be 'online' or 'cod'
         items: orderItems.map(item => ({
           productId: `product-${item.id}`,
           quantity: item.quantity,
@@ -217,7 +218,7 @@ export const useCheckout = () => {
         }))
       };
 
-      console.log('Order data prepared:', orderData);
+      console.log('Order data prepared:', { ...orderData, paymentMethod });
 
       if (paymentMethod === 'online') {
         // Check if seller allows online payment and Razorpay is available
@@ -287,7 +288,10 @@ export const useCheckout = () => {
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_payment_id: response.razorpay_payment_id,
                     razorpay_signature: response.razorpay_signature,
-                    orderData
+                    orderData: {
+                      ...orderData,
+                      paymentMethod: 'online' // Explicitly set online payment
+                    }
                   }
                 });
 
@@ -382,7 +386,7 @@ export const useCheckout = () => {
               razorpay_signature: '',
               orderData: {
                 ...orderData,
-                paymentMethod: 'cod'
+                paymentMethod: 'cod' // Explicitly set COD
               }
             }
           });
