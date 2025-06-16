@@ -152,8 +152,8 @@ const StorefrontAbout: React.FC<StorefrontAboutProps> = ({ store }) => {
               </div>
             )}
           </div>
-        </Card>
-      )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
