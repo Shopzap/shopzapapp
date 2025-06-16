@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Filter, Grid, List, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,20 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Get available categories and max price from products
   const { availableCategories, maxPrice } = useMemo(() => {
@@ -103,10 +117,16 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
     return filtered;
   }, [products, searchTerm, priceRange, selectedCategories, sortBy]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, priceRange, selectedCategories, sortBy]);
+
   const handleClearFilters = () => {
     setSearchTerm('');
     setPriceRange([0, maxPrice]);
     setSelectedCategories([]);
+    setCurrentPage(1);
   };
 
   const activeFiltersCount = useMemo(() => {
@@ -259,6 +279,9 @@ const ModernStorefront: React.FC<ModernStorefrontProps> = ({
           viewMode={viewMode}
           buttonColor={store.buttonColor}
           buttonTextColor={store.buttonTextColor}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          isMobile={isMobile}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import ModernProductCard from './ModernProductCard';
+import ProductPagination from './ProductPagination';
 import { Tables } from '@/integrations/supabase/types';
 
 interface ModernProductGridProps {
@@ -9,6 +10,9 @@ interface ModernProductGridProps {
   viewMode?: 'grid' | 'list';
   buttonColor?: string;
   buttonTextColor?: string;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  isMobile?: boolean;
 }
 
 const ModernProductGrid: React.FC<ModernProductGridProps> = ({ 
@@ -16,9 +20,21 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
   storeName,
   viewMode = 'grid',
   buttonColor,
-  buttonTextColor 
+  buttonTextColor,
+  currentPage,
+  onPageChange,
+  isMobile = false
 }) => {
   console.log('ModernProductGrid: Rendering with', products.length, 'products');
+
+  // Responsive products per page - 5 on mobile, 10 on desktop
+  const productsPerPage = isMobile ? 5 : 10;
+  const totalPages = Math.ceil(products.length / productsPerPage);
+  
+  // Calculate pagination
+  const startIndex = (currentPage - 1) * productsPerPage;
+  const endIndex = startIndex + productsPerPage;
+  const currentProducts = products.slice(startIndex, endIndex);
 
   if (!products || products.length === 0) {
     return (
@@ -38,8 +54,35 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <div className="space-y-3 sm:space-y-4">
-        {products.map((product) => (
+      <div className="space-y-6">
+        <div className="space-y-3 sm:space-y-4">
+          {currentProducts.map((product) => (
+            <ModernProductCard
+              key={product.id}
+              product={product}
+              storeName={storeName}
+              buttonColor={buttonColor}
+              buttonTextColor={buttonTextColor}
+            />
+          ))}
+        </div>
+        
+        <ProductPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalProducts={products.length}
+          onPageChange={onPageChange}
+          productsPerPage={productsPerPage}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Responsive grid - 1 column on mobile, 2 on sm, 3 on lg, 5 on xl+ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+        {currentProducts.map((product) => (
           <ModernProductCard
             key={product.id}
             product={product}
@@ -49,20 +92,14 @@ const ModernProductGrid: React.FC<ModernProductGridProps> = ({
           />
         ))}
       </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-      {products.map((product) => (
-        <ModernProductCard
-          key={product.id}
-          product={product}
-          storeName={storeName}
-          buttonColor={buttonColor}
-          buttonTextColor={buttonTextColor}
-        />
-      ))}
+      
+      <ProductPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalProducts={products.length}
+        onPageChange={onPageChange}
+        productsPerPage={productsPerPage}
+      />
     </div>
   );
 };

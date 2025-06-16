@@ -80,11 +80,11 @@ const Storefront: React.FC = () => {
   // Extract store from the data structure
   const store = storeData?.store;
   
-  // Fetch products with caching - FIXED to show ALL published products including variants
+  // Fetch ALL products with proper filtering - no limits
   const { data: products, isLoading: productsLoading, error: productsError } = useQuery({
     queryKey: ['storeProducts', store?.id],
     queryFn: async () => {
-      console.log('Storefront: Fetching products for store ID', store?.id);
+      console.log('Storefront: Fetching ALL products for store ID', store?.id);
       
       if (!store?.id) {
         console.log('Storefront: No store ID available, returning empty array');
@@ -92,7 +92,7 @@ const Storefront: React.FC = () => {
       }
       
       try {
-        // Fetch ALL products (both simple and variant types)
+        // Fetch ALL published products (both simple and variant types) without any limits
         const { data, error } = await supabase
           .from('products')
           .select('*')
@@ -107,7 +107,15 @@ const Storefront: React.FC = () => {
         }
         
         console.log('Storefront: Products data received', data?.length || 0, 'published products');
-        return data || [];
+        
+        // Fix blob image URLs and add fallback images
+        const productsWithFixedImages = (data || []).map(product => ({
+          ...product,
+          image_url: fixImageUrl(product.image_url),
+          images: product.images?.map(fixImageUrl) || []
+        }));
+        
+        return productsWithFixedImages;
       } catch (err) {
         console.error('Storefront: Exception fetching products', err);
         return [];
@@ -120,6 +128,24 @@ const Storefront: React.FC = () => {
     gcTime: 5 * 60 * 1000, // 5 minutes
     initialData: cachedData?.products,
   });
+
+  // Function to fix blob URLs and provide fallbacks
+  const fixImageUrl = (url: string | null | undefined): string => {
+    if (!url) return 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=400&fit=crop';
+    
+    // If it's a blob URL, replace with fallback
+    if (url.startsWith('blob:')) {
+      console.warn('Blob URL detected, using fallback:', url);
+      return 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=400&fit=crop';
+    }
+    
+    // If it's a relative URL, make it absolute
+    if (url.startsWith('/')) {
+      return `${window.location.origin}${url}`;
+    }
+    
+    return url;
+  };
 
   // Use delayed loading for better UX
   const { shouldShowLoading, hasTimedOut } = useDelayedLoading(
