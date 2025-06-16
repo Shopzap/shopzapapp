@@ -226,6 +226,7 @@ const AppContent = () => {
               <Route path="instagram" element={<InstagramAutomation />} />
               <Route path="analytics" element={<Analytics />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="bank-details" element={<BankDetails />} />
             </Route>
           </Routes>
         </ProtectedRoute>

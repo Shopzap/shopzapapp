@@ -98,6 +98,51 @@ export type Database = {
           },
         ]
       }
+      bank_details: {
+        Row: {
+          account_holder_name: string
+          account_number: string
+          bank_name: string
+          created_at: string
+          gst_number: string | null
+          id: string
+          ifsc_code: string
+          pan_number: string | null
+          payout_method: string
+          updated_at: string
+          upi_id: string | null
+          user_id: string
+        }
+        Insert: {
+          account_holder_name: string
+          account_number: string
+          bank_name: string
+          created_at?: string
+          gst_number?: string | null
+          id?: string
+          ifsc_code: string
+          pan_number?: string | null
+          payout_method?: string
+          updated_at?: string
+          upi_id?: string | null
+          user_id: string
+        }
+        Update: {
+          account_holder_name?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string
+          gst_number?: string | null
+          id?: string
+          ifsc_code?: string
+          pan_number?: string | null
+          payout_method?: string
+          updated_at?: string
+          upi_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string

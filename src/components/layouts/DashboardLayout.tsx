@@ -1,256 +1,94 @@
-import React, { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { BarChart3, Package, ShoppingCart, FileText, Palette, Instagram, TrendingUp, Menu, X, LogOut, User, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import React from 'react';
+import {
+  Home,
+  Package,
+  ShoppingCart,
+  FileText,
+  Palette,
+  Instagram,
+  BarChart3,
+  Settings,
+  CreditCard,
+} from 'lucide-react';
+import { Sidebar } from "@/components/ui/sidebar"
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, signOut } = useAuth();
+const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  const menuItems = [
+    { icon: Home, label: "Dashboard", path: "/dashboard" },
+    { icon: Package, label: "Products", path: "/dashboard/products" },
+    { icon: ShoppingCart, label: "Orders", path: "/dashboard/orders" },
+    { icon: FileText, label: "Invoices", path: "/dashboard/invoices" },
+    { icon: Palette, label: "Customize Store", path: "/dashboard/customize-store" },
+    { icon: Instagram, label: "Instagram", path: "/dashboard/instagram" },
+    { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
+    { icon: CreditCard, label: "Bank Details", path: "/dashboard/bank-details" },
+    { icon: Settings, label: "Settings", path: "/dashboard/settings" },
+  ];
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      navigate('/auth');
-    } catch (error) {
-      console.error('Failed to sign out', error);
-    }
+  const { user, signOut } = useAuth();
+
+  const isActive = (path: string) => {
+    return location.pathname.startsWith(path);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 justify-between">
-            <div className="flex">
-              <div className="flex flex-shrink-0 items-center">
-                <Link to="/" className="text-xl font-bold text-blue-600">
-                  ShopZap
-                </Link>
-              </div>
-              <div className="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
-                <Link
-                  to="/dashboard"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+    <div className="min-h-screen bg-gray-100">
+      <Sidebar className="w-64 bg-white border-r">
+        <div className="p-4">
+          <h1 className="text-2xl font-bold text-center">ShopZap</h1>
+        </div>
+        <ul className="space-y-2">
+          {menuItems.map((item) => (
+            <li key={item.label}>
+              <button
+                onClick={() => navigate(item.path)}
+                className={`flex items-center space-x-2 p-3 rounded-md hover:bg-gray-100 w-full text-left ${isActive(item.path) ? 'bg-gray-100 font-medium' : ''
                   }`}
-                >
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Dashboard
-                </Link>
-                <Link
-                  to="/dashboard/products"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/products'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Package className="mr-2 h-4 w-4" />
-                  Products
-                </Link>
-                <Link
-                  to="/dashboard/orders"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/orders'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Orders
-                </Link>
-                <Link
-                  to="/dashboard/invoices"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/invoices'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  Invoices
-                </Link>
-                <Link
-                  to="/dashboard/customize-store"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/customize-store'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Palette className="mr-2 h-4 w-4" />
-                  Customize
-                </Link>
-                <Link
-                  to="/dashboard/instagram"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/instagram'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <Instagram className="mr-2 h-4 w-4" />
-                  Instagram
-                </Link>
-                <Link
-                  to="/dashboard/analytics"
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${
-                    location.pathname === '/dashboard/analytics'
-                      ? 'border-b-2 border-blue-500 text-gray-900'
-                      : 'border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
-                >
-                  <TrendingUp className="mr-2 h-4 w-4" />
-                  Analytics
-                </Link>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <div className="ml-3 relative">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="relative flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    >
-                      <span className="sr-only">Open user menu</span>
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-500">
-                        <span className="text-sm font-medium leading-none text-white">{user?.email?.charAt(0).toUpperCase() || 'U'}</span>
-                      </span>
-                      <ChevronDown className="ml-1 h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="px-4 py-2">
-                      <p className="text-sm font-medium">{user?.email}</p>
-                      <p className="text-xs text-gray-500">Logged in</p>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleSignOut} className="text-red-600 cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="-mr-2 flex items-center sm:hidden">
-                {/* Mobile menu button */}
-                <button
-                  type="button"
-                  className="relative inline-flex items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  aria-controls="mobile-menu"
-                  aria-expanded="false"
-                  onClick={toggleMobileMenu}
-                >
-                  <span className="sr-only">Open main menu</span>
-                  {isMobileMenuOpen ? (
-                    <X className="block h-6 w-6" aria-hidden="true" />
-                  ) : (
-                    <Menu className="block h-6 w-6" aria-hidden="true" />
-                  )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Sidebar>
+      <div className="md:ml-64">
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-end items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="outline-none focus:outline-none rounded-full overflow-hidden w-10 h-10">
+                  <Avatar>
+                    {user?.user_metadata?.avatar_url ? (
+                      <AvatarImage src={user.user_metadata.avatar_url} alt={user?.user_metadata?.full_name as string} />
+                    ) : (
+                      <AvatarFallback>{(user?.user_metadata?.full_name as string)?.substring(0, 2).toUpperCase() || <Skeleton className="w-10 h-10 rounded-full" />}</AvatarFallback>
+                    )}
+                  </Avatar>
                 </button>
-              </div>
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>Sign Out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
-
-        {/* Mobile menu */}
-        <div className={`sm:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
-          <div className="space-y-1 pt-2 pb-3">
-            <Link
-              to="/dashboard"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/dashboard/products"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/products'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Products
-            </Link>
-            <Link
-              to="/dashboard/orders"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/orders'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Orders
-            </Link>
-            <Link
-              to="/dashboard/invoices"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/invoices'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Invoices
-            </Link>
-            <Link
-              to="/dashboard/customize-store"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/customize-store'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Customize
-            </Link>
-            <Link
-              to="/dashboard/instagram"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/instagram'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Instagram
-            </Link>
-            <Link
-              to="/dashboard/analytics"
-              className={`block py-2 pl-3 pr-4 text-base font-medium ${
-                location.pathname === '/dashboard/analytics'
-                  ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-l-4 border-transparent text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700'
-              }`}
-            >
-              Analytics
-            </Link>
+        </header>
+        <main>
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            {children}
           </div>
-        </div>
-      </nav>
-
-      <main className="py-10">
-        <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
