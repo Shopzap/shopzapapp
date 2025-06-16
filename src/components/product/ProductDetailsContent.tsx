@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductVariant } from './types';
 import VariantSelector from './VariantSelector';
+import ShareButton from './ShareButton';
 
 interface Product {
   id: string;
@@ -224,10 +224,10 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
                 WhatsApp
               </a>
             </Button>
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-2 h-4 w-4" />
-              Share
-            </Button>
+            <ShareButton 
+              productName={product.name}
+              productPrice={currentPrice}
+            />
           </div>
         </div>
 

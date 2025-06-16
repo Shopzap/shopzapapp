@@ -1,21 +1,31 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Eye, Heart, Share2 } from 'lucide-react';
+import { Eye, Heart } from 'lucide-react';
+import ShareButton from '@/components/product/ShareButton';
 
 interface ProductCardActionsProps {
   isWishlisted: boolean;
   onWishlist: (e: React.MouseEvent) => void;
   onShare: (e: React.MouseEvent) => void;
   onViewDetails: () => void;
+  productName: string;
+  productPrice: number;
 }
 
 const ProductCardActions: React.FC<ProductCardActionsProps> = ({
   isWishlisted,
   onWishlist,
   onShare,
-  onViewDetails
+  onViewDetails,
+  productName,
+  productPrice
 }) => {
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // The ShareButton component will handle the actual sharing
+  };
+
   return (
     <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
       <Button
@@ -26,14 +36,13 @@ const ProductCardActions: React.FC<ProductCardActionsProps> = ({
       >
         <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
       </Button>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={onShare}
-        className="p-2"
-      >
-        <Share2 className="h-4 w-4" />
-      </Button>
+      <div onClick={handleShareClick}>
+        <ShareButton 
+          productName={productName}
+          productPrice={productPrice}
+          className="p-2"
+        />
+      </div>
     </div>
   );
 };
