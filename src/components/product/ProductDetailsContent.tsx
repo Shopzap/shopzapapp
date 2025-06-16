@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ProductVariant } from './types';
 import VariantSelector from './VariantSelector';
 import ShareButton from './ShareButton';
+import WhatsAppShareButton from './WhatsAppShareButton';
 
 interface Product {
   id: string;
@@ -218,12 +219,10 @@ const ProductDetailsContent: React.FC<ProductDetailsContentProps> = ({
           </Button>
           
           <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href={getWhatsAppLink()} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="mr-2 h-4 w-4" />
-                WhatsApp
-              </a>
-            </Button>
+            <WhatsAppShareButton 
+              productName={product.name}
+              productPrice={currentPrice}
+            />
             <ShareButton 
               productName={product.name}
               productPrice={currentPrice}

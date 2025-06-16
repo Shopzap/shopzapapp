@@ -23,7 +23,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 }) => {
   const { toast } = useToast();
   const currentUrl = window.location.href;
-  const shareText = `Check out "${productName}" for ₹${productPrice.toLocaleString()}`;
+  const shareText = `Hey! Check out "${productName}" for ₹${productPrice.toLocaleString()} on ShopZap`;
 
   const handleNativeShare = async () => {
     if (navigator.share) {
@@ -66,13 +66,24 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   };
 
   const handleWhatsAppShare = () => {
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText} - ${currentUrl}`)}`;
+    const message = `${shareText} - ${currentUrl}`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    
+    toast({
+      title: "Opening WhatsApp",
+      description: "WhatsApp should open with your product link",
+    });
   };
 
   const handleTwitterShare = () => {
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(currentUrl)}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+    
+    toast({
+      title: "Opening X (Twitter)",
+      description: "X should open with your product link",
+    });
   };
 
   // Check if Web Share API is supported
@@ -87,6 +98,10 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={handleWhatsAppShare}>
+          <MessageCircle className="mr-2 h-4 w-4 text-green-600" />
+          Share on WhatsApp
+        </DropdownMenuItem>
         {isWebShareSupported && (
           <DropdownMenuItem onClick={handleNativeShare}>
             <Share2 className="mr-2 h-4 w-4" />
@@ -96,10 +111,6 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         <DropdownMenuItem onClick={handleCopyToClipboard}>
           <Copy className="mr-2 h-4 w-4" />
           Copy link
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleWhatsAppShare}>
-          <MessageCircle className="mr-2 h-4 w-4" />
-          Share on WhatsApp
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleTwitterShare}>
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
