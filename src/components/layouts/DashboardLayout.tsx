@@ -13,6 +13,7 @@ import {
   ChevronRight,
   User,
   Zap,
+  DollarSign,
 } from 'lucide-react';
 import { 
   Sidebar,
@@ -67,6 +68,13 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       path: "/dashboard/invoices",
       description: "Billing & payments",
       color: "from-purple-500 to-purple-600"
+    },
+    { 
+      icon: DollarSign, 
+      label: "Payouts", 
+      path: "/dashboard/payouts",
+      description: "Earnings & payouts",
+      color: "from-emerald-500 to-emerald-600"
     },
     { 
       icon: Palette, 

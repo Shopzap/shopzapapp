@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -153,6 +152,13 @@ const AppContent = () => {
       <Route path="/verify" element={<ResponsiveLayout><Verify /></ResponsiveLayout>} /> 
       <Route path="/auth-callback" element={<ResponsiveLayout><AuthCallback /></ResponsiveLayout>} />
       
+      {/* Admin routes */}
+      <Route path="/admin/payouts" element={
+        <ProtectedRoute>
+          <ResponsiveLayout><AdminPayouts /></ResponsiveLayout>
+        </ProtectedRoute>
+      } />
+      
       {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
       {/* Global cart route - handles both store-specific and general cart access */}
       <Route path="/cart" element={<GlobalCartWrapper />} />
@@ -224,6 +230,7 @@ const AppContent = () => {
               <Route path="products" element={<ProductManager />} />
               <Route path="orders" element={<Orders />} />
               <Route path="invoices" element={<Invoices />} />
+              <Route path="payouts" element={<Payouts />} />
               <Route path="customize-store" element={<CustomizeStore />} />
               <Route path="instagram" element={<InstagramAutomation />} />
               <Route path="analytics" element={<Analytics />} />

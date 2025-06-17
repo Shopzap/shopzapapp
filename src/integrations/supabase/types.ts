@@ -650,6 +650,106 @@ export type Database = {
           },
         ]
       }
+      payout_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          payout_request_id: string
+          performed_by: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          payout_request_id: string
+          performed_by: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          payout_request_id?: string
+          performed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_logs_payout_request_id_fkey"
+            columns: ["payout_request_id"]
+            isOneToOne: false
+            referencedRelation: "payout_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          final_amount: number
+          id: string
+          order_ids: string[]
+          paid_at: string | null
+          paid_by: string | null
+          platform_fee: number
+          screenshot_url: string | null
+          seller_id: string
+          status: string
+          store_id: string
+          total_earned: number
+          updated_at: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          final_amount?: number
+          id?: string
+          order_ids?: string[]
+          paid_at?: string | null
+          paid_by?: string | null
+          platform_fee?: number
+          screenshot_url?: string | null
+          seller_id: string
+          status?: string
+          store_id: string
+          total_earned?: number
+          updated_at?: string
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          final_amount?: number
+          id?: string
+          order_ids?: string[]
+          paid_at?: string | null
+          paid_by?: string | null
+          platform_fee?: number
+          screenshot_url?: string | null
+          seller_id?: string
+          status?: string
+          store_id?: string
+          total_earned?: number
+          updated_at?: string
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_requests_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_reviews: {
         Row: {
           buyer_email: string | null
@@ -1079,6 +1179,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_platform_fee: {
+        Args: { amount: number }
+        Returns: number
+      }
       check_username_availability: {
         Args: { username: string }
         Returns: boolean
@@ -1086,6 +1190,22 @@ export type Database = {
       generate_slug: {
         Args: { input_text: string }
         Returns: string
+      }
+      generate_weekly_payout_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          store_id: string
+          seller_id: string
+          total_earned: number
+          platform_fee: number
+          final_amount: number
+          order_ids: string[]
+          orders_count: number
+        }[]
+      }
+      is_order_payout_eligible: {
+        Args: { order_delivered_at: string }
+        Returns: boolean
       }
     }
     Enums: {
