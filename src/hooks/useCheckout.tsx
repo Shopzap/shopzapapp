@@ -218,7 +218,7 @@ export const useCheckout = () => {
         }))
       };
 
-      console.log('Order data prepared:', { ...orderData, paymentMethod });
+      console.log('Order data prepared:', { ...orderData, paymentMethod, totalInRupees: total });
 
       if (paymentMethod === 'online') {
         // Check if seller allows online payment and Razorpay is available
@@ -257,9 +257,10 @@ export const useCheckout = () => {
         console.log('Creating Razorpay order with key:', razorpayKeyId);
 
         try {
+          // Send amount in rupees, not paise - the backend will handle conversion
           const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
             body: {
-              amount: total * 100,
+              amount: total, // Send total as rupees (e.g., 410, not 41000)
               currency: 'INR',
               receipt: `order_${Date.now()}`
             }
@@ -274,7 +275,7 @@ export const useCheckout = () => {
 
           const options = {
             key: razorpayKeyId,
-            amount: razorpayOrder.amount,
+            amount: razorpayOrder.amount, // This will be in paise from backend
             currency: razorpayOrder.currency,
             name: storeData.name,
             description: 'Secure online payment',
@@ -342,7 +343,7 @@ export const useCheckout = () => {
             }
           };
 
-          console.log('Opening Razorpay with options:', options);
+          console.log('Opening Razorpay with options:', { ...options, amount: `${options.amount} paise (₹${total})` });
           const rzp1 = new (window as any).Razorpay(options);
           
           rzp1.on('payment.failed', function (response: any) {

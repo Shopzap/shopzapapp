@@ -28,6 +28,21 @@ const Checkout: React.FC = () => {
     sellerAllowsOnline
   } = useCheckout();
 
+  // Add console logging to debug amount calculation
+  React.useEffect(() => {
+    console.log('Checkout amounts:', {
+      subtotal,
+      shipping,
+      total,
+      orderItems: orderItems.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        lineTotal: item.price * item.quantity
+      }))
+    });
+  }, [subtotal, shipping, total, orderItems]);
+
   return (
     <ResponsiveLayout>
       <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">

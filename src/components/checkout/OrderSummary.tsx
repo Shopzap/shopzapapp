@@ -44,6 +44,19 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   sellerAllowsCOD = true,
   sellerAllowsOnline = true
 }) => {
+  // Debug logging for amount verification
+  React.useEffect(() => {
+    const calculatedSubtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    console.log('Order Summary calculation check:', {
+      providedSubtotal: subtotal,
+      calculatedSubtotal,
+      shipping,
+      providedTotal: total,
+      calculatedTotal: calculatedSubtotal + shipping,
+      match: Math.abs((calculatedSubtotal + shipping) - total) < 0.01
+    });
+  }, [orderItems, subtotal, shipping, total]);
+
   return (
     <Card className="sticky top-4">
       <CardHeader>
@@ -83,7 +96,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     ).join(', ')}
                   </p>
                 )}
-                <p className="text-sm font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
+                <div className="flex justify-between items-center">
+                  <p className="text-xs text-muted-foreground">₹{item.price} × {item.quantity}</p>
+                  <p className="text-sm font-semibold">₹{(item.price * item.quantity).toLocaleString()}</p>
+                </div>
               </div>
             </div>
           ))}
@@ -112,6 +128,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="flex justify-between font-semibold text-lg border-t pt-2">
             <span>Total</span>
             <span>₹{total.toLocaleString()}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Amount will be charged in INR
           </div>
         </div>
       </CardContent>

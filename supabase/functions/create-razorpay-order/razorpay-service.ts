@@ -7,15 +7,22 @@ export const createOrderPayload = (
   receipt: string,
   isTestMode: boolean
 ): RazorpayOrderData => {
+  // Ensure amount is in rupees, not already in paise
+  // Convert to paise only once and ensure it's an integer
+  const amountInPaise = Math.round(amount * 100);
+  
+  console.log(`[${isTestMode ? 'TEST' : 'LIVE'}] Amount conversion: ₹${amount} -> ${amountInPaise} paise`);
+  
   return {
-    amount: Math.round(amount * 100), // Convert rupees to paise and ensure integer
+    amount: amountInPaise,
     currency: currency.toUpperCase(),
     receipt: `${isTestMode ? 'SHOPZAP_TEST_' : 'SHOPZAP_'}${receipt}`,
     payment_capture: 1, // Auto capture payment
     notes: {
       test_mode: isTestMode ? 'true' : 'false',
       environment: isTestMode ? 'test' : 'production',
-      platform: 'ShopZap.io'
+      platform: 'ShopZap.io',
+      original_amount_rupees: amount.toString()
     }
   };
 };

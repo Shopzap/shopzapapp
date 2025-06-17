@@ -20,7 +20,10 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { amount, currency = 'INR', receipt, isTestMode = true }: CreateOrderRequest = await req.json();
 
-    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Creating Razorpay order for amount: ${amount}, currency: ${currency}, receipt: ${receipt}`);
+    // Ensure amount is treated as rupees, not paise
+    const amountInRupees = typeof amount === 'number' ? amount : parseFloat(amount);
+    
+    console.log(`[${isTestMode ? 'TEST MODE' : 'LIVE MODE'}] Creating Razorpay order for amount: ₹${amountInRupees}, currency: ${currency}, receipt: ${receipt}`);
 
     // Get ShopZap.io Razorpay credentials from environment variables and TRIM whitespace
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID')?.trim();
@@ -38,8 +41,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Validate amount
-    const amountValidation = validateAmount(amount, isTestMode);
+    // Validate amount (ensure it's in rupees, not paise)
+    const amountValidation = validateAmount(amountInRupees, isTestMode);
     if (!amountValidation.isValid) {
       return new Response(
         JSON.stringify(amountValidation.error),
@@ -50,8 +53,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create Razorpay order payload
-    const orderData = createOrderPayload(amount, currency, receipt, isTestMode);
+    // Create Razorpay order payload (this will convert rupees to paise internally)
+    const orderData = createOrderPayload(amountInRupees, currency, receipt, isTestMode);
 
     // Make request to Razorpay Orders API
     const response = await createRazorpayOrder(orderData, razorpayKeyId!, razorpaySecret!, isTestMode);
@@ -74,13 +77,14 @@ const handler = async (req: Request): Promise<Response> => {
       currency: razorpayOrder.currency,
       status: razorpayOrder.status,
       testMode: isTestMode,
-      platform: 'ShopZap.io'
+      platform: 'ShopZap.io',
+      originalAmountRupees: amountInRupees
     });
 
     const successResponse: SuccessResponse = {
       success: true,
       razorpayOrderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
+      amount: razorpayOrder.amount, // This will be in paise
       currency: razorpayOrder.currency,
       receipt: razorpayOrder.receipt,
       testMode: isTestMode,
