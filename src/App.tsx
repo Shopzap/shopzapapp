@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -68,6 +67,12 @@ import StorefrontSkeleton from "./components/skeletons/StorefrontSkeleton";
 import ProductDetailsSkeleton from "./components/skeletons/ProductDetailsSkeleton";
 import { useReferralTracking } from "./hooks/useReferralTracking";
 
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import SellerManagement from "./pages/admin/SellerManagement";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -132,11 +137,31 @@ const AppContent = () => {
   
   return (
     <Routes>
+      {/* Admin Routes - SEPARATE FROM MAIN APP */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin/*" element={
+        <AdminProtectedRoute>
+          <AdminLayout />
+        </AdminProtectedRoute>
+      }>
+        <Route index element={<AdminDashboard />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="sellers" element={<SellerManagement />} />
+        <Route path="orders" element={<div className="p-8 text-center text-gray-500">Orders Management - Coming Soon</div>} />
+        <Route path="payouts" element={<AdminPayouts />} />
+        <Route path="bank-details" element={<div className="p-8 text-center text-gray-500">Bank Details - Coming Soon</div>} />
+        <Route path="complaints" element={<div className="p-8 text-center text-gray-500">Complaints - Coming Soon</div>} />
+        <Route path="blogs" element={<div className="p-8 text-center text-gray-500">Blog Manager - Coming Soon</div>} />
+        <Route path="product-approval" element={<div className="p-8 text-center text-gray-500">Product Approval - Coming Soon</div>} />
+        <Route path="reported-products" element={<div className="p-8 text-center text-gray-500">Reported Products - Coming Soon</div>} />
+        <Route path="settings" element={<div className="p-8 text-center text-gray-500">Admin Settings - Coming Soon</div>} />
+        <Route path="activity-logs" element={<div className="p-8 text-center text-gray-500">Activity Logs - Coming Soon</div>} />
+        <Route path="email-settings" element={<div className="p-8 text-center text-gray-500">Email Settings - Coming Soon</div>} />
+      </Route>
+
       {/* Public routes with responsive wrapper */}
       <Route path="/" element={<ResponsiveLayout><Index /></ResponsiveLayout>} />
-      <Route path="/pricing" element={<ResponsiveLayout><Pricing /></ResponsiveLayout>} />
-      <Route path="/features" element={<ResponsiveLayout><Features /></ResponsiveLayout>} />
-
+      
       {/* Legal and info pages */}
       <Route path="/terms" element={<ResponsiveLayout><Terms /></ResponsiveLayout>} />
       <Route path="/privacy" element={<ResponsiveLayout><Privacy /></ResponsiveLayout>} />
