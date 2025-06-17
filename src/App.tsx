@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,6 +28,8 @@ import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
 import ThankYou from "./pages/ThankYou";
 import Invoices from "./pages/Invoices";
+import Payouts from "./pages/Payouts";
+import AdminPayouts from "./pages/AdminPayouts";
 
 // Legal pages
 import Terms from "./pages/Terms";

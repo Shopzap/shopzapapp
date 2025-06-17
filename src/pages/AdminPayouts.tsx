@@ -76,7 +76,7 @@ const AdminPayouts = () => {
 
       // Fetch bank details for each seller
       const payoutsWithBankDetails = await Promise.all(
-        payouts.map(async (payout) => {
+        (payouts || []).map(async (payout) => {
           const { data: bankDetails } = await supabase
             .from('bank_details')
             .select('*')
@@ -91,9 +91,10 @@ const AdminPayouts = () => {
 
           return {
             ...payout,
+            status: payout.status as 'pending' | 'approved' | 'paid' | 'rejected',
             bank_details: bankDetails,
             seller_name: profile?.full_name || 'Unknown Seller'
-          };
+          } as PayoutRequest;
         })
       );
 
