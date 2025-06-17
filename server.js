@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import { JSDOM } from 'jsdom';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
@@ -13,6 +14,8 @@ const __dirname = path.dirname(__filename);
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
 
 // Supabase configuration
 const SUPABASE_URL = "https://fyftegalhvigtrieldan.supabase.co";
@@ -32,6 +35,83 @@ app.use(cors({
 // Middleware for parsing JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// New route for scraping products
+app.post('/api/scrape-product', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+
+  const scraperApiKey = process.env.SCRAPER_API_KEY; // Ensure this is set in your environment variables
+
+  if (!scraperApiKey) {
+    return res.status(500).json({ error: 'ScraperAPI key not configured' });
+  }
+
+  const apiUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(url)}`;
+
+  try {
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`ScraperAPI error: ${response.status} - ${errorText}`);
+      return res.status(response.status).json({ error: `Failed to fetch product details from ScraperAPI: ${response.statusText}` });
+    }
+
+    const html = await response.text();
+    const dom = new JSDOM.JSDOM(html);
+    const document = dom.window.document;
+
+    let title = document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+                document.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+                document.querySelector('h1')?.textContent ||
+                document.title;
+
+    let description = document.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
+                      document.querySelector('meta[name="twitter:description"]')?.getAttribute('content') ||
+                      document.querySelector('meta[name="description"]')?.getAttribute('content') ||
+                      '';
+
+    let imageUrl = document.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+                   document.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
+                   document.querySelector('img[data-a-image]')?.getAttribute('src') || // Amazon specific
+                   document.querySelector('img[id="imgTagWrapperId"]')?.getAttribute('src') || // Amazon specific
+                   document.querySelector('img[class*="product-image"]')?.getAttribute('src') ||
+                   '';
+
+    let price = document.querySelector('meta[property="og:price:amount"]')?.getAttribute('content') ||
+                document.querySelector('meta[itemprop="price"]')?.getAttribute('content') ||
+                document.querySelector('.a-price-whole')?.textContent || // Amazon specific
+                document.querySelector('._30jeq3')?.textContent || // Flipkart specific
+                document.querySelector('._2rQ-DZ')?.textContent || // Flipkart specific
+                document.querySelector('._3uDYy4')?.textContent || // Meesho specific
+                document.querySelector('._1VzZYX')?.textContent || // Meesho specific
+                '';
+
+    // Clean up price string (remove currency symbols, extra spaces, etc.)
+    price = price.replace(/[^\d.,]/g, '').replace(/,/g, ''); // Remove non-numeric except . and ,
+
+    // Basic validation and fallback for extracted data
+    title = title ? title.trim() : 'No title found';
+    description = description ? description.trim() : 'No description found';
+    imageUrl = imageUrl ? imageUrl.trim() : '';
+    price = price ? price.trim() : '0';
+
+    res.status(200).json({
+      name: title,
+      description: description,
+      price: price,
+      image_url: imageUrl,
+    });
+
+  } catch (error) {
+    console.error('Error in scrape-product API:', error);
+    res.status(500).json({ error: 'Failed to process product URL' });
+  }
+});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -774,5 +854,6 @@ app.get('*', (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
+  console.log('Server started successfully!');
 });

@@ -36,13 +36,18 @@ export const AutoProductImport: React.FC<AutoProductImportProps> = ({ onProductI
 
     setIsImporting(true);
     try {
-      const { data: productData, error } = await supabase.functions.invoke('scrape-url', {
-        body: { url },
+      const res = await fetch('/api/scrape-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
       });
+      const productData = await res.json();
 
-      if (error) {
-        throw new Error(error.message);
+      if (!res.ok) {
+        throw new Error(productData.error || 'Failed to fetch product details');
       }
+
+
       
       onProductImported(productData);
       
