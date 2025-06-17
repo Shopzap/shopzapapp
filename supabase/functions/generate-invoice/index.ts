@@ -32,6 +32,13 @@ interface InvoiceData {
 }
 
 const generateInvoiceHTML = (data: InvoiceData): string => {
+  const formatValue = (value: string | null | undefined, defaultValue: string = 'Not provided') => {
+    if (!value || value === 'undefined' || value.trim() === '') {
+      return defaultValue;
+    }
+    return value;
+  };
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -191,7 +198,7 @@ const generateInvoiceHTML = (data: InvoiceData): string => {
     
     <div class="invoice">
         <div class="header">
-            <div class="logo">${data.storeName}</div>
+            <div class="logo">${formatValue(data.storeName, 'Store')}</div>
             <div class="invoice-details">
                 <div class="invoice-number">Invoice #${data.orderId.slice(-8)}</div>
                 <div class="date">${new Date(data.orderDate).toLocaleDateString()}</div>
@@ -201,17 +208,17 @@ const generateInvoiceHTML = (data: InvoiceData): string => {
         <div class="parties">
             <div class="party">
                 <h3>From:</h3>
-                <p><strong>${data.storeName}</strong></p>
-                <p>${data.storeEmail}</p>
-                <p>${data.storePhone}</p>
-                ${data.storeAddress ? `<p>${data.storeAddress}</p>` : ''}
+                <p><strong>${formatValue(data.storeName, 'Store')}</strong></p>
+                <p>${formatValue(data.storeEmail, 'Email not provided')}</p>
+                <p>${formatValue(data.storePhone, 'Phone not provided')}</p>
+                ${data.storeAddress ? `<p>${formatValue(data.storeAddress, 'Address not provided')}</p>` : ''}
             </div>
             <div class="party">
                 <h3>To:</h3>
-                <p><strong>${data.buyerName}</strong></p>
-                <p>${data.buyerEmail}</p>
-                <p>${data.buyerPhone}</p>
-                ${data.buyerAddress ? `<p>${data.buyerAddress}</p>` : ''}
+                <p><strong>${formatValue(data.buyerName, 'Customer')}</strong></p>
+                <p>${formatValue(data.buyerEmail, 'Email not provided')}</p>
+                <p>${formatValue(data.buyerPhone, 'Phone not provided')}</p>
+                ${data.buyerAddress ? `<p>${formatValue(data.buyerAddress, 'Address not provided')}</p>` : ''}
             </div>
         </div>
 
@@ -264,6 +271,9 @@ const generateInvoiceHTML = (data: InvoiceData): string => {
         <div class="footer">
             <p>Thank you for your business!</p>
             <p>This invoice was generated on ${new Date().toLocaleDateString()}</p>
+            <p style="margin-top: 10px; font-size: 12px;">
+                Powered by <strong>ShopZap.io</strong> - Create your online store today!
+            </p>
         </div>
     </div>
 </body>
@@ -326,14 +336,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Order found:', { id: order.id, store: order.stores?.name });
 
-    // Prepare invoice data
+    // Prepare invoice data with proper fallbacks
     const invoiceData: InvoiceData = {
       orderId: order.id,
       storeName: order.stores?.name || 'Unknown Store',
       storeEmail: order.stores?.business_email || '',
       storePhone: order.stores?.phone_number || '',
       storeAddress: order.stores?.address || '',
-      buyerName: order.buyer_name,
+      buyerName: order.buyer_name || 'Customer',
       buyerEmail: order.buyer_email || '',
       buyerPhone: order.buyer_phone || '',
       buyerAddress: order.buyer_address || '',

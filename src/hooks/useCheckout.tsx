@@ -195,15 +195,19 @@ export const useCheckout = () => {
     setIsLoading(true);
     
     try {
+      // Format the complete address
+      const fullAddress = `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`;
+      
       const orderData = {
         storeId: storeData.id,
         storeName: storeData.name,
         buyerName: values.fullName,
         buyerEmail: values.email,
         buyerPhone: values.phone,
-        buyerAddress: `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`,
+        buyerAddress: fullAddress,
         totalPrice: total,
-        paymentMethod: paymentMethod, // This will be 'online' or 'cod'
+        paymentMethod: paymentMethod,
+        specialInstructions: values.specialInstructions || '',
         items: orderItems.map(item => ({
           productId: `product-${item.id}`,
           quantity: item.quantity,
@@ -218,7 +222,11 @@ export const useCheckout = () => {
         }))
       };
 
-      console.log('Order data prepared:', { ...orderData, paymentMethod, totalInRupees: total });
+      console.log('Order data prepared with complete buyer info:', { 
+        ...orderData, 
+        paymentMethod, 
+        totalInRupees: total 
+      });
 
       if (paymentMethod === 'online') {
         // Check if seller allows online payment and Razorpay is available
