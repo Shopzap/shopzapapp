@@ -8,6 +8,7 @@ import { FileSpreadsheet, Loader, CheckCircle, AlertCircle, ExternalLink } from 
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GoogleSheetsImportProps {
   onProductsImported: (count: number) => void;
@@ -55,16 +56,12 @@ export const GoogleSheetsImport: React.FC<GoogleSheetsImportProps> = ({ onProduc
     setImportResult(null);
 
     try {
-      const res = await fetch('/api/import-products-from-sheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetUrl })
+      const { data: result, error } = await supabase.functions.invoke('import-products-from-sheet', {
+        body: { sheetUrl }
       });
-      
-      const result = await res.json();
 
-      if (!res.ok) {
-        throw new Error(result.error || 'Failed to import products from sheet');
+      if (error) {
+        throw new Error(error.message || 'Failed to import products from sheet');
       }
 
       setImportResult({
