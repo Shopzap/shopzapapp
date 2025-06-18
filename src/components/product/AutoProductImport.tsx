@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Download, Loader, ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProductData {
   name: string;
@@ -60,16 +61,12 @@ export const AutoProductImport: React.FC<AutoProductImportProps> = ({ onProductI
     setShowPreview(false);
 
     try {
-      const res = await fetch('/api/scrape-product', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
+      const { data: productData, error } = await supabase.functions.invoke('scrape-product', {
+        body: { url }
       });
-      
-      const productData = await res.json();
 
-      if (!res.ok) {
-        throw new Error(productData.error || 'Failed to fetch product details');
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch product details');
       }
 
       setFetchedData(productData);
