@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { generateUniqueProductSlug } from '@/utils/slugHelpers';
 import { AIDescriptionGenerator } from '@/components/ai/AIDescriptionGenerator';
 import { SmartPricingBadge } from '@/components/ai/SmartPricingBadge';
 import { AutoProductImport } from '@/components/product/AutoProductImport';
+import { GoogleSheetsImport } from '@/components/product/GoogleSheetsImport';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import VariantManager from './VariantManager';
 import { ProductVariant } from './types';

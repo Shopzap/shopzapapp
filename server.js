@@ -15,8 +15,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
-
 // Supabase configuration
 const SUPABASE_URL = "https://fyftegalhvigtrieldan.supabase.co";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZnRlZ2FsaHZpZ3RyaWVsZGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc0MDY2NjcsImV4cCI6MjAzMjk4MjY2N30.Nh0Qs9OQkPQYwZKJRQQpXJIKwXLQITwQJQQKMI_xY-I"; // Use service key for admin privileges or fallback to anon key for development
@@ -44,13 +42,28 @@ app.post('/api/scrape-product', async (req, res) => {
     return res.status(400).json({ error: 'URL is required' });
   }
 
-  const scraperApiKey = process.env.SCRAPER_API_KEY; // Ensure this is set in your environment variables
+  // Validate URL format and supported domains
+  try {
+    const urlObj = new URL(url);
+    const supportedDomains = ['amazon.in', 'amazon.com', 'flipkart.com', 'meesho.com', 'myntra.com', 'ajio.com'];
+    const isSupported = supportedDomains.some(domain => urlObj.hostname.includes(domain));
+    
+    if (!isSupported) {
+      return res.status(400).json({ 
+        error: 'Unsupported website. Please use URLs from Amazon, Flipkart, Meesho, Myntra, or Ajio.' 
+      });
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Invalid URL format' });
+  }
+
+  const scraperApiKey = process.env.SCRAPER_API_KEY;
 
   if (!scraperApiKey) {
     return res.status(500).json({ error: 'ScraperAPI key not configured' });
   }
 
-  const apiUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(url)}`;
+  const apiUrl = `https://api.scraperapi.com/?api_key=${scraperApiKey}&url=${encodeURIComponent(url)}&render=true`;
 
   try {
     const response = await fetch(apiUrl);
@@ -58,47 +71,109 @@ app.post('/api/scrape-product', async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`ScraperAPI error: ${response.status} - ${errorText}`);
-      return res.status(response.status).json({ error: `Failed to fetch product details from ScraperAPI: ${response.statusText}` });
+      return res.status(response.status).json({ 
+        error: `Failed to fetch product details: ${response.statusText}` 
+      });
     }
 
     const html = await response.text();
     const dom = new JSDOM.JSDOM(html);
     const document = dom.window.document;
 
-    let title = document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
-                document.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
-                document.querySelector('h1')?.textContent ||
-                document.title;
+    // Enhanced extraction logic for different sites
+    let title = '';
+    let description = '';
+    let imageUrl = '';
+    let price = '';
 
-    let description = document.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
-                      document.querySelector('meta[name="twitter:description"]')?.getAttribute('content') ||
-                      document.querySelector('meta[name="description"]')?.getAttribute('content') ||
-                      '';
+    const hostname = new URL(url).hostname;
 
-    let imageUrl = document.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
-                   document.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
-                   document.querySelector('img[data-a-image]')?.getAttribute('src') || // Amazon specific
-                   document.querySelector('img[id="imgTagWrapperId"]')?.getAttribute('src') || // Amazon specific
-                   document.querySelector('img[class*="product-image"]')?.getAttribute('src') ||
-                   '';
+    if (hostname.includes('amazon')) {
+      // Amazon-specific selectors
+      title = document.querySelector('#productTitle')?.textContent?.trim() ||
+              document.querySelector('h1 span')?.textContent?.trim() ||
+              document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+              document.title;
 
-    let price = document.querySelector('meta[property="og:price:amount"]')?.getAttribute('content') ||
-                document.querySelector('meta[itemprop="price"]')?.getAttribute('content') ||
-                document.querySelector('.a-price-whole')?.textContent || // Amazon specific
-                document.querySelector('._30jeq3')?.textContent || // Flipkart specific
-                document.querySelector('._2rQ-DZ')?.textContent || // Flipkart specific
-                document.querySelector('._3uDYy4')?.textContent || // Meesho specific
-                document.querySelector('._1VzZYX')?.textContent || // Meesho specific
-                '';
+      price = document.querySelector('.a-price-whole')?.textContent?.replace(/[^\d]/g, '') ||
+              document.querySelector('.a-price .a-offscreen')?.textContent?.replace(/[^\d]/g, '') ||
+              document.querySelector('meta[property="product:price:amount"]')?.getAttribute('content');
 
-    // Clean up price string (remove currency symbols, extra spaces, etc.)
-    price = price.replace(/[^\d.,]/g, '').replace(/,/g, ''); // Remove non-numeric except . and ,
+      imageUrl = document.querySelector('#landingImage')?.getAttribute('src') ||
+                 document.querySelector('#imgBlkFront')?.getAttribute('src') ||
+                 document.querySelector('.a-dynamic-image')?.getAttribute('src') ||
+                 document.querySelector('meta[property="og:image"]')?.getAttribute('content');
 
-    // Basic validation and fallback for extracted data
-    title = title ? title.trim() : 'No title found';
-    description = description ? description.trim() : 'No description found';
+      // Amazon description from feature bullets
+      const bulletPoints = document.querySelectorAll('#feature-bullets li span');
+      const bullets = Array.from(bulletPoints)
+        .map(el => el.textContent?.trim())
+        .filter(text => text && text.length > 10)
+        .slice(0, 5);
+      description = bullets.join('\n') || 
+                   document.querySelector('meta[property="og:description"]')?.getAttribute('content');
+
+    } else if (hostname.includes('flipkart')) {
+      // Flipkart-specific selectors
+      title = document.querySelector('h1')?.textContent?.trim() ||
+              document.querySelector('.B_NuCI')?.textContent?.trim() ||
+              document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+
+      price = document.querySelector('._30jeq3')?.textContent?.replace(/[^\d]/g, '') ||
+              document.querySelector('._2rQ-DZ')?.textContent?.replace(/[^\d]/g, '');
+
+      imageUrl = document.querySelector('._396cs4 img')?.getAttribute('src') ||
+                 document.querySelector('._2r_T1I img')?.getAttribute('src') ||
+                 document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+
+      description = document.querySelector('._1mXcCf')?.textContent?.trim() ||
+                   document.querySelector('meta[property="og:description"]')?.getAttribute('content');
+
+    } else if (hostname.includes('meesho')) {
+      // Meesho-specific selectors
+      title = document.querySelector('[data-testid="product-name"]')?.textContent?.trim() ||
+              document.querySelector('h1')?.textContent?.trim() ||
+              document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+
+      price = document.querySelector('[data-testid="product-price"]')?.textContent?.replace(/[^\d]/g, '') ||
+              document.querySelector('._3uDYy4')?.textContent?.replace(/[^\d]/g, '');
+
+      imageUrl = document.querySelector('[data-testid="product-image"]')?.getAttribute('src') ||
+                 document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+
+      description = document.querySelector('[data-testid="product-description"]')?.textContent?.trim() ||
+                   document.querySelector('meta[property="og:description"]')?.getAttribute('content');
+
+    } else {
+      // Generic fallback for other sites
+      title = document.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
+              document.querySelector('meta[name="twitter:title"]')?.getAttribute('content') ||
+              document.querySelector('h1')?.textContent?.trim() ||
+              document.title;
+
+      description = document.querySelector('meta[property="og:description"]')?.getAttribute('content') ||
+                    document.querySelector('meta[name="twitter:description"]')?.getAttribute('content') ||
+                    document.querySelector('meta[name="description"]')?.getAttribute('content');
+
+      imageUrl = document.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+                 document.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+
+      price = document.querySelector('meta[property="product:price:amount"]')?.getAttribute('content') ||
+              document.querySelector('[class*="price"]')?.textContent?.replace(/[^\d]/g, '');
+    }
+
+    // Clean up extracted data
+    title = title ? title.trim().substring(0, 200) : 'Product name not found';
+    description = description ? description.trim().substring(0, 1000) : 'Product description not available';
+    price = price ? price.replace(/[^\d.]/g, '') : '0';
     imageUrl = imageUrl ? imageUrl.trim() : '';
-    price = price ? price.trim() : '0';
+
+    // Ensure we have at least basic data
+    if (!title || title === 'Product name not found') {
+      return res.status(400).json({ 
+        error: 'Could not extract product details from this URL. Please try a different product page.' 
+      });
+    }
 
     res.status(200).json({
       name: title,
@@ -109,7 +184,145 @@ app.post('/api/scrape-product', async (req, res) => {
 
   } catch (error) {
     console.error('Error in scrape-product API:', error);
-    res.status(500).json({ error: 'Failed to process product URL' });
+    res.status(500).json({ 
+      error: 'Failed to process product URL. Please check the URL and try again.' 
+    });
+  }
+});
+
+// New Google Sheets import route
+app.post('/api/import-products-from-sheet', authenticateUser, async (req, res) => {
+  const { sheetUrl } = req.body;
+  const userId = req.user.id;
+
+  if (!sheetUrl) {
+    return res.status(400).json({ error: 'Google Sheets URL is required' });
+  }
+
+  try {
+    // Extract sheet ID from URL
+    const sheetIdMatch = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (!sheetIdMatch) {
+      return res.status(400).json({ error: 'Invalid Google Sheets URL format' });
+    }
+    const sheetId = sheetIdMatch[1];
+
+    // Get user's store
+    const { data: storeData, error: storeError } = await supabase
+      .from('stores')
+      .select('id, username')
+      .eq('user_id', userId)
+      .single();
+
+    if (storeError || !storeData) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
+    // Fetch data from Google Sheets using CSV export
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+    const response = await fetch(csvUrl);
+    
+    if (!response.ok) {
+      return res.status(400).json({ 
+        error: 'Failed to access Google Sheet. Please ensure the sheet is shared with "Anyone with the link can view"' 
+      });
+    }
+
+    const csvText = await response.text();
+    const lines = csvText.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'Sheet appears to be empty or has no data rows' });
+    }
+
+    // Parse CSV (simple parsing, assumes no commas in quoted fields)
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      return headers.reduce((obj, header, index) => {
+        obj[header] = values[index] || '';
+        return obj;
+      }, {});
+    });
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    for (const [index, row] of rows.entries()) {
+      try {
+        const rowNum = index + 2; // +2 because we skip header and arrays are 0-indexed
+        
+        // Map sheet columns to our product fields (flexible mapping)
+        const name = row['Product Name'] || row['Name'] || row['Title'] || '';
+        const description = row['Description'] || row['Desc'] || '';
+        const price = parseFloat((row['Price'] || '0').toString().replace(/[^\d.]/g, '')) || 0;
+        const imageUrl = row['Image URL'] || row['Image'] || '';
+        const category = row['Category'] || '';
+
+        if (!name.trim()) {
+          errors.push(`Row ${rowNum}: Product name is required`);
+          failedCount++;
+          continue;
+        }
+
+        if (price <= 0) {
+          errors.push(`Row ${rowNum}: Valid price is required`);
+          failedCount++;
+          continue;
+        }
+
+        // Generate unique slug
+        const { generateUniqueProductSlug } = await import('./src/utils/slugHelpers.js');
+        const slug = await generateUniqueProductSlug(storeData.username, name, supabase);
+
+        // Insert product
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert({
+            name: name.trim(),
+            description: description.trim(),
+            price: price,
+            image_url: imageUrl.trim() || null,
+            images: imageUrl.trim() ? [imageUrl.trim()] : [],
+            category: category.trim() || null,
+            store_id: storeData.id,
+            user_id: userId,
+            slug: slug,
+            status: 'active',
+            is_published: true,
+            product_type: 'simple',
+            payment_method: 'cod',
+            inventory_count: 0
+          });
+
+        if (insertError) {
+          console.error(`Error inserting product from row ${rowNum}:`, insertError);
+          errors.push(`Row ${rowNum}: ${insertError.message}`);
+          failedCount++;
+        } else {
+          successCount++;
+        }
+
+      } catch (error) {
+        console.error(`Error processing row ${index + 2}:`, error);
+        errors.push(`Row ${index + 2}: ${error.message}`);
+        failedCount++;
+      }
+    }
+
+    res.status(200).json({
+      message: `Import completed: ${successCount} successful, ${failedCount} failed`,
+      success: successCount,
+      failed: failedCount,
+      errors: errors.slice(0, 10) // Limit errors to first 10
+    });
+
+  } catch (error) {
+    console.error('Error in Google Sheets import:', error);
+    res.status(500).json({ 
+      error: 'Failed to import products from Google Sheets. Please check the URL and try again.' 
+    });
   }
 });
 

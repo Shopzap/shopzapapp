@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +8,7 @@ import ProductGrid from '@/components/product/ProductGrid';
 import AddProductModal from '@/components/product/AddProductModal';
 import CsvUploadModal from '@/components/product/CsvUploadModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GoogleSheetsImport } from '@/components/product/GoogleSheetsImport';
 
 type Product = {
   id: string;
@@ -188,6 +188,13 @@ const ProductManager: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Add bulk import section for pro users */}
+        {!isFreePlan && (
+          <div className="mb-6">
+            <GoogleSheetsImport onProductsImported={handleCsvUploaded} />
+          </div>
+        )}
         
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row gap-2">
