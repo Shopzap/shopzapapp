@@ -32,12 +32,16 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
+      // Create or update store record (using stores table for now)
       const { error } = await supabase
-        .from('seller_profiles')
+        .from('stores')
         .upsert({
           user_id: user.id,
-          ...formData,
-          is_onboarding_complete: true,
+          name: formData.business_name,
+          description: formData.business_description,
+          business_email: formData.contact_email,
+          phone_number: formData.contact_phone,
+          username: formData.business_name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         });
 
       if (error) throw error;

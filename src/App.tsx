@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
+import PublicStorefront from "./pages/store/[username]";
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
 import Checkout from "./pages/Checkout";
@@ -31,6 +32,7 @@ import OrderRedirect from "./pages/OrderRedirect";
 
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
+import { SellerProvider } from './contexts/SellerContext';
 import { StoreProvider } from './contexts/StoreContext';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -51,6 +53,7 @@ const AppContent = () => (
     <Route path="/auth" element={<Auth />} />
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
+    <Route path="/store/:username" element={<PublicStorefront />} />
     <Route path="/store/:storeName" element={
       <ErrorBoundary>
         <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
@@ -65,7 +68,7 @@ const AppContent = () => (
         </Suspense>
       </ErrorBoundary>
     } />
-    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/checkout/:id" element={<Checkout />} />
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
     <Route path="/track-order" element={<OrderTracking />} />
@@ -109,13 +112,15 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <StoreProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-            <Toaster />
-            <Sonner />
-          </StoreProvider>
+          <SellerProvider>
+            <StoreProvider>
+              <ErrorBoundary>
+                <AppContent />
+              </ErrorBoundary>
+              <Toaster />
+              <Sonner />
+            </StoreProvider>
+          </SellerProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

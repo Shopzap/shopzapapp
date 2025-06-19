@@ -70,17 +70,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setIsLoading(true);
 
     try {
+      // First get the user's store
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!storeData) {
+        throw new Error('Store not found. Please complete onboarding first.');
+      }
+
+      // Generate slug from name
+      const slug = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+
       const productData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price) || 0,
         image_url: formData.image_url,
         payment_method: formData.payment_method,
-        seller_id: user.id,
-        user_id: user.id, // Keep for backward compatibility
+        store_id: storeData.id,
         status: 'active',
         category: formData.category,
-        inventory_count: parseInt(formData.inventory_count) || 0
+        inventory_count: parseInt(formData.inventory_count) || 0,
+        slug: slug,
+        product_type: 'simple'
       };
 
       const { error } = await supabase
