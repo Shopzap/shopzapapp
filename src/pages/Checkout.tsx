@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader } from 'lucide-react';
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface Product {
   id: string;
   name: string;
@@ -16,15 +22,24 @@ interface Product {
   price: number;
   image_url?: string;
   store_id: string;
-  seller_id?: string;
+}
+
+interface ProductVariant {
+  id: string;
+  price: number;
+  inventory_count: number;
+  options: { [key: string]: string };
 }
 
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [product, setProduct] = useState<Product | null>(null);
+  const [variant, setVariant] = useState<ProductVariant | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -33,7 +48,6 @@ const Checkout = () => {
     buyer_email: '',
     buyer_phone: '',
     buyer_address: '',
-    quantity: 1,
   });
 
   useEffect(() => {
@@ -51,12 +65,22 @@ const Checkout = () => {
       try {
         console.log('Fetching product with ID:', id);
         
+        // Check if product and variant data was passed via state
+        const stateData = location.state as any;
+        if (stateData?.product) {
+          setProduct(stateData.product);
+          setVariant(stateData.variant || null);
+          setQuantity(stateData.quantity || 1);
+          setIsLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('products')
           .select('*')
           .eq('id', id)
           .eq('status', 'active')
-          .maybeSingle();
+          .single();
 
         if (error) {
           console.error('Product fetch error:', error);
@@ -96,7 +120,98 @@ const Checkout = () => {
     };
 
     fetchProduct();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, location.state]);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async (orderData: any) => {
+    const isScriptLoaded = await loadRazorpayScript();
+    
+    if (!isScriptLoaded) {
+      toast({
+        title: "Payment Error",
+        description: "Failed to load payment gateway",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create Razorpay order
+      const { data: razorpayOrder, error } = await supabase.functions.invoke('create-razorpay-order', {
+        body: {
+          amount: orderData.total_price * 100, // Convert to paise
+          currency: 'INR',
+          order_id: orderData.id
+        }
+      });
+
+      if (error) throw error;
+
+      const options = {
+        key: 'rzp_test_YOUR_KEY_ID', // Replace with your Razorpay key
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: 'ShopZap',
+        description: `Payment for ${product?.name}`,
+        order_id: razorpayOrder.id,
+        handler: async (response: any) => {
+          try {
+            // Verify payment
+            const { error: verifyError } = await supabase.functions.invoke('verify-payment', {
+              body: {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                order_id: orderData.id
+              }
+            });
+
+            if (verifyError) throw verifyError;
+
+            toast({
+              title: "Payment successful!",
+              description: "Your order has been placed successfully.",
+            });
+
+            navigate('/order-success');
+          } catch (error: any) {
+            toast({
+              title: "Payment verification failed",
+              description: error.message,
+              variant: "destructive"
+            });
+          }
+        },
+        prefill: {
+          name: orderForm.buyer_name,
+          email: orderForm.buyer_email,
+          contact: orderForm.buyer_phone
+        },
+        theme: {
+          color: '#3B82F6'
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+    } catch (error: any) {
+      console.error('Razorpay payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +219,8 @@ const Checkout = () => {
 
     setIsSubmitting(true);
     try {
-      const totalPrice = product.price * orderForm.quantity;
+      const currentPrice = variant ? variant.price : product.price;
+      const totalPrice = currentPrice * quantity;
       
       const { data: order, error } = await supabase
         .from('orders')
@@ -116,7 +232,7 @@ const Checkout = () => {
           buyer_address: orderForm.buyer_address,
           total_price: totalPrice,
           status: 'pending',
-          payment_method: 'cod',
+          payment_method: 'online',
         })
         .select()
         .single();
@@ -129,16 +245,14 @@ const Checkout = () => {
         .insert({
           order_id: order.id,
           product_id: product.id,
-          quantity: orderForm.quantity,
-          price_at_purchase: product.price,
+          product_variant_id: variant?.id || null,
+          quantity: quantity,
+          price_at_purchase: currentPrice,
         });
 
-      toast({
-        title: "Order placed successfully!",
-        description: "You will receive a confirmation shortly.",
-      });
+      // Process Razorpay payment
+      await handleRazorpayPayment(order);
 
-      navigate('/order-success');
     } catch (error: any) {
       console.error('Order submission error:', error);
       toast({
@@ -170,7 +284,8 @@ const Checkout = () => {
     );
   }
 
-  const totalPrice = product.price * orderForm.quantity;
+  const currentPrice = variant ? variant.price : product.price;
+  const totalPrice = currentPrice * quantity;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -195,7 +310,12 @@ const Checkout = () => {
                   {product.description && (
                     <p className="text-sm text-gray-600 mt-1">{product.description}</p>
                   )}
-                  <p className="text-lg font-bold mt-2">₹{product.price}</p>
+                  {variant && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      Variant: {Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                    </p>
+                  )}
+                  <p className="text-lg font-bold mt-2">₹{currentPrice}</p>
                 </div>
               </div>
               
@@ -205,8 +325,8 @@ const Checkout = () => {
                   <Input
                     type="number"
                     min="1"
-                    value={orderForm.quantity}
-                    onChange={(e) => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })}
+                    value={quantity}
+                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                     className="w-20"
                   />
                 </div>
@@ -272,10 +392,10 @@ const Checkout = () => {
                   {isSubmitting ? (
                     <>
                       <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      Placing Order...
+                      Processing...
                     </>
                   ) : (
-                    `Place Order - ₹${totalPrice} (Cash on Delivery)`
+                    `Pay ₹${totalPrice} with Razorpay`
                   )}
                 </Button>
               </form>

@@ -24,11 +24,11 @@ import Verify from "./pages/Verify";
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
 import PublicStorefront from "./pages/store/[username]";
-const Storefront = lazy(() => import("./pages/Storefront"));
-const ProductDetails = lazy(() => import("./pages/ProductDetails"));
+import ProductDetails from "./pages/ProductDetails";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import OrderRedirect from "./pages/OrderRedirect";
+const Storefront = lazy(() => import("./pages/Storefront"));
 
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
@@ -61,13 +61,7 @@ const AppContent = () => (
         </Suspense>
       </ErrorBoundary>
     } />
-    <Route path="/product/:productId" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-          <ProductDetails />
-        </Suspense>
-      </ErrorBoundary>
-    } />
+    <Route path="/product/:id" element={<ProductDetails />} />
     <Route path="/checkout/:id" element={<Checkout />} />
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
