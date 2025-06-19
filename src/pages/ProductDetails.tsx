@@ -89,23 +89,54 @@ const ProductDetails = () => {
         }
 
         console.log('Product found:', productData);
-        setProduct(productData);
+        
+        // Type-safe product mapping
+        const mappedProduct: Product = {
+          id: productData.id,
+          name: productData.name,
+          description: productData.description,
+          price: productData.price,
+          image_url: productData.image_url,
+          images: productData.images,
+          category: productData.category,
+          inventory_count: productData.inventory_count,
+          status: productData.status,
+          product_type: (productData.product_type === 'variant' || productData.product_type === 'simple') 
+            ? productData.product_type 
+            : 'simple',
+          store_id: productData.store_id
+        };
+        
+        setProduct(mappedProduct);
 
         // If it's a variant product, fetch variants
-        if (productData.product_type === 'variant') {
+        if (mappedProduct.product_type === 'variant') {
           const { data: variantData, error: variantError } = await supabase
             .from('product_variants')
             .select('*')
-            .eq('product_id', productData.id);
+            .eq('product_id', mappedProduct.id);
 
           if (variantError) {
             console.error('Variants fetch error:', variantError);
           } else {
             console.log('Variants found:', variantData);
-            setVariants(variantData || []);
-            if (variantData && variantData.length > 0) {
-              setSelectedVariant(variantData[0]);
-              setSelectedOptions(variantData[0].options || {});
+            
+            // Type-safe variant mapping
+            const mappedVariants: ProductVariant[] = (variantData || []).map(variant => ({
+              id: variant.id,
+              price: variant.price,
+              inventory_count: variant.inventory_count,
+              sku: variant.sku,
+              image_url: variant.image_url,
+              options: typeof variant.options === 'object' && variant.options !== null 
+                ? variant.options as { [key: string]: string }
+                : {}
+            }));
+            
+            setVariants(mappedVariants);
+            if (mappedVariants.length > 0) {
+              setSelectedVariant(mappedVariants[0]);
+              setSelectedOptions(mappedVariants[0].options || {});
             }
           }
         }
