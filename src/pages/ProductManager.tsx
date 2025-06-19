@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Upload, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ProductGrid from '@/components/product/ProductGrid';
 import AddProductModal from '@/components/product/AddProductModal';
-import CsvUploadModal from '@/components/product/CsvUploadModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GoogleSheetsImport } from '@/components/product/GoogleSheetsImport';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 
 type Product = {
   id: string;
@@ -21,76 +21,35 @@ type Product = {
   inventory_count?: number;
   status: string;
   created_at?: string;
+  seller_id: string;
 };
 
 const ProductManager: React.FC = () => {
+  useOnboardingRedirect();
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [storePlan, setStorePlan] = useState('free');
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProducts();
-    fetchStorePlan();
-  }, []);
-
-  const fetchStorePlan = async () => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) return;
-
-      const { data } = await supabase
-        .from('stores')
-        .select('plan')
-        .eq('user_id', session.session.user.id)
-        .single();
-
-      if (data) {
-        setStorePlan(data.plan);
-      }
-    } catch (error) {
-      console.error('Error fetching store plan:', error);
-    }
-  };
+  }, [user]);
 
   const fetchProducts = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) {
-        toast({
-          title: "Authentication required",
-          description: "Please login to view your products",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // First get the user's store
-      const { data: storeData } = await supabase
-        .from('stores')
-        .select('id')
-        .eq('user_id', session.session.user.id)
-        .single();
-
-      if (!storeData) {
-        toast({
-          title: "Store not found",
-          description: "Please complete the onboarding process",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Then get products for that store
+      
       const { data: productsData, error } = await supabase
         .from('products')
         .select('*')
-        .eq('store_id', storeData.id)
+        .eq('seller_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -143,17 +102,6 @@ const ProductManager: React.FC = () => {
     });
   };
 
-  const handleCsvUploaded = (count: number) => {
-    fetchProducts();
-    setShowUploadModal(false);
-    toast({
-      title: "Products imported",
-      description: `${count} products have been imported successfully`,
-    });
-  };
-
-  const isFreePlan = storePlan === 'free';
-
   if (isLoading) {
     return (
         <div className="min-h-screen flex items-center justify-center">
@@ -169,32 +117,15 @@ const ProductManager: React.FC = () => {
     <>
       <div className="p-6 sm:p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-          <h1 className="text-2xl font-bold">Products</h1>
+          <h1 className="text-2xl font-bold">My Products</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <AddProductModal 
-              onProductAdded={handleProductAdded}
+              onProductAdded={fetchProducts}
               disabled={false}
               title="Add a new product"
             />
-            
-            {!isFreePlan && (
-              <Button 
-                variant="outline"
-                onClick={() => setShowUploadModal(true)}
-                className="w-full sm:w-auto"
-              >
-                <Upload className="mr-2 h-4 w-4" /> Import CSV
-              </Button>
-            )}
           </div>
         </div>
-
-        {/* Add bulk import section for pro users */}
-        {!isFreePlan && (
-          <div className="mb-6">
-            <GoogleSheetsImport onProductsImported={handleCsvUploaded} />
-          </div>
-        )}
         
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row gap-2">
@@ -223,8 +154,8 @@ const ProductManager: React.FC = () => {
                   <ProductGrid 
                     products={filteredProducts}
                     isLoading={isLoading}
-                    onDelete={handleProductDeleted}
-                    onUpdate={handleProductUpdated}
+                    onDelete={fetchProducts}
+                    onUpdate={fetchProducts}
                   />
                 )}
               </TabsContent>
@@ -232,34 +163,22 @@ const ProductManager: React.FC = () => {
                 <ProductGrid 
                   products={filteredProducts.filter(p => p.status === 'active')}
                   isLoading={isLoading}
-                  onDelete={handleProductDeleted}
-                  onUpdate={handleProductUpdated}
+                  onDelete={fetchProducts}
+                  onUpdate={fetchProducts}
                 />
               </TabsContent>
               <TabsContent value="draft">
                 <ProductGrid 
                   products={filteredProducts.filter(p => p.status === 'draft')}
                   isLoading={isLoading}
-                  onDelete={handleProductDeleted}
-                  onUpdate={handleProductUpdated}
+                  onDelete={fetchProducts}
+                  onUpdate={fetchProducts}
                 />
               </TabsContent>
             </Tabs>
           </div>
         </div>
       </div>
-
-      <CsvUploadModal
-        open={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onProductsUploaded={(count) => {
-          toast({
-            title: 'CSV Uploaded',
-            description: `${count} products added successfully.`,
-          });
-          fetchProducts();
-        }}
-      />
     </>
   );
 };

@@ -19,281 +19,107 @@ import Analytics from './pages/Analytics';
 import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
 import Settings from "./pages/Settings";
-import BankDetails from "./pages/BankDetails";
-import InstagramAutomation from "./pages/InstagramAutomation";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
 import OrderTracking from "./pages/OrderTracking";
-import ThankYou from "./pages/ThankYou";
-import Invoices from "./pages/Invoices";
-import Payouts from "./pages/Payouts";
-import AdminPayouts from "./pages/AdminPayouts";
-
-// Legal pages
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import RefundPolicy from "./pages/RefundPolicy";
-import ShippingPolicy from "./pages/ShippingPolicy";
-import PricingPolicy from "./pages/PricingPolicy";
-import Contact from "./pages/Contact";
-import Blog from "./pages/Blog";
-import Help from "./pages/Help";
-import Tutorials from "./pages/Tutorials";
-import StoreThemes from "./pages/StoreThemes";
-import EmbedButton from "./pages/EmbedButton";
-
-// Lazy loaded components with better fallbacks
 const Storefront = lazy(() => import("./pages/Storefront"));
 const ProductDetails = lazy(() => import("./pages/ProductDetails"));
-const InvoicePage = lazy(() => import("./pages/InvoicePage"));
-const CorrectionPage = lazy(() => import("./pages/CorrectionPage"));
-
-// Core e-commerce pages - CRITICAL ROUTES - DO NOT REMOVE
-import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import OrderRedirect from "./pages/OrderRedirect";
 
-// Enhanced components
+// Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
-import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
-import ResponsiveLayout from "./components/ResponsiveLayout";
-import StorefrontSkeleton from "./components/skeletons/StorefrontSkeleton";
-import ProductDetailsSkeleton from "./components/skeletons/ProductDetailsSkeleton";
-import { useReferralTracking } from "./hooks/useReferralTracking";
 
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import SellerManagement from "./pages/admin/SellerManagement";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
-      refetchOnWindowFocus: false, // Prevent excessive refetching
-    },
-  },
-});
-
-// Store pages wrapper with CartProvider
-const StorePageWrapper = ({ children }: { children: React.ReactNode }) => (
-  <ErrorBoundary>
-    <CartProvider>
-      <ResponsiveLayout>
-        {children}
-      </ResponsiveLayout>
-    </CartProvider>
-  </ErrorBoundary>
-);
-
-// Global cart page wrapper with CartProvider
-const GlobalCartWrapper = () => (
-  <ErrorBoundary>
-    <CartProvider>
-      <ResponsiveLayout>
-        <Cart />
-      </ResponsiveLayout>
-    </CartProvider>
-  </ErrorBoundary>
-);
-
-// Checkout wrapper with CartProvider
-const CheckoutWrapper = () => (
-  <ErrorBoundary>
-    <CartProvider>
-      <ResponsiveLayout>
-        <Checkout />
-      </ResponsiveLayout>
-    </CartProvider>
-  </ErrorBoundary>
-);
-
-// Enhanced loading fallback components
-const StorefrontFallback = () => (
-  <ResponsiveLayout>
-    <StorefrontSkeleton />
-  </ResponsiveLayout>
-);
-
-const ProductDetailsFallback = () => (
-  <ResponsiveLayout>
-    <ProductDetailsSkeleton />
-  </ResponsiveLayout>
-);
+const queryClient = new QueryClient();
 
 // Create a separate App component wrapper to ensure proper provider nesting
-const AppContent = () => {
-  // Track referrals on app load
-  useReferralTracking();
-  
-  return (
-    <Routes>
-      {/* Admin Routes - SEPARATE FROM MAIN APP */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/*" element={
-        <AdminProtectedRoute>
-          <AdminLayout />
-        </AdminProtectedRoute>
-      }>
-        <Route index element={<AdminDashboard />} />
-        <Route path="dashboard" element={<AdminDashboard />} />
-        <Route path="sellers" element={<SellerManagement />} />
-        <Route path="orders" element={<div className="p-8 text-center text-gray-500">Orders Management - Coming Soon</div>} />
-        <Route path="payouts" element={<AdminPayouts />} />
-        <Route path="bank-details" element={<div className="p-8 text-center text-gray-500">Bank Details - Coming Soon</div>} />
-        <Route path="complaints" element={<div className="p-8 text-center text-gray-500">Complaints - Coming Soon</div>} />
-        <Route path="blogs" element={<div className="p-8 text-center text-gray-500">Blog Manager - Coming Soon</div>} />
-        <Route path="product-approval" element={<div className="p-8 text-center text-gray-500">Product Approval - Coming Soon</div>} />
-        <Route path="reported-products" element={<div className="p-8 text-center text-gray-500">Reported Products - Coming Soon</div>} />
-        <Route path="settings" element={<div className="p-8 text-center text-gray-500">Admin Settings - Coming Soon</div>} />
-        <Route path="activity-logs" element={<div className="p-8 text-center text-gray-500">Activity Logs - Coming Soon</div>} />
-        <Route path="email-settings" element={<div className="p-8 text-center text-gray-500">Email Settings - Coming Soon</div>} />
-      </Route>
+const AppContent = () => (
+  <Routes>
+    {/* Public routes */}
+    <Route path="/" element={<Index />} />
+    <Route path="/pricing" element={<Pricing />} />
+    <Route path="/features" element={<Features />} />
+    <Route path="*" element={<NotFound />} />
 
-      {/* Public routes with responsive wrapper */}
-      <Route path="/" element={<ResponsiveLayout><Index /></ResponsiveLayout>} />
-      
-      {/* Legal and info pages */}
-      <Route path="/terms" element={<ResponsiveLayout><Terms /></ResponsiveLayout>} />
-      <Route path="/privacy" element={<ResponsiveLayout><Privacy /></ResponsiveLayout>} />
-      <Route path="/refund" element={<ResponsiveLayout><RefundPolicy /></ResponsiveLayout>} />
-      <Route path="/shipping" element={<ResponsiveLayout><ShippingPolicy /></ResponsiveLayout>} />
-      <Route path="/pricing-policy" element={<ResponsiveLayout><PricingPolicy /></ResponsiveLayout>} />
-      <Route path="/contact" element={<ResponsiveLayout><Contact /></ResponsiveLayout>} />
-      <Route path="/blog" element={<ResponsiveLayout><Blog /></ResponsiveLayout>} />
-      <Route path="/help" element={<ResponsiveLayout><Help /></ResponsiveLayout>} />
-      <Route path="/tutorials" element={<ResponsiveLayout><Tutorials /></ResponsiveLayout>} />
-      <Route path="/store-themes" element={<ResponsiveLayout><StoreThemes /></ResponsiveLayout>} />
-      <Route path="/embed-button" element={<ResponsiveLayout><EmbedButton /></ResponsiveLayout>} />
+    {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
+    <Route path="/auth" element={<Auth />} />
+    <Route path="/verify" element={<Verify />} /> 
+    <Route path="/auth-callback" element={<AuthCallback />} />
+    <Route path="/store/:storeName" element={
+      <ErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+          <Storefront />
+        </Suspense>
+      </ErrorBoundary>
+    } />
+    <Route path="/product/:productId" element={
+      <ErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+          <ProductDetails />
+        </Suspense>
+      </ErrorBoundary>
+    } />
+    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/order-success" element={<OrderSuccess />} />
+    <Route path="/order" element={<OrderRedirect />} />
+    <Route path="/track-order" element={<OrderTracking />} />
+    
+    {/* Protected routes */}
+    <Route path="/onboarding" element={
+      <ProtectedRoute>
+        <Onboarding />
+      </ProtectedRoute>
+    } />
+    <Route path="/store-builder" element={
+      <ProtectedRoute>
+        <StoreBuilder />
+      </ProtectedRoute>
+    } />
+    <Route path="/embed-generator" element={
+      <ProtectedRoute>
+        <EmbedGenerator />
+      </ProtectedRoute>
+    } />
+    <Route path="/dashboard/*" element={
+      <ProtectedRoute>
+        <Routes>
+          <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<ProductManager />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="customize-store" element={<CustomizeStore />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </ProtectedRoute>
+    } />
+  </Routes>
+);
 
-      {/* Auth routes */}
-      <Route path="/auth" element={<ResponsiveLayout><Auth /></ResponsiveLayout>} />
-      <Route path="/verify" element={<ResponsiveLayout><Verify /></ResponsiveLayout>} /> 
-      <Route path="/auth-callback" element={<ResponsiveLayout><AuthCallback /></ResponsiveLayout>} />
-      
-      {/* Admin routes */}
-      <Route path="/admin/payouts" element={
-        <ProtectedRoute>
-          <ResponsiveLayout><AdminPayouts /></ResponsiveLayout>
-        </ProtectedRoute>
-      } />
-      
-      {/* 🔒 CORE E-COMMERCE ROUTES - CRITICAL - DO NOT REMOVE OR MODIFY 🔒 */}
-      {/* Global cart route - handles both store-specific and general cart access */}
-      <Route path="/cart" element={<GlobalCartWrapper />} />
-      
-      {/* Checkout route - CRITICAL FOR PAYMENTS */}
-      <Route path="/checkout" element={<CheckoutWrapper />} />
-      
-      {/* Order completion routes */}
-      <Route path="/order-success" element={<ResponsiveLayout><OrderSuccess /></ResponsiveLayout>} />
-      <Route path="/thank-you" element={<ResponsiveLayout><ThankYou /></ResponsiveLayout>} />
-      <Route path="/order" element={<ResponsiveLayout><OrderRedirect /></ResponsiveLayout>} />
-      <Route path="/track-order" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
-      <Route path="/track-order/:orderId" element={<ResponsiveLayout><OrderTracking /></ResponsiveLayout>} />
-      <Route path="/invoice/:orderId" element={<Suspense fallback={<div>Loading...</div>}><InvoicePage /></Suspense>} />
-      <Route path="/correct-order/:orderId" element={<Suspense fallback={<div>Loading...</div>}><CorrectionPage /></Suspense>} />
-      {/* 🔒 END CORE E-COMMERCE ROUTES 🔒 */}
-      
-      {/* Store routes wrapped with CartProvider and proper error handling */}
-      <Route path="/store/:storeName" element={
-        <StorePageWrapper>
-          <Suspense fallback={<StorefrontFallback />}>
-            <Storefront />
-          </Suspense>
-        </StorePageWrapper>
-      } />
-      <Route path="/store/:storeName/product/:productSlug" element={
-        <StorePageWrapper>
-          <Suspense fallback={<ProductDetailsFallback />}>
-            <ProductDetails />
-          </Suspense>
-        </StorePageWrapper>
-      } />
-      <Route path="/store/:storeName/cart" element={
-        <StorePageWrapper>
-          <Suspense fallback={<StorefrontFallback />}>
-            <Cart />
-          </Suspense>
-        </StorePageWrapper>
-      } />
-      <Route path="/store/:storeName/checkout" element={
-        <StorePageWrapper>
-          <Suspense fallback={<StorefrontFallback />}>
-            <Checkout />
-          </Suspense>
-        </StorePageWrapper>
-      } />
-      
-      {/* Protected routes with responsive wrapper */}
-      <Route path="/onboarding" element={
-        <ProtectedRoute>
-          <ResponsiveLayout><Onboarding /></ResponsiveLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/store-builder" element={
-        <ProtectedRoute>
-          <ResponsiveLayout><StoreBuilder /></ResponsiveLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/embed-generator" element={
-        <ProtectedRoute>
-          <ResponsiveLayout><EmbedGenerator /></ResponsiveLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard/*" element={
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Routes>
-              <Route index element={<Dashboard />} />
-              <Route path="products" element={<ProductManager />} />
-              <Route path="orders" element={<Orders />} />
-              <Route path="invoices" element={<Invoices />} />
-              <Route path="payouts" element={<Payouts />} />
-              <Route path="customize-store" element={<CustomizeStore />} />
-              <Route path="instagram" element={<InstagramAutomation />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="bank-details" element={<BankDetails />} />
-            </Routes>
-          </DashboardLayout>
-        </ProtectedRoute>
-      } />
-
-      {/* Enhanced 404 route - must be last */}
-      <Route path="*" element={<ResponsiveLayout><NotFound /></ResponsiveLayout>} />
-    </Routes>
-  );
-};
-
-// Main App component with properly nested providers and global error boundary
-const App = () => {
-  return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <BrowserRouter>
-            <AuthProvider>
-              <StoreProvider>
-                <AppContent />
-                <Toaster />
-                <Sonner />
-              </StoreProvider>
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
-  );
-};
+// Main App component with properly nested providers
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <StoreProvider>
+            <ErrorBoundary>
+              <AppContent />
+            </ErrorBoundary>
+            <Toaster />
+            <Sonner />
+          </StoreProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
