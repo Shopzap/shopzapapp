@@ -6,11 +6,10 @@ import { Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ProductGrid from '@/components/product/ProductGrid';
+import AddProductModal from '@/components/product/AddProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
-import AddProductForm from '@/components/product/AddProductForm';
-import GoogleSheetsUpload from '@/components/product/GoogleSheetsUpload';
 
 type Product = {
   id: string;
@@ -24,7 +23,6 @@ type Product = {
   status: string;
   created_at?: string;
   store_id: string;
-  seller_id?: string;
 };
 
 const ProductManager: React.FC = () => {
@@ -48,28 +46,15 @@ const ProductManager: React.FC = () => {
 
     try {
       setIsLoading(true);
-      console.log('Fetching products for user:', user.id);
       
       // First get the user's store
-      const { data: storeData, error: storeError } = await supabase
+      const { data: storeData } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (storeError) {
-        console.error('Store fetch error:', storeError);
-        toast({
-          title: "Error loading store",
-          description: storeError.message,
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
+        .single();
 
       if (!storeData) {
-        console.log('No store found for user');
         toast({
           title: "Store not found",
           description: "Please complete the onboarding process",
@@ -79,28 +64,24 @@ const ProductManager: React.FC = () => {
         return;
       }
 
-      console.log('Store found:', storeData.id);
-
       // Then get products for that store
-      const { data: productsData, error: productsError } = await supabase
+      const { data: productsData, error } = await supabase
         .from('products')
         .select('*')
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
-      if (productsError) {
-        console.error('Products fetch error:', productsError);
+      if (error) {
         toast({
           title: "Error loading products",
-          description: productsError.message,
+          description: error.message,
           variant: "destructive"
         });
       } else {
-        console.log('Products fetched:', productsData?.length || 0);
         setProducts(productsData || []);
       }
-    } catch (error: any) {
-      console.error('Exception fetching products:', error);
+    } catch (error) {
+      console.error('Error fetching products:', error);
       toast({
         title: "Error loading products",
         description: "Please try again later",
@@ -156,53 +137,66 @@ const ProductManager: React.FC = () => {
       <div className="p-6 sm:p-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <h1 className="text-2xl font-bold">My Products</h1>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <AddProductModal 
+              onProductAdded={fetchProducts}
+              disabled={false}
+              title="Add a new product"
+            />
+          </div>
         </div>
         
-        <Tabs defaultValue="products" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="products">My Products</TabsTrigger>
-            <TabsTrigger value="add">Add Product</TabsTrigger>
-            <TabsTrigger value="import">Import CSV</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="products" className="space-y-4">
-            <div className="mb-6">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {filteredProducts.length === 0 && !isLoading ? (
-              <div className="text-center py-10">
-                <p className="text-muted-foreground">No products found. Add your first product!</p>
-              </div>
-            ) : (
-              <ProductGrid 
-                products={filteredProducts}
-                isLoading={isLoading}
-                onDelete={handleProductDeleted}
-                onUpdate={handleProductUpdated}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 w-full"
               />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="add">
-            <AddProductForm onProductAdded={handleProductAdded} />
-          </TabsContent>
-          
-          <TabsContent value="import">
-            <GoogleSheetsUpload onProductsAdded={handleProductAdded} />
-          </TabsContent>
-        </Tabs>
+            </div>
+            <Tabs defaultValue="all" className="w-full sm:w-auto">
+              <TabsList className="grid w-full sm:w-auto grid-cols-3">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="draft">Draft</TabsTrigger>
+              </TabsList>
+              <TabsContent value="all">
+                {filteredProducts.length === 0 && !isLoading ? (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">No products found. Add your first product!</p>
+                  </div>
+                ) : (
+                  <ProductGrid 
+                    products={filteredProducts}
+                    isLoading={isLoading}
+                    onDelete={fetchProducts}
+                    onUpdate={fetchProducts}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="active">
+                <ProductGrid 
+                  products={filteredProducts.filter(p => p.status === 'active')}
+                  isLoading={isLoading}
+                  onDelete={fetchProducts}
+                  onUpdate={fetchProducts}
+                />
+              </TabsContent>
+              <TabsContent value="draft">
+                <ProductGrid 
+                  products={filteredProducts.filter(p => p.status === 'draft')}
+                  isLoading={isLoading}
+                  onDelete={fetchProducts}
+                  onUpdate={fetchProducts}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </>
   );
