@@ -15,7 +15,7 @@ interface Product {
   description?: string;
   price: number;
   image_url?: string;
-  store_id: string;
+  seller_id: string;
 }
 
 const Checkout = () => {
@@ -92,7 +92,7 @@ const Checkout = () => {
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
-          store_id: product.store_id,
+          store_id: product.seller_id, // Using seller_id as store_id for now
           buyer_name: orderForm.buyer_name,
           buyer_email: orderForm.buyer_email,
           buyer_phone: orderForm.buyer_phone,

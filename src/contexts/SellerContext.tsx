@@ -39,9 +39,8 @@ export const SellerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      // For now, use the stores table since that's what exists
       const { data, error } = await supabase
-        .from('stores')
+        .from('seller_profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -50,26 +49,7 @@ export const SellerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Error fetching seller profile:', error);
       }
 
-      // Map stores data to seller profile format
-      if (data) {
-        const mappedProfile: SellerProfile = {
-          id: data.id,
-          user_id: data.user_id,
-          business_name: data.name,
-          business_description: data.description,
-          contact_email: data.business_email,
-          contact_phone: data.phone_number,
-          avatar_url: data.logo_image,
-          banner_url: data.banner_image,
-          is_verified: false, // Default for now
-          is_onboarding_complete: !!data.name, // Consider onboarding complete if name exists
-          social_links: data.social_media_links || {},
-          return_policy: null
-        };
-        setSellerProfile(mappedProfile);
-      } else {
-        setSellerProfile(null);
-      }
+      setSellerProfile(data);
     } catch (error) {
       console.error('Error fetching seller profile:', error);
     } finally {

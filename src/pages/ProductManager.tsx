@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +21,7 @@ type Product = {
   inventory_count?: number;
   status: string;
   created_at?: string;
-  store_id: string;
+  seller_id: string;
 };
 
 const ProductManager: React.FC = () => {
@@ -47,28 +46,10 @@ const ProductManager: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // First get the user's store
-      const { data: storeData } = await supabase
-        .from('stores')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!storeData) {
-        toast({
-          title: "Store not found",
-          description: "Please complete the onboarding process",
-          variant: "destructive"
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Then get products for that store
       const { data: productsData, error } = await supabase
         .from('products')
         .select('*')
-        .eq('store_id', storeData.id)
+        .eq('seller_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
