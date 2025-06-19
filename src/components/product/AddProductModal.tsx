@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Loader } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/contexts/StoreContext';
 import { ImageUploader } from './ImageUploader';
 
 interface AddProductModalProps {
@@ -25,6 +26,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
 }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { storeData } = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -46,13 +48,22 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setFormData(prev => ({ ...prev, image_url: '' }));
   };
 
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim('-');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
+    if (!user || !storeData) {
       toast({
         title: "Error",
-        description: "You must be logged in to add products",
+        description: "You must be logged in with a store to add products",
         variant: "destructive"
       });
       return;
@@ -70,17 +81,22 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setIsLoading(true);
 
     try {
+      const slug = generateSlug(formData.name);
+      
       const productData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price) || 0,
         image_url: formData.image_url,
         payment_method: formData.payment_method,
-        seller_id: user.id,
-        user_id: user.id, // Keep for backward compatibility
+        store_id: storeData.id,
+        user_id: user.id,
         status: 'active',
         category: formData.category,
-        inventory_count: parseInt(formData.inventory_count) || 0
+        inventory_count: parseInt(formData.inventory_count) || 0,
+        slug: slug,
+        is_published: true,
+        product_type: 'simple'
       };
 
       const { error } = await supabase

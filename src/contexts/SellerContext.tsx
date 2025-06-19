@@ -6,16 +6,18 @@ import { useAuth } from './AuthContext';
 interface SellerProfile {
   id: string;
   user_id: string;
-  business_name?: string;
-  business_description?: string;
-  contact_email?: string;
-  contact_phone?: string;
-  avatar_url?: string;
-  banner_url?: string;
-  is_verified: boolean;
-  is_onboarding_complete: boolean;
-  social_links?: any;
-  return_policy?: string;
+  name: string;
+  description?: string;
+  business_email: string;
+  phone_number: string;
+  username: string;
+  address?: string;
+  logo_image?: string;
+  banner_image?: string;
+  is_active?: boolean;
+  plan: string;
+  tagline?: string;
+  theme?: any;
 }
 
 interface SellerContextType {
@@ -40,7 +42,7 @@ export const SellerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       const { data, error } = await supabase
-        .from('seller_profiles')
+        .from('stores')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();

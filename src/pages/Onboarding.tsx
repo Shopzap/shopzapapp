@@ -20,10 +20,11 @@ const Onboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const [formData, setFormData] = useState({
-    business_name: '',
-    business_description: '',
-    contact_email: user?.email || '',
-    contact_phone: '',
+    name: '',
+    description: '',
+    business_email: user?.email || '',
+    phone_number: '',
+    username: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,11 +34,12 @@ const Onboarding = () => {
     setIsLoading(true);
     try {
       const { error } = await supabase
-        .from('seller_profiles')
+        .from('stores')
         .upsert({
           user_id: user.id,
           ...formData,
-          is_onboarding_complete: true,
+          plan: 'free',
+          is_active: true,
         });
 
       if (error) throw error;
@@ -45,7 +47,7 @@ const Onboarding = () => {
       await refreshProfile();
       
       toast({
-        title: "Profile created successfully!",
+        title: "Store created successfully!",
         description: "Welcome to ShopZap. You can now start selling!",
       });
 
@@ -65,48 +67,60 @@ const Onboarding = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Complete Your Seller Profile</CardTitle>
+          <CardTitle>Create Your Store</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="business_name">Business Name</Label>
+              <Label htmlFor="name">Store Name</Label>
               <Input
-                id="business_name"
-                value={formData.business_name}
-                onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </div>
             
             <div>
-              <Label htmlFor="business_description">Business Description</Label>
+              <Label htmlFor="username">Store Username</Label>
+              <Input
+                id="username"
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                placeholder="mystore"
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="description">Store Description</Label>
               <Textarea
-                id="business_description"
-                value={formData.business_description}
-                onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
               />
             </div>
             
             <div>
-              <Label htmlFor="contact_email">Contact Email</Label>
+              <Label htmlFor="business_email">Business Email</Label>
               <Input
-                id="contact_email"
+                id="business_email"
                 type="email"
-                value={formData.contact_email}
-                onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                value={formData.business_email}
+                onChange={(e) => setFormData({ ...formData, business_email: e.target.value })}
                 required
               />
             </div>
             
             <div>
-              <Label htmlFor="contact_phone">Contact Phone</Label>
+              <Label htmlFor="phone_number">Phone Number</Label>
               <Input
-                id="contact_phone"
+                id="phone_number"
                 type="tel"
-                value={formData.contact_phone}
-                onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                required
               />
             </div>
             
@@ -114,10 +128,10 @@ const Onboarding = () => {
               {isLoading ? (
                 <>
                   <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up your profile...
+                  Creating your store...
                 </>
               ) : (
-                'Complete Setup'
+                'Create Store'
               )}
             </Button>
           </form>

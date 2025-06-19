@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import ProductGrid from '@/components/product/ProductGrid';
 import AddProductModal from '@/components/product/AddProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/contexts/StoreContext';
 import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 
 type Product = {
@@ -17,11 +19,17 @@ type Product = {
   price: number;
   image_url?: string;
   category?: string;
-  sku?: string;
   inventory_count?: number;
   status: string;
   created_at?: string;
-  seller_id: string;
+  store_id: string;
+  images?: string[];
+  is_published?: boolean;
+  payment_method?: string;
+  product_type?: string;
+  slug?: string;
+  updated_at?: string;
+  user_id?: string;
 };
 
 const ProductManager: React.FC = () => {
@@ -32,13 +40,14 @@ const ProductManager: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
+  const { storeData } = useStore();
 
   useEffect(() => {
     fetchProducts();
-  }, [user]);
+  }, [user, storeData]);
 
   const fetchProducts = async () => {
-    if (!user) {
+    if (!user || !storeData) {
       setIsLoading(false);
       return;
     }
@@ -49,7 +58,7 @@ const ProductManager: React.FC = () => {
       const { data: productsData, error } = await supabase
         .from('products')
         .select('*')
-        .eq('seller_id', user.id)
+        .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
       if (error) {

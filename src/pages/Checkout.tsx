@@ -15,7 +15,11 @@ interface Product {
   description?: string;
   price: number;
   image_url?: string;
-  seller_id: string;
+  store_id: string;
+  status: string;
+  is_published?: boolean;
+  inventory_count?: number;
+  payment_method?: string;
 }
 
 const Checkout = () => {
@@ -53,6 +57,7 @@ const Checkout = () => {
           .select('*')
           .eq('id', id)
           .eq('status', 'active')
+          .eq('is_published', true)
           .maybeSingle();
 
         if (error || !data) {
@@ -92,7 +97,7 @@ const Checkout = () => {
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
-          store_id: product.seller_id, // Using seller_id as store_id for now
+          store_id: product.store_id,
           buyer_name: orderForm.buyer_name,
           buyer_email: orderForm.buyer_email,
           buyer_phone: orderForm.buyer_phone,

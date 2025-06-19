@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,6 +33,8 @@ import OrderRedirect from "./pages/OrderRedirect";
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
+import { SellerProvider } from './contexts/SellerContext';
+import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
@@ -65,6 +68,7 @@ const AppContent = () => (
         </Suspense>
       </ErrorBoundary>
     } />
+    <Route path="/checkout/:id" element={<Checkout />} />
     <Route path="/checkout" element={<Checkout />} />
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
@@ -110,11 +114,15 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <StoreProvider>
-            <ErrorBoundary>
-              <AppContent />
-            </ErrorBoundary>
-            <Toaster />
-            <Sonner />
+            <SellerProvider>
+              <CartProvider>
+                <ErrorBoundary>
+                  <AppContent />
+                </ErrorBoundary>
+                <Toaster />
+                <Sonner />
+              </CartProvider>
+            </SellerProvider>
           </StoreProvider>
         </AuthProvider>
       </BrowserRouter>

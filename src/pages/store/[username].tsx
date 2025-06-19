@@ -8,17 +8,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Mail, Phone, ExternalLink, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-interface SellerProfile {
+interface Store {
   id: string;
-  business_name: string;
-  business_description?: string;
-  contact_email?: string;
-  contact_phone?: string;
-  avatar_url?: string;
-  banner_url?: string;
-  is_verified: boolean;
-  social_links?: any;
-  return_policy?: string;
+  name: string;
+  description?: string;
+  business_email?: string;
+  phone_number?: string;
+  logo_image?: string;
+  banner_image?: string;
+  username: string;
+  is_active?: boolean;
+  plan: string;
 }
 
 interface Product {
@@ -29,11 +29,12 @@ interface Product {
   image_url?: string;
   category?: string;
   status: string;
+  is_published?: boolean;
 }
 
 const PublicStorefront = () => {
   const { username } = useParams<{ username: string }>();
-  const [seller, setSeller] = useState<SellerProfile | null>(null);
+  const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -47,28 +48,29 @@ const PublicStorefront = () => {
       }
 
       try {
-        // Fetch seller profile by username (assuming username matches business_name for now)
-        const { data: sellerData, error: sellerError } = await supabase
-          .from('seller_profiles')
+        // Fetch store by username
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores')
           .select('*')
-          .ilike('business_name', username)
-          .eq('is_onboarding_complete', true)
+          .eq('username', username.toLowerCase())
+          .eq('is_active', true)
           .maybeSingle();
 
-        if (sellerError || !sellerData) {
+        if (storeError || !storeData) {
           setNotFound(true);
           setIsLoading(false);
           return;
         }
 
-        setSeller(sellerData);
+        setStore(storeData);
 
-        // Fetch products for this seller
+        // Fetch products for this store
         const { data: productsData } = await supabase
           .from('products')
           .select('*')
-          .eq('seller_id', sellerData.user_id)
+          .eq('store_id', storeData.id)
           .eq('status', 'active')
+          .eq('is_published', true)
           .order('created_at', { ascending: false });
 
         setProducts(productsData || []);
@@ -91,7 +93,7 @@ const PublicStorefront = () => {
     );
   }
 
-  if (notFound || !seller) {
+  if (notFound || !store) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -111,38 +113,38 @@ const PublicStorefront = () => {
       <div className="bg-white shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-start gap-6">
-            {seller.avatar_url && (
+            {store.logo_image && (
               <img
-                src={seller.avatar_url}
-                alt={seller.business_name}
+                src={store.logo_image}
+                alt={store.name}
                 className="w-24 h-24 rounded-full object-cover"
               />
             )}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold">{seller.business_name}</h1>
-                {seller.is_verified && (
+                <h1 className="text-3xl font-bold">{store.name}</h1>
+                {store.plan !== 'free' && (
                   <Badge className="bg-green-100 text-green-800">
                     <Star className="w-3 h-3 mr-1" />
-                    Verified Seller
+                    Premium Store
                   </Badge>
                 )}
               </div>
-              {seller.business_description && (
-                <p className="text-gray-600 mb-4">{seller.business_description}</p>
+              {store.description && (
+                <p className="text-gray-600 mb-4">{store.description}</p>
               )}
               
               <div className="flex gap-4">
-                {seller.contact_email && (
+                {store.business_email && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Mail className="w-4 h-4" />
-                    {seller.contact_email}
+                    {store.business_email}
                   </div>
                 )}
-                {seller.contact_phone && (
+                {store.phone_number && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Phone className="w-4 h-4" />
-                    {seller.contact_phone}
+                    {store.phone_number}
                   </div>
                 )}
               </div>
@@ -187,16 +189,6 @@ const PublicStorefront = () => {
           </div>
         )}
       </div>
-
-      {/* Trust Section */}
-      {seller.return_policy && (
-        <div className="bg-white border-t">
-          <div className="max-w-6xl mx-auto px-4 py-6">
-            <h3 className="font-semibold mb-2">Return Policy</h3>
-            <p className="text-sm text-gray-600">{seller.return_policy}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
