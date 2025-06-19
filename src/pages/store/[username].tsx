@@ -45,6 +45,8 @@ const PublicStorefront = () => {
       }
 
       try {
+        console.log('Fetching store with username:', username);
+        
         // Fetch store by username
         const { data: storeData, error: storeError } = await supabase
           .from('stores')
@@ -52,25 +54,39 @@ const PublicStorefront = () => {
           .eq('username', username)
           .maybeSingle();
 
-        if (storeError || !storeData) {
+        if (storeError) {
+          console.error('Store fetch error:', storeError);
           setNotFound(true);
           setIsLoading(false);
           return;
         }
 
+        if (!storeData) {
+          console.log('Store not found');
+          setNotFound(true);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Store found:', storeData);
         setStore(storeData);
 
         // Fetch products for this store
-        const { data: productsData } = await supabase
+        const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('*')
           .eq('store_id', storeData.id)
           .eq('status', 'active')
           .order('created_at', { ascending: false });
 
-        setProducts(productsData || []);
-      } catch (error) {
-        console.error('Error fetching store data:', error);
+        if (productsError) {
+          console.error('Products fetch error:', productsError);
+        } else {
+          console.log('Products found:', productsData?.length || 0);
+          setProducts(productsData || []);
+        }
+      } catch (error: any) {
+        console.error('Exception fetching store data:', error);
         setNotFound(true);
       } finally {
         setIsLoading(false);

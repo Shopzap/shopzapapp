@@ -16,6 +16,7 @@ interface Product {
   price: number;
   image_url?: string;
   store_id: string;
+  seller_id?: string;
 }
 
 const Checkout = () => {
@@ -48,6 +49,8 @@ const Checkout = () => {
       }
 
       try {
+        console.log('Fetching product with ID:', id);
+        
         const { data, error } = await supabase
           .from('products')
           .select('*')
@@ -55,7 +58,19 @@ const Checkout = () => {
           .eq('status', 'active')
           .maybeSingle();
 
-        if (error || !data) {
+        if (error) {
+          console.error('Product fetch error:', error);
+          toast({
+            title: "Error loading product",
+            description: error.message,
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+
+        if (!data) {
+          console.log('Product not found');
           toast({
             title: "Product not found",
             description: "The product you're looking for doesn't exist or is no longer available.",
@@ -65,14 +80,16 @@ const Checkout = () => {
           return;
         }
 
+        console.log('Product found:', data);
         setProduct(data);
-      } catch (error) {
-        console.error('Error fetching product:', error);
+      } catch (error: any) {
+        console.error('Exception fetching product:', error);
         toast({
           title: "Error",
           description: "Failed to load product details",
           variant: "destructive"
         });
+        navigate('/');
       } finally {
         setIsLoading(false);
       }
@@ -123,6 +140,7 @@ const Checkout = () => {
 
       navigate('/order-success');
     } catch (error: any) {
+      console.error('Order submission error:', error);
       toast({
         title: "Error placing order",
         description: error.message,

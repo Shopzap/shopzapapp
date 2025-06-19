@@ -23,6 +23,7 @@ type Product = {
   status: string;
   created_at?: string;
   store_id: string;
+  seller_id?: string;
 };
 
 const ProductManager: React.FC = () => {
@@ -46,15 +47,28 @@ const ProductManager: React.FC = () => {
 
     try {
       setIsLoading(true);
+      console.log('Fetching products for user:', user.id);
       
       // First get the user's store
-      const { data: storeData } = await supabase
+      const { data: storeData, error: storeError } = await supabase
         .from('stores')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (storeError) {
+        console.error('Store fetch error:', storeError);
+        toast({
+          title: "Error loading store",
+          description: storeError.message,
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
 
       if (!storeData) {
+        console.log('No store found for user');
         toast({
           title: "Store not found",
           description: "Please complete the onboarding process",
@@ -64,24 +78,28 @@ const ProductManager: React.FC = () => {
         return;
       }
 
+      console.log('Store found:', storeData.id);
+
       // Then get products for that store
-      const { data: productsData, error } = await supabase
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .eq('store_id', storeData.id)
         .order('created_at', { ascending: false });
 
-      if (error) {
+      if (productsError) {
+        console.error('Products fetch error:', productsError);
         toast({
           title: "Error loading products",
-          description: error.message,
+          description: productsError.message,
           variant: "destructive"
         });
       } else {
+        console.log('Products fetched:', productsData?.length || 0);
         setProducts(productsData || []);
       }
-    } catch (error) {
-      console.error('Error fetching products:', error);
+    } catch (error: any) {
+      console.error('Exception fetching products:', error);
       toast({
         title: "Error loading products",
         description: "Please try again later",
@@ -139,7 +157,7 @@ const ProductManager: React.FC = () => {
           <h1 className="text-2xl font-bold">My Products</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <AddProductModal 
-              onProductAdded={fetchProducts}
+              onProductAdded={handleProductAdded}
               disabled={false}
               title="Add a new product"
             />
@@ -173,8 +191,8 @@ const ProductManager: React.FC = () => {
                   <ProductGrid 
                     products={filteredProducts}
                     isLoading={isLoading}
-                    onDelete={fetchProducts}
-                    onUpdate={fetchProducts}
+                    onDelete={handleProductDeleted}
+                    onUpdate={handleProductUpdated}
                   />
                 )}
               </TabsContent>
@@ -182,16 +200,16 @@ const ProductManager: React.FC = () => {
                 <ProductGrid 
                   products={filteredProducts.filter(p => p.status === 'active')}
                   isLoading={isLoading}
-                  onDelete={fetchProducts}
-                  onUpdate={fetchProducts}
+                  onDelete={handleProductDeleted}
+                  onUpdate={handleProductUpdated}
                 />
               </TabsContent>
               <TabsContent value="draft">
                 <ProductGrid 
                   products={filteredProducts.filter(p => p.status === 'draft')}
                   isLoading={isLoading}
-                  onDelete={fetchProducts}
-                  onUpdate={fetchProducts}
+                  onDelete={handleProductDeleted}
+                  onUpdate={handleProductUpdated}
                 />
               </TabsContent>
             </Tabs>
