@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,19 +7,34 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader } from 'lucide-react';
+import { Plus, Loader, X, Eye, EyeOff } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
 import MultiImageUploader from './MultiImageUploader';
-import VariantManager from './VariantManager';
 import { ProductVariant } from './types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useForm } from 'react-hook-form';
 
 interface AddProductModalProps {
   onProductAdded: () => void;
   disabled?: boolean;
   title?: string;
+}
+
+interface FormData {
+  name: string;
+  description: string;
+  price: string;
+  inventory_count: string;
+  payment_method: string;
+  category: string;
+  product_type: 'simple' | 'variant';
+}
+
+interface VariantOption {
+  name: string;
+  values: string[];
 }
 
 const AddProductModal: React.FC<AddProductModalProps> = ({ 
@@ -35,16 +51,24 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [variantOptions, setVariantOptions] = useState<VariantOption[]>([
+    { name: 'Size', values: [] },
+    { name: 'Color', values: [] }
+  ]);
   
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    inventory_count: '10',
-    payment_method: 'cod',
-    category: '',
-    product_type: 'simple'
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+    defaultValues: {
+      name: '',
+      description: '',
+      price: '',
+      inventory_count: '10',
+      payment_method: 'cod',
+      category: '',
+      product_type: 'simple'
+    }
   });
+
+  const productType = watch('product_type');
 
   const handleImagesChange = (images: string[]) => {
     setImageUrls(images);
@@ -108,8 +132,75 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     return uploadedUrls;
   };
 
+  const addVariantOption = (optionName: string) => {
+    const value = prompt(`Enter ${optionName} value:`);
+    if (value && value.trim()) {
+      setVariantOptions(prev => 
+        prev.map(option => 
+          option.name === optionName 
+            ? { ...option, values: [...option.values, value.trim()] }
+            : option
+        )
+      );
+      generateVariants();
+    }
+  };
+
+  const removeVariantValue = (optionName: string, valueIndex: number) => {
+    setVariantOptions(prev => 
+      prev.map(option => 
+        option.name === optionName 
+          ? { ...option, values: option.values.filter((_, index) => index !== valueIndex) }
+          : option
+      )
+    );
+    generateVariants();
+  };
+
+  const generateVariants = () => {
+    const activeOptions = variantOptions.filter(option => option.values.length > 0);
+    
+    if (activeOptions.length === 0) {
+      setVariants([]);
+      return;
+    }
+
+    const combinations: ProductVariant[] = [];
+    const generateCombinations = (optionIndex: number, currentOptions: Record<string, string>) => {
+      if (optionIndex === activeOptions.length) {
+        combinations.push({
+          price: 0,
+          inventory_count: 0,
+          options: { ...currentOptions },
+          sku: '',
+          image_url: ''
+        });
+        return;
+      }
+
+      const option = activeOptions[optionIndex];
+      option.values.forEach(value => {
+        generateCombinations(optionIndex + 1, {
+          ...currentOptions,
+          [option.name]: value
+        });
+      });
+    };
+
+    generateCombinations(0, {});
+    setVariants(combinations);
+  };
+
+  const updateVariant = (index: number, field: keyof ProductVariant, value: any) => {
+    setVariants(prev => 
+      prev.map((variant, i) => 
+        i === index ? { ...variant, [field]: value } : variant
+      )
+    );
+  };
+
   const validateVariants = (): boolean => {
-    if (formData.product_type === 'variant' && variants.length === 0) {
+    if (productType === 'variant' && variants.length === 0) {
       toast({
         title: "Variants required",
         description: "Please create at least one product variant",
@@ -118,7 +209,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       return false;
     }
 
-    if (formData.product_type === 'variant') {
+    if (productType === 'variant') {
       for (const variant of variants) {
         if (!variant.price || variant.price <= 0) {
           toast({
@@ -142,9 +233,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const onSubmit = async (formData: FormData) => {
     if (!user || !storeData) {
       toast({
         title: "Error",
@@ -227,19 +316,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       });
 
       // Reset form
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        inventory_count: '10',
-        payment_method: 'cod',
-        category: '',
-        product_type: 'simple'
-      });
+      reset();
       setVariants([]);
       setImageFiles([]);
       setImageUrls([]);
       setShowVariantPreview(false);
+      setVariantOptions([
+        { name: 'Size', values: [] },
+        { name: 'Color', values: [] }
+      ]);
 
       setIsOpen(false);
       onProductAdded();
@@ -255,10 +340,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
-  const handleVariantsChange = (newVariants: ProductVariant[]) => {
-    setVariants(newVariants);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -272,7 +353,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           <DialogTitle>Add New Product</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <Tabs defaultValue="basic" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
@@ -285,18 +366,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 <Label htmlFor="name">Product Name</Label>
                 <Input
                   id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  {...register('name', { required: 'Product name is required' })}
                   placeholder="Enter product name"
-                  required
                 />
+                {errors.name && (
+                  <p className="text-sm text-red-600">{errors.name.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="product_type">Product Type</Label>
                 <Select 
-                  value={formData.product_type} 
-                  onValueChange={(value) => setFormData({ ...formData, product_type: value })}
+                  value={productType} 
+                  onValueChange={(value) => setValue('product_type', value as 'simple' | 'variant')}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select product type" />
@@ -311,8 +393,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="category">Category</Label>
                 <Select 
-                  value={formData.category} 
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                  onValueChange={(value) => setValue('category', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -334,27 +415,27 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  {...register('description')}
                   placeholder="Enter product description"
                   rows={3}
                 />
               </div>
 
-              {formData.product_type === 'simple' && (
+              {productType === 'simple' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price">Price (₹)</Label>
                     <Input
                       id="price"
                       type="number"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      {...register('price', { required: 'Price is required' })}
                       placeholder="0.00"
                       min="0"
                       step="0.01"
-                      required
                     />
+                    {errors.price && (
+                      <p className="text-sm text-red-600">{errors.price.message}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -362,8 +443,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                     <Input
                       id="inventory"
                       type="number"
-                      value={formData.inventory_count}
-                      onChange={(e) => setFormData({ ...formData, inventory_count: e.target.value })}
+                      {...register('inventory_count')}
                       placeholder="0"
                       min="0"
                     />
@@ -374,8 +454,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
               <div className="space-y-2">
                 <Label htmlFor="payment_method">Payment Method</Label>
                 <Select 
-                  value={formData.payment_method} 
-                  onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+                  onValueChange={(value) => setValue('payment_method', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select payment method" />
@@ -399,7 +478,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
             </TabsContent>
 
             <TabsContent value="variants" className="space-y-4">
-              {formData.product_type === 'variant' ? (
+              {productType === 'variant' ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label>Product Variants</Label>
@@ -409,15 +488,97 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                       size="sm"
                       onClick={() => setShowVariantPreview(!showVariantPreview)}
                     >
+                      {showVariantPreview ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
                       {showVariantPreview ? 'Hide Preview' : 'Preview Combinations'}
                     </Button>
                   </div>
                   
-                  <VariantManager
-                    initialVariants={variants}
-                    onVariantsChange={handleVariantsChange}
-                    basePrice={formData.price}
-                  />
+                  {/* Variant Options Management */}
+                  <div className="space-y-4">
+                    {variantOptions.map((option, optionIndex) => (
+                      <div key={option.name} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium">{option.name}</h4>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addVariantOption(option.name)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" />
+                            Add {option.name}
+                          </Button>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {option.values.map((value, valueIndex) => (
+                            <div key={value} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-sm">
+                              <span>{value}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-4 w-4 p-0"
+                                onClick={() => removeVariantValue(option.name, valueIndex)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Variant Combinations */}
+                  {variants.length > 0 && (
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Variant Details ({variants.length} combinations)</h4>
+                      <div className="space-y-3 max-h-60 overflow-y-auto">
+                        {variants.map((variant, index) => (
+                          <div key={index} className="border rounded-lg p-3 space-y-3">
+                            <div className="font-medium text-sm">
+                              {Object.entries(variant.options).map(([key, value]) => `${key}: ${value}`).join(' / ')}
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <Label className="text-xs">Price (₹)</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  min="0"
+                                  step="0.01"
+                                  value={variant.price || ''}
+                                  onChange={(e) => updateVariant(index, 'price', parseFloat(e.target.value) || 0)}
+                                />
+                              </div>
+                              
+                              <div>
+                                <Label className="text-xs">Stock</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  min="0"
+                                  value={variant.inventory_count || ''}
+                                  onChange={(e) => updateVariant(index, 'inventory_count', parseInt(e.target.value) || 0)}
+                                />
+                              </div>
+                              
+                              <div>
+                                <Label className="text-xs">SKU</Label>
+                                <Input
+                                  placeholder="Auto-generated"
+                                  value={variant.sku || ''}
+                                  onChange={(e) => updateVariant(index, 'sku', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {showVariantPreview && variants.length > 0 && (
                     <div className="p-4 border rounded-lg bg-muted/50">
