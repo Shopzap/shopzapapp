@@ -37,6 +37,7 @@ import OrderRedirect from "./pages/OrderRedirect";
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
 import { SellerProvider } from './contexts/SellerContext';
+import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
@@ -56,21 +57,32 @@ const AppContent = () => (
     <Route path="/auth" element={<Auth />} />
     <Route path="/verify" element={<Verify />} /> 
     <Route path="/auth-callback" element={<AuthCallback />} />
+    
+    {/* Storefront routes wrapped with CartProvider */}
     <Route path="/store/:storeName" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-          <Storefront />
-        </Suspense>
-      </ErrorBoundary>
+      <CartProvider>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
+            <Storefront />
+          </Suspense>
+        </ErrorBoundary>
+      </CartProvider>
     } />
     <Route path="/store/:storeName/product/:productSlug" element={
-      <ErrorBoundary>
-        <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-          <ProductDetails />
-        </Suspense>
-      </ErrorBoundary>
+      <CartProvider>
+        <ErrorBoundary>
+          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
+            <ProductDetails />
+          </Suspense>
+        </ErrorBoundary>
+      </CartProvider>
     } />
-    <Route path="/store/:storeName/checkout" element={<Checkout />} />
+    <Route path="/store/:storeName/checkout" element={
+      <CartProvider>
+        <Checkout />
+      </CartProvider>
+    } />
+    
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
     <Route path="/track-order" element={<OrderTracking />} />
