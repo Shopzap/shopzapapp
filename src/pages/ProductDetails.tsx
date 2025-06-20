@@ -104,9 +104,25 @@ const ProductDetails: React.FC = () => {
 
       console.log('Product found:', productData);
 
+      // Fetch variants if product type is variant
+      let variants: ProductVariant[] = [];
+      if (productData.product_type === 'variant') {
+        const { data: variantData, error: variantError } = await supabase
+          .from('product_variants')
+          .select('*')
+          .eq('product_id', productData.id);
+
+        if (variantError) {
+          console.error('Error fetching variants:', variantError);
+        } else {
+          variants = variantData || [];
+        }
+      }
+
       return {
         ...productData,
-        store_name: storeData.name
+        store_name: storeData.name,
+        variants
       };
     } catch (err: any) {
       console.error('Error fetching product:', err);
@@ -143,12 +159,35 @@ const ProductDetails: React.FC = () => {
     setIsBuyingNow(true);
     
     try {
+      // Check inventory before proceeding
+      let availableStock = 0;
+      let productPrice = product.price;
+      let productImage = product.image_url;
+
+      if (product.product_type === 'variant' && selectedVariant) {
+        availableStock = selectedVariant.inventory_count;
+        productPrice = selectedVariant.price;
+        productImage = selectedVariant.image_url || product.image_url;
+      } else if (product.product_type === 'simple') {
+        availableStock = product.inventory_count || 0;
+      }
+
+      if (availableStock <= 0) {
+        toast({
+          title: "Out of Stock",
+          description: "This product is currently out of stock",
+          variant: "destructive"
+        });
+        setIsBuyingNow(false);
+        return;
+      }
+
       const orderItem = {
         id: product.id,
         name: product.name,
-        price: selectedVariant ? selectedVariant.price : product.price,
+        price: productPrice,
         quantity: 1,
-        image: selectedVariant?.image_url || product.image_url || 'https://placehold.co/80x80',
+        image: productImage || 'https://placehold.co/80x80',
         variant: selectedVariant ? {
           id: selectedVariant.id || '',
           options: selectedVariant.options,

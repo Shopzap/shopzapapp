@@ -8,7 +8,7 @@ export interface ProductVariant {
   inventory_count: number;
   sku?: string;
   image_url?: string;
-  options: Json;
+  options: Record<string, string>;
   created_at?: string;
   updated_at?: string;
 }
@@ -31,10 +31,12 @@ export interface Product {
   store_id?: string;
   user_id?: string;
   product_type?: 'simple' | 'variant';
+  slug?: string;
   variants?: ProductVariant[];
   stores?: {
     id: string;
     name: string;
     tagline?: string;
   };
+  store_name?: string;
 }

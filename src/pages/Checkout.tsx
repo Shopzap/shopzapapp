@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,14 +20,30 @@ interface Product {
   is_published?: boolean;
   inventory_count?: number;
   payment_method?: string;
+  product_type?: 'simple' | 'variant';
+}
+
+interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+  variant?: {
+    id: string;
+    options: any;
+    name: string;
+  };
 }
 
 const Checkout = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [product, setProduct] = useState<Product | null>(null);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -40,6 +56,14 @@ const Checkout = () => {
   });
 
   useEffect(() => {
+    // Check if we have order items from navigation state (Buy Now)
+    if (location.state?.orderItems) {
+      setOrderItems(location.state.orderItems);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fallback: fetch product by ID
     const fetchProduct = async () => {
       if (!id) {
         toast({
@@ -71,6 +95,14 @@ const Checkout = () => {
         }
 
         setProduct(data);
+        // Create order item from product
+        setOrderItems([{
+          id: data.id,
+          name: data.name,
+          price: data.price,
+          quantity: 1,
+          image: data.image_url || 'https://placehold.co/80x80'
+        }]);
       } catch (error) {
         console.error('Error fetching product:', error);
         toast({
@@ -84,20 +116,22 @@ const Checkout = () => {
     };
 
     fetchProduct();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!product) return;
+    if (orderItems.length === 0) return;
 
     setIsSubmitting(true);
     try {
-      const totalPrice = product.price * orderForm.quantity;
+      const firstItem = orderItems[0];
+      const storeId = product?.store_id || '';
+      const totalPrice = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
-          store_id: product.store_id,
+          store_id: storeId,
           buyer_name: orderForm.buyer_name,
           buyer_email: orderForm.buyer_email,
           buyer_phone: orderForm.buyer_phone,
@@ -111,15 +145,39 @@ const Checkout = () => {
 
       if (error) throw error;
 
-      // Create order item
+      // Create order items
+      const orderItemsData = orderItems.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price_at_purchase: item.price,
+        product_variant_id: item.variant?.id || null
+      }));
+
       await supabase
         .from('order_items')
-        .insert({
-          order_id: order.id,
-          product_id: product.id,
-          quantity: orderForm.quantity,
-          price_at_purchase: product.price,
-        });
+        .insert(orderItemsData);
+
+      // Update inventory
+      for (const item of orderItems) {
+        if (item.variant?.id) {
+          // Update variant inventory
+          await supabase
+            .from('product_variants')
+            .update({ 
+              inventory_count: supabase.sql`inventory_count - ${item.quantity}` 
+            })
+            .eq('id', item.variant.id);
+        } else {
+          // Update product inventory
+          await supabase
+            .from('products')
+            .update({ 
+              inventory_count: supabase.sql`inventory_count - ${item.quantity}` 
+            })
+            .eq('id', item.id);
+        }
+      }
 
       toast({
         title: "Order placed successfully!",
@@ -146,18 +204,18 @@ const Checkout = () => {
     );
   }
 
-  if (!product) {
+  if (orderItems.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+          <h1 className="text-2xl font-bold mb-4">No Items to Checkout</h1>
           <Button onClick={() => navigate('/')}>Go Home</Button>
         </div>
       </div>
     );
   }
 
-  const totalPrice = product.price * orderForm.quantity;
+  const totalPrice = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -165,39 +223,36 @@ const Checkout = () => {
         <h1 className="text-3xl font-bold mb-8">Checkout</h1>
         
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Product Summary */}
+          {/* Order Summary */}
           <Card>
             <CardHeader>
               <CardTitle>Order Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4">
-                <img
-                  src={product.image_url || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=200&fit=crop'}
-                  alt={product.name}
-                  className="w-20 h-20 object-cover rounded"
-                />
-                <div className="flex-1">
-                  <h3 className="font-semibold">{product.name}</h3>
-                  {product.description && (
-                    <p className="text-sm text-gray-600 mt-1">{product.description}</p>
-                  )}
-                  <p className="text-lg font-bold mt-2">₹{product.price}</p>
-                </div>
+              <div className="space-y-4">
+                {orderItems.map((item, index) => (
+                  <div key={index} className="flex gap-4">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-20 h-20 object-cover rounded"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{item.name}</h3>
+                      {item.variant && (
+                        <p className="text-sm text-gray-600">
+                          Variant: {item.variant.name}
+                        </p>
+                      )}
+                      <p className="text-lg font-bold mt-2">₹{item.price}</p>
+                      <p className="text-sm text-gray-600">Quantity: {item.quantity}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
               
               <div className="mt-4 pt-4 border-t">
-                <div className="flex justify-between items-center">
-                  <span>Quantity:</span>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={orderForm.quantity}
-                    onChange={(e) => setOrderForm({ ...orderForm, quantity: parseInt(e.target.value) || 1 })}
-                    className="w-20"
-                  />
-                </div>
-                <div className="flex justify-between items-center mt-2 text-lg font-bold">
+                <div className="flex justify-between items-center text-lg font-bold">
                   <span>Total:</span>
                   <span>₹{totalPrice}</span>
                 </div>
