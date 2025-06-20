@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,6 +36,7 @@ import OrderRedirect from "./pages/OrderRedirect";
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
+import { SellerProvider } from './contexts/SellerContext';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
@@ -115,11 +117,13 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <StoreProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner />
-          </StoreProvider>
+          <SellerProvider>
+            <StoreProvider>
+              <AppContent />
+              <Toaster />
+              <Sonner />
+            </StoreProvider>
+          </SellerProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

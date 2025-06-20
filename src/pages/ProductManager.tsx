@@ -10,7 +10,6 @@ import AddProductModal from '@/components/product/AddProductModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
-import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 
 type DatabaseProduct = {
   id: string;
@@ -53,8 +52,6 @@ type Product = {
 };
 
 const ProductManager: React.FC = () => {
-  useOnboardingRedirect();
-  
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
