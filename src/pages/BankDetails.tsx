@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +60,12 @@ const BankDetails: React.FC = () => {
       }
 
       if (data) {
-        setBankDetails(data);
+        // Cast the payout_method to the expected type
+        const bankDetailsData: BankDetail = {
+          ...data,
+          payout_method: data.payout_method as 'bank_transfer' | 'upi'
+        };
+        setBankDetails(bankDetailsData);
         setFormData({
           bank_name: data.bank_name,
           account_holder_name: data.account_holder_name,
@@ -70,7 +74,7 @@ const BankDetails: React.FC = () => {
           upi_id: data.upi_id || '',
           pan_number: data.pan_number || '',
           gst_number: data.gst_number || '',
-          payout_method: data.payout_method
+          payout_method: data.payout_method as 'bank_transfer' | 'upi'
         });
       } else {
         setIsEditing(true); // No bank details exist, enable editing
@@ -123,7 +127,11 @@ const BankDetails: React.FC = () => {
 
       if (result.error) throw result.error;
 
-      setBankDetails(result.data);
+      const updatedData: BankDetail = {
+        ...result.data,
+        payout_method: result.data.payout_method as 'bank_transfer' | 'upi'
+      };
+      setBankDetails(updatedData);
       setIsEditing(false);
       
       toast({

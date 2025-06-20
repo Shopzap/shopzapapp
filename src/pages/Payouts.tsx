@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
@@ -49,11 +48,17 @@ const Payouts: React.FC = () => {
 
       if (error) throw error;
 
-      setPayouts(payoutData || []);
+      // Cast the status to the expected type
+      const typedPayouts: PayoutRequest[] = (payoutData || []).map(payout => ({
+        ...payout,
+        status: payout.status as 'pending' | 'paid' | 'processing'
+      }));
+
+      setPayouts(typedPayouts);
       
       // Calculate totals
-      const total = (payoutData || []).reduce((sum, payout) => sum + payout.final_amount, 0);
-      const pending = (payoutData || [])
+      const total = typedPayouts.reduce((sum, payout) => sum + payout.final_amount, 0);
+      const pending = typedPayouts
         .filter(payout => payout.status === 'pending')
         .reduce((sum, payout) => sum + payout.final_amount, 0);
       
