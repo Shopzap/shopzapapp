@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
 import { useOnboardingRedirect } from '@/hooks/useOnboardingRedirect';
 
-type Product = {
+type DatabaseProduct = {
   id: string;
   name: string;
   description?: string;
@@ -27,6 +27,26 @@ type Product = {
   is_published?: boolean;
   payment_method?: string;
   product_type?: string;
+  slug?: string;
+  updated_at?: string;
+  user_id?: string;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  category?: string;
+  inventory_count?: number;
+  status: string;
+  created_at?: string;
+  store_id: string;
+  images?: string[];
+  is_published?: boolean;
+  payment_method?: string;
+  product_type?: 'simple' | 'variant';
   slug?: string;
   updated_at?: string;
   user_id?: string;
@@ -68,7 +88,12 @@ const ProductManager: React.FC = () => {
           variant: "destructive"
         });
       } else {
-        setProducts(productsData || []);
+        // Transform database products to component products
+        const transformedProducts: Product[] = (productsData || []).map((dbProduct: DatabaseProduct) => ({
+          ...dbProduct,
+          product_type: (dbProduct.product_type === 'variant' ? 'variant' : 'simple') as 'simple' | 'variant'
+        }));
+        setProducts(transformedProducts);
       }
     } catch (error) {
       console.error('Error fetching products:', error);

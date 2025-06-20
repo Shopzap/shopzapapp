@@ -16,13 +16,13 @@ export const useOnboardingRedirect = () => {
     const isDashboardRoute = location.pathname.startsWith('/dashboard');
     const isOnboardingRoute = location.pathname === '/onboarding';
 
-    // If user is on dashboard but has no seller profile or incomplete onboarding
-    if (isDashboardRoute && (!sellerProfile || !sellerProfile.is_onboarding_complete)) {
+    // If user is on dashboard but has no seller profile, redirect to onboarding
+    if (isDashboardRoute && !sellerProfile) {
       navigate('/onboarding', { replace: true });
     }
 
-    // If user is on onboarding but already has complete profile
-    if (isOnboardingRoute && sellerProfile?.is_onboarding_complete) {
+    // If user is on onboarding but already has a profile, redirect to dashboard
+    if (isOnboardingRoute && sellerProfile) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, sellerProfile, isLoading, location.pathname, navigate]);
