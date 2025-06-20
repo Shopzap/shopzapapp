@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -54,13 +53,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     setFormData(prev => ({ ...prev, image_url: '' }));
   };
 
-  const generateSlug = (name: string) => {
+  const generateSlug = (name: string): string => {
     return name
       .toLowerCase()
       .replace(/[^a-z0-9 -]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .trim('-');
+      .trim();
   };
 
   const generateSKU = (productName: string, variant?: ProductVariant) => {

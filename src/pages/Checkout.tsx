@@ -164,7 +164,7 @@ const Checkout = () => {
         .from('order_items')
         .insert(orderItemsData);
 
-      // Update inventory using proper RPC or direct decrement
+      // Update inventory using proper queries instead of SQL
       for (const item of orderItems) {
         if (item.variant?.id) {
           // Update variant inventory
