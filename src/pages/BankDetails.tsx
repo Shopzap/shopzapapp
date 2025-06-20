@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreditCard, Save, Edit } from 'lucide-react';
+import { CreditCard, Save, Edit, CheckCircle } from 'lucide-react';
 
 interface BankDetail {
   id: string;
@@ -60,7 +61,6 @@ const BankDetails: React.FC = () => {
       }
 
       if (data) {
-        // Cast the payout_method to the expected type
         const bankDetailsData: BankDetail = {
           ...data,
           payout_method: data.payout_method as 'bank_transfer' | 'upi'
@@ -77,7 +77,7 @@ const BankDetails: React.FC = () => {
           payout_method: data.payout_method as 'bank_transfer' | 'upi'
         });
       } else {
-        setIsEditing(true); // No bank details exist, enable editing
+        setIsEditing(true);
       }
     } catch (error: any) {
       console.error('Error fetching bank details:', error);
@@ -91,21 +91,61 @@ const BankDetails: React.FC = () => {
     }
   };
 
+  const validateForm = () => {
+    if (!formData.bank_name.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Bank name is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.account_holder_name.trim()) {
+      toast({
+        title: "Validation Error", 
+        description: "Account holder name is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.account_number.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Account number is required", 
+        variant: "destructive"
+      });
+      return false;
+    }
+    if (!formData.ifsc_code.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "IFSC code is required",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = async () => {
     if (!user) return;
+
+    if (!validateForm()) {
+      return;
+    }
 
     try {
       setIsSaving(true);
       
       const dataToSave = {
         user_id: user.id,
-        bank_name: formData.bank_name,
-        account_holder_name: formData.account_holder_name,
-        account_number: formData.account_number,
-        ifsc_code: formData.ifsc_code,
-        upi_id: formData.upi_id || null,
-        pan_number: formData.pan_number || null,
-        gst_number: formData.gst_number || null,
+        bank_name: formData.bank_name.trim(),
+        account_holder_name: formData.account_holder_name.trim(),
+        account_number: formData.account_number.trim(),
+        ifsc_code: formData.ifsc_code.trim().toUpperCase(),
+        upi_id: formData.upi_id.trim() || null,
+        pan_number: formData.pan_number.trim().toUpperCase() || null,
+        gst_number: formData.gst_number.trim().toUpperCase() || null,
         payout_method: formData.payout_method
       };
 
@@ -136,13 +176,13 @@ const BankDetails: React.FC = () => {
       
       toast({
         title: "Success",
-        description: "Bank details saved successfully",
+        description: "Your bank details have been saved successfully",
       });
     } catch (error: any) {
       console.error('Error saving bank details:', error);
       toast({
         title: "Error",
-        description: "Failed to save bank details",
+        description: "Failed to save bank details. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -190,6 +230,22 @@ const BankDetails: React.FC = () => {
         )}
       </div>
 
+      {bankDetails && !isEditing && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center text-green-600">
+              <CheckCircle className="mr-2 h-5 w-5" />
+              Bank Details Configured
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Your bank details are set up and ready for payouts.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -226,6 +282,7 @@ const BankDetails: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })}
                 disabled={!isEditing}
                 required
+                placeholder={!isEditing ? "Not provided" : "Enter account holder name"}
               />
             </div>
 
@@ -237,6 +294,7 @@ const BankDetails: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
                 disabled={!isEditing}
                 required
+                placeholder={!isEditing ? "Not provided" : "Enter bank name"}
               />
             </div>
 
@@ -248,6 +306,7 @@ const BankDetails: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
                 disabled={!isEditing}
                 required
+                placeholder={!isEditing ? "Not provided" : "Enter account number"}
               />
             </div>
 
@@ -256,9 +315,10 @@ const BankDetails: React.FC = () => {
               <Input
                 id="ifsc_code"
                 value={formData.ifsc_code}
-                onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value.toUpperCase() })}
                 disabled={!isEditing}
                 required
+                placeholder={!isEditing ? "Not provided" : "Enter IFSC code"}
               />
             </div>
 
@@ -269,7 +329,7 @@ const BankDetails: React.FC = () => {
                 value={formData.upi_id}
                 onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
                 disabled={!isEditing}
-                placeholder="yourname@upi"
+                placeholder={!isEditing ? (formData.upi_id || "Not provided") : "yourname@upi"}
               />
             </div>
 
@@ -278,9 +338,9 @@ const BankDetails: React.FC = () => {
               <Input
                 id="pan_number"
                 value={formData.pan_number}
-                onChange={(e) => setFormData({ ...formData, pan_number: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
                 disabled={!isEditing}
-                placeholder="ABCDE1234F"
+                placeholder={!isEditing ? (formData.pan_number || "Not provided") : "ABCDE1234F"}
               />
             </div>
 
@@ -289,9 +349,9 @@ const BankDetails: React.FC = () => {
               <Input
                 id="gst_number"
                 value={formData.gst_number}
-                onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, gst_number: e.target.value.toUpperCase() })}
                 disabled={!isEditing}
-                placeholder="22AAAAA0000A1Z5"
+                placeholder={!isEditing ? (formData.gst_number || "Not provided") : "22AAAAA0000A1Z5"}
               />
             </div>
           </div>
