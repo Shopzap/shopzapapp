@@ -94,14 +94,20 @@ const Checkout = () => {
           return;
         }
 
-        setProduct(data);
+        // Ensure product_type is properly typed
+        const productData: Product = {
+          ...data,
+          product_type: (data.product_type === 'variant' ? 'variant' : 'simple') as 'simple' | 'variant'
+        };
+
+        setProduct(productData);
         // Create order item from product
         setOrderItems([{
-          id: data.id,
-          name: data.name,
-          price: data.price,
+          id: productData.id,
+          name: productData.name,
+          price: productData.price,
           quantity: 1,
-          image: data.image_url || 'https://placehold.co/80x80'
+          image: productData.image_url || 'https://placehold.co/80x80'
         }]);
       } catch (error) {
         console.error('Error fetching product:', error);
@@ -158,24 +164,40 @@ const Checkout = () => {
         .from('order_items')
         .insert(orderItemsData);
 
-      // Update inventory
+      // Update inventory using proper RPC or direct decrement
       for (const item of orderItems) {
         if (item.variant?.id) {
           // Update variant inventory
-          await supabase
+          const { data: currentVariant } = await supabase
             .from('product_variants')
-            .update({ 
-              inventory_count: supabase.sql`inventory_count - ${item.quantity}` 
-            })
-            .eq('id', item.variant.id);
+            .select('inventory_count')
+            .eq('id', item.variant.id)
+            .single();
+
+          if (currentVariant) {
+            await supabase
+              .from('product_variants')
+              .update({ 
+                inventory_count: Math.max(0, currentVariant.inventory_count - item.quantity)
+              })
+              .eq('id', item.variant.id);
+          }
         } else {
           // Update product inventory
-          await supabase
+          const { data: currentProduct } = await supabase
             .from('products')
-            .update({ 
-              inventory_count: supabase.sql`inventory_count - ${item.quantity}` 
-            })
-            .eq('id', item.id);
+            .select('inventory_count')
+            .eq('id', item.id)
+            .single();
+
+          if (currentProduct) {
+            await supabase
+              .from('products')
+              .update({ 
+                inventory_count: Math.max(0, (currentProduct.inventory_count || 0) - item.quantity)
+              })
+              .eq('id', item.id);
+          }
         }
       }
 

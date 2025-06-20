@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -12,6 +11,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import ResponsiveLayout from '@/components/ResponsiveLayout';
 import { useToast } from '@/hooks/use-toast';
 import { ProductVariant } from '@/components/product/types';
+import { Json } from '@/integrations/supabase/types';
 
 const ProductDetails: React.FC = () => {
   const { storeName: storeUsername, productSlug } = useParams<{ 
@@ -115,14 +115,21 @@ const ProductDetails: React.FC = () => {
         if (variantError) {
           console.error('Error fetching variants:', variantError);
         } else {
-          variants = variantData || [];
+          // Transform Json to Record<string, string>
+          variants = (variantData || []).map(variant => ({
+            ...variant,
+            options: typeof variant.options === 'object' && variant.options !== null 
+              ? variant.options as Record<string, string>
+              : {}
+          }));
         }
       }
 
       return {
         ...productData,
         store_name: storeData.name,
-        variants
+        variants,
+        product_type: (productData.product_type === 'variant' ? 'variant' : 'simple') as 'simple' | 'variant'
       };
     } catch (err: any) {
       console.error('Error fetching product:', err);
