@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,12 +13,15 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import StoreBuilder from "./pages/StoreBuilder";
 import EmbedGenerator from "./pages/EmbedGenerator";
-import Dashboard from "./pages/Dashboard.tsx";
+import Dashboard from "./pages/Dashboard";
 import ProductManager from './pages/ProductManager';
 import Analytics from './pages/Analytics';
 import Orders from "./pages/Orders";
 import CustomizeStore from "./pages/CustomizeStore";
 import Settings from "./pages/Settings";
+import Invoices from "./pages/Invoices";
+import Payouts from "./pages/Payouts";
+import BankDetails from "./pages/BankDetails";
 import NotFound from "./pages/NotFound";
 import Verify from "./pages/Verify"; 
 import AuthCallback from "./pages/AuthCallback";
@@ -33,8 +35,6 @@ import OrderRedirect from "./pages/OrderRedirect";
 // Auth components
 import { AuthProvider } from "./contexts/AuthContext"; 
 import { StoreProvider } from './contexts/StoreContext';
-import { SellerProvider } from './contexts/SellerContext';
-import { CartProvider } from './hooks/useCart';
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./components/layouts/DashboardLayout";
@@ -61,15 +61,14 @@ const AppContent = () => (
         </Suspense>
       </ErrorBoundary>
     } />
-    <Route path="/product/:productId" element={
+    <Route path="/store/:storeName/product/:productSlug" element={
       <ErrorBoundary>
         <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
           <ProductDetails />
         </Suspense>
       </ErrorBoundary>
     } />
-    <Route path="/checkout/:id" element={<Checkout />} />
-    <Route path="/checkout" element={<Checkout />} />
+    <Route path="/store/:storeName/checkout" element={<Checkout />} />
     <Route path="/order-success" element={<OrderSuccess />} />
     <Route path="/order" element={<OrderRedirect />} />
     <Route path="/track-order" element={<OrderTracking />} />
@@ -92,16 +91,19 @@ const AppContent = () => (
     } />
     <Route path="/dashboard/*" element={
       <ProtectedRoute>
-        <Routes>
-          <Route path="/" element={<DashboardLayout><Outlet /></DashboardLayout>}>
+        <DashboardLayout>
+          <Routes>
             <Route index element={<Dashboard />} />
             <Route path="products" element={<ProductManager />} />
             <Route path="orders" element={<Orders />} />
             <Route path="customize-store" element={<CustomizeStore />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="payouts" element={<Payouts />} />
+            <Route path="bank-details" element={<BankDetails />} />
+          </Routes>
+        </DashboardLayout>
       </ProtectedRoute>
     } />
   </Routes>
@@ -114,15 +116,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <StoreProvider>
-            <SellerProvider>
-              <CartProvider>
-                <ErrorBoundary>
-                  <AppContent />
-                </ErrorBoundary>
-                <Toaster />
-                <Sonner />
-              </CartProvider>
-            </SellerProvider>
+            <AppContent />
+            <Toaster />
+            <Sonner />
           </StoreProvider>
         </AuthProvider>
       </BrowserRouter>

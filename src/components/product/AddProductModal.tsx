@@ -10,7 +10,7 @@ import { Plus, Loader } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { useStore } from '@/contexts/StoreContext';
-import { ImageUploader } from './ImageUploader';
+import MultiImageUploader from './MultiImageUploader';
 import VariantManager from './VariantManager';
 import { ProductVariant } from './types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +33,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showVariantPreview, setShowVariantPreview] = useState(false);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -41,16 +43,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     inventory_count: '10',
     payment_method: 'cod',
     category: '',
-    image_url: '',
     product_type: 'simple'
   });
 
-  const handleImageUploaded = (url: string) => {
-    setFormData(prev => ({ ...prev, image_url: url }));
+  const handleImagesChange = (images: string[]) => {
+    setImageUrls(images);
   };
 
-  const handleImageRemoved = () => {
-    setFormData(prev => ({ ...prev, image_url: '' }));
+  const handleFilesChange = (files: File[]) => {
+    setImageFiles(files);
   };
 
   const generateSlug = (name: string): string => {
@@ -72,6 +73,39 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
     
     return `${baseCode}-${timestamp}`;
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (imageFiles.length === 0) return [];
+
+    const uploadedUrls: string[] = [];
+    
+    for (const file of imageFiles) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${storeData?.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          continue;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        uploadedUrls.push(publicUrl);
+      } catch (error) {
+        console.error('Error uploading image:', error);
+      }
+    }
+
+    return uploadedUrls;
   };
 
   const validateVariants = (): boolean => {
@@ -120,10 +154,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       return;
     }
 
-    if (!formData.image_url) {
+    if (imageUrls.length === 0) {
       toast({
-        title: "Image required",
-        description: "Please upload a product image",
+        title: "Images required",
+        description: "Please upload at least one product image",
         variant: "destructive"
       });
       return;
@@ -138,12 +172,17 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     try {
       const slug = generateSlug(formData.name);
       
+      // Upload images first
+      const uploadedImageUrls = await uploadImages();
+      const allImageUrls = [...uploadedImageUrls];
+      
       // Base product data
       const productData = {
         name: formData.name,
         description: formData.description,
         price: formData.product_type === 'simple' ? parseFloat(formData.price) || 0 : 0,
-        image_url: formData.image_url,
+        image_url: allImageUrls[0] || '', // First image as main image
+        images: allImageUrls.slice(1), // Rest as additional images
         payment_method: formData.payment_method,
         store_id: storeData.id,
         user_id: user.id,
@@ -171,7 +210,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           price: variant.price,
           inventory_count: variant.inventory_count,
           sku: variant.sku || generateSKU(formData.name, variant),
-          image_url: variant.image_url || formData.image_url,
+          image_url: variant.image_url || allImageUrls[0] || '',
           options: variant.options
         }));
 
@@ -195,10 +234,11 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         inventory_count: '10',
         payment_method: 'cod',
         category: '',
-        image_url: '',
         product_type: 'simple'
       });
       setVariants([]);
+      setImageFiles([]);
+      setImageUrls([]);
       setShowVariantPreview(false);
 
       setIsOpen(false);
@@ -234,8 +274,9 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="images">Images</TabsTrigger>
               <TabsTrigger value="variants">Variants</TabsTrigger>
             </TabsList>
             
@@ -330,12 +371,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
               )}
 
-              <ImageUploader
-                onImageUploaded={handleImageUploaded}
-                currentImage={formData.image_url}
-                onImageRemoved={handleImageRemoved}
-              />
-
               <div className="space-y-2">
                 <Label htmlFor="payment_method">Payment Method</Label>
                 <Select 
@@ -352,6 +387,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+            </TabsContent>
+
+            <TabsContent value="images" className="space-y-4">
+              <MultiImageUploader
+                images={imageUrls}
+                onImagesChange={handleImagesChange}
+                onFilesChange={handleFilesChange}
+                maxImages={5}
+              />
             </TabsContent>
 
             <TabsContent value="variants" className="space-y-4">

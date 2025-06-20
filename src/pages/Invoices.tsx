@@ -1,246 +1,164 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { Download, Search, Eye, FileText, Calendar } from 'lucide-react';
-import InvoicePreviewModal from '@/components/invoice/InvoicePreviewModal';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStore } from '@/contexts/StoreContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Download, Eye, FileText } from 'lucide-react';
+import { format } from 'date-fns';
 
-const Invoices = () => {
+interface Invoice {
+  id: string;
+  order_id: string;
+  invoice_number: string;
+  total_amount: number;
+  created_at: string;
+  status: 'paid' | 'pending' | 'cancelled';
+  buyer_name: string;
+  buyer_email: string;
+}
+
+const Invoices: React.FC = () => {
   const { user } = useAuth();
+  const { storeData } = useStore();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
-  const [showPreview, setShowPreview] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch orders for invoice generation
-  const { data: orders, isLoading } = useQuery({
-    queryKey: ['orders-for-invoices', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      
-      const { data: stores } = await supabase
-        .from('stores')
-        .select('id')
-        .eq('user_id', user.id);
-      
-      if (!stores?.length) return [];
-      
-      const storeIds = stores.map(store => store.id);
-      
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_items (
-            id,
-            quantity,
-            price_at_purchase,
-            products (
-              id,
-              name,
-              image_url
-            )
-          ),
-          stores (
-            name,
-            business_email,
-            phone_number,
-            address
-          )
-        `)
-        .in('store_id', storeIds)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user?.id,
-  });
+  useEffect(() => {
+    fetchInvoices();
+  }, [storeData]);
 
-  const filteredOrders = orders?.filter(order => 
-    order.buyer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.buyer_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.id.includes(searchTerm)
-  ) || [];
+  const fetchInvoices = async () => {
+    if (!storeData) return;
 
-  const handleDownloadInvoice = async (order: any) => {
     try {
-      toast({ title: "Generating invoice...", description: "Please wait a moment." });
-      
-      const { data, error } = await supabase.functions.invoke('generate-invoice', {
-        body: { orderId: order.id }
-      });
+      setIsLoading(true);
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', storeData.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Open the HTML page with auto-download
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.write(data);
-        newWindow.document.close();
-        
-        toast({
-          title: "Invoice Generated",
-          description: "Invoice opened in new tab. Click the download button to save as PDF.",
-        });
-      } else {
-        throw new Error('Unable to open new window. Please check your popup blocker.');
-      }
+      // Transform orders to invoice format
+      const invoiceData: Invoice[] = (orders || []).map(order => ({
+        id: order.id,
+        order_id: order.id,
+        invoice_number: `INV-${order.id.slice(0, 8)}`,
+        total_amount: order.total_price,
+        created_at: order.created_at,
+        status: order.payment_status === 'paid' ? 'paid' : order.payment_status === 'failed' ? 'cancelled' : 'pending',
+        buyer_name: order.buyer_name,
+        buyer_email: order.buyer_email || ''
+      }));
+
+      setInvoices(invoiceData);
     } catch (error: any) {
-      console.error('Error downloading invoice:', error);
+      console.error('Error fetching invoices:', error);
       toast({
-        title: "Download Failed",
-        description: error.message || "Failed to download invoice. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to load invoices",
+        variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handlePreviewInvoice = (order: any) => {
-    setSelectedInvoice(order);
-    setShowPreview(true);
+  const handleDownloadInvoice = async (invoiceId: string) => {
+    toast({
+      title: "Download Started",
+      description: "Invoice download will begin shortly",
+    });
+    // TODO: Implement PDF generation
+  };
+
+  const handleViewInvoice = (invoiceId: string) => {
+    window.open(`/invoice/${invoiceId}`, '_blank');
   };
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Invoice Management</h1>
-        <p className="text-muted-foreground">Generate and manage invoices for your orders</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Invoices</h1>
+        <Button variant="outline">
+          <FileText className="mr-2 h-4 w-4" />
+          Generate Report
+        </Button>
       </div>
 
-      {/* Search and Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Search Orders
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search by customer name, email, or order ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Orders List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Orders ({filteredOrders.length})
-          </CardTitle>
-          <CardDescription>
-            Click on any order to generate or download its invoice
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredOrders.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm ? 'No orders match your search criteria.' : 'You don\'t have any orders yet.'}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold">#{order.id.slice(-8)}</h4>
-                        <Badge variant={order.payment_status === 'paid' ? 'default' : 'secondary'}>
-                          {order.payment_status}
-                        </Badge>
-                        <Badge variant="outline">{order.status}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Customer: {order.buyer_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Email: {order.buyer_email || 'N/A'}
-                      </p>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg">₹{Number(order.total_price).toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.order_items?.length || 0} items
-                      </p>
-                    </div>
+      <div className="grid gap-4">
+        {invoices.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No invoices found</h3>
+              <p className="text-muted-foreground">Invoices will appear here when you receive orders</p>
+            </CardContent>
+          </Card>
+        ) : (
+          invoices.map((invoice) => (
+            <Card key={invoice.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{invoice.invoice_number}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(invoice.created_at), 'MMM dd, yyyy')}
+                    </p>
                   </div>
-                  
-                  <Separator className="my-3" />
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-muted-foreground">
-                      Store: {order.stores?.name}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePreviewInvoice(order)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Preview
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleDownloadInvoice(order)}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download Invoice
-                      </Button>
-                    </div>
+                  <Badge variant={
+                    invoice.status === 'paid' ? 'default' : 
+                    invoice.status === 'pending' ? 'secondary' : 'destructive'
+                  }>
+                    {invoice.status}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">₹{invoice.total_amount}</p>
+                    <p className="text-sm text-muted-foreground">{invoice.buyer_name}</p>
+                    <p className="text-sm text-muted-foreground">{invoice.buyer_email}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewInvoice(invoice.id)}
+                    >
+                      <Eye className="mr-1 h-4 w-4" />
+                      View
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadInvoice(invoice.id)}
+                    >
+                      <Download className="mr-1 h-4 w-4" />
+                      Download
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Invoice Preview Modal */}
-      {showPreview && selectedInvoice && (
-        <InvoicePreviewModal
-          order={selectedInvoice}
-          open={showPreview}
-          onClose={() => {
-            setShowPreview(false);
-            setSelectedInvoice(null);
-          }}
-          onDownload={() => handleDownloadInvoice(selectedInvoice)}
-        />
-      )}
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };
