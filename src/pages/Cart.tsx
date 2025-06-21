@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,11 +9,27 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft, Home } from 'lucide-react'
 import StoreHeader from '@/components/storefront/StoreHeader';
 import StoreNotFound from '@/components/storefront/StoreNotFound';
 import StorefrontLoader from '@/components/storefront/StorefrontLoader';
+import { persistenceUtils } from '@/utils/persistence';
+import { useToast } from '@/hooks/use-toast';
 
 const Cart = () => {
   const { storeName } = useParams<{ storeName: string }>();
   const navigate = useNavigate();
   const { items, updateQuantity, removeFromCart, getTotalPrice, clearCart } = useCart();
+  const { toast } = useToast();
+
+  // Check for cart backup on component mount
+  useEffect(() => {
+    const cartBackup = persistenceUtils.getCartBackup();
+    if (cartBackup && items.length === 0) {
+      // Show restoration message if backup exists but cart is empty
+      toast({
+        title: "Cart Restored",
+        description: `Found ${cartBackup.itemCount} items from your previous session.`,
+        duration: 4000,
+      });
+    }
+  }, [items.length, toast]);
 
   // Check if we have a store context from localStorage as fallback
   const fallbackStoreName = React.useMemo(() => {
@@ -278,7 +294,14 @@ const Cart = () => {
               <ArrowLeft className="w-4 h-4" />
               Continue Shopping
             </Button>
-            <h1 className="text-2xl sm:text-3xl font-bold text-center sm:text-left w-full sm:w-auto">Shopping Cart</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-center sm:text-left w-full sm:w-auto">
+              Shopping Cart
+              {items.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-gray-600">
+                  ({items.length} {items.length === 1 ? 'item' : 'items'})
+                </span>
+              )}
+            </h1>
           </div>
 
           {items.length === 0 ? (

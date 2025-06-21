@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ import MultiImageUploader from './MultiImageUploader';
 import { ProductVariant } from './types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from 'react-hook-form';
+import { useProductFormPersistence } from '@/hooks/use-product-form-persistence';
 
 interface AddProductModalProps {
   onProductAdded: () => void;
@@ -55,6 +55,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     { name: 'Size', values: [] },
     { name: 'Color', values: [] }
   ]);
+  const [isFormDirty, setIsFormDirty] = useState(false);
   
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
     defaultValues: {
@@ -68,7 +69,58 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   });
 
+  const formData = watch();
   const productType = watch('product_type');
+
+  // Track form changes for persistence
+  useEffect(() => {
+    const subscription = watch((data, { name }) => {
+      if (name) {
+        setIsFormDirty(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  // Use persistence hook
+  const { clearDraft, saveDraft } = useProductFormPersistence({
+    formData: {
+      ...formData,
+      variants,
+      variantOptions,
+      imageUrls,
+      showVariantPreview
+    },
+    isFormDirty,
+    storeId: storeData?.id,
+    onRestoreDraft: (draftData) => {
+      // Restore form data
+      Object.keys(draftData).forEach(key => {
+        if (key in formData) {
+          setValue(key as keyof FormData, draftData[key]);
+        }
+      });
+      
+      // Restore variants and other state
+      if (draftData.variants) setVariants(draftData.variants);
+      if (draftData.variantOptions) setVariantOptions(draftData.variantOptions);
+      if (draftData.imageUrls) setImageUrls(draftData.imageUrls);
+      if (draftData.showVariantPreview) setShowVariantPreview(draftData.showVariantPreview);
+      
+      setIsFormDirty(true);
+    }
+  });
+
+  // Auto-save draft periodically
+  useEffect(() => {
+    if (isFormDirty && isOpen) {
+      const autoSaveInterval = setInterval(() => {
+        saveDraft();
+      }, 30000); // Auto-save every 30 seconds
+
+      return () => clearInterval(autoSaveInterval);
+    }
+  }, [isFormDirty, isOpen, saveDraft]);
 
   const handleImagesChange = (images: string[]) => {
     setImageUrls(images);
@@ -315,7 +367,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         description: "Product added successfully",
       });
 
-      // Reset form
+      // Clear draft and reset form
+      clearDraft();
       reset();
       setVariants([]);
       setImageFiles([]);
@@ -325,6 +378,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
         { name: 'Size', values: [] },
         { name: 'Color', values: [] }
       ]);
+      setIsFormDirty(false);
 
       setIsOpen(false);
       onProductAdded();
@@ -340,6 +394,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
     }
   };
 
+  // Handle modal close with draft save
+  const handleModalClose = () => {
+    if (isFormDirty) {
+      saveDraft();
+      toast({
+        title: "Draft Saved",
+        description: "Your progress has been saved and will be restored when you return.",
+        duration: 3000,
+      });
+    }
+    setIsOpen(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -350,7 +417,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Product</DialogTitle>
+          <DialogTitle>
+            Add New Product
+            {isFormDirty && (
+              <span className="ml-2 text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                Draft Saved
+              </span>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -603,9 +677,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({
           </Tabs>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+            <Button type="button" variant="outline" onClick={handleModalClose}>
               Cancel
             </Button>
+            {isFormDirty && (
+              <Button type="button" variant="secondary" onClick={saveDraft}>
+                Save Draft
+              </Button>
+            )}
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
