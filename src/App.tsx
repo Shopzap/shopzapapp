@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,9 +24,9 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <CartProvider>
-          <Router>
+      <Router>
+        <AuthProvider>
+          <CartProvider>
             <div className="min-h-screen bg-background">
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -44,9 +45,9 @@ function App() {
               </Routes>
               <Toaster />
             </div>
-          </Router>
-        </CartProvider>
-      </AuthProvider>
+          </CartProvider>
+        </AuthProvider>
+      </Router>
     </QueryClientProvider>
   );
 }
