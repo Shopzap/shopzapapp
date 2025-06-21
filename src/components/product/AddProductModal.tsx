@@ -14,7 +14,7 @@ import MultiImageUploader from './MultiImageUploader';
 import { ProductVariant } from './types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from 'react-hook-form';
-import { useProductFormPersistence } from '@/hooks/use-product-form-persistence';
+import { useProductFormPersistence } from '@/hooks/useProductFormPersistence';
 
 interface AddProductModalProps {
   onProductAdded: () => void;

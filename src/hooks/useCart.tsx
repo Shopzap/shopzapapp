@@ -42,7 +42,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { storeName } = useParams<{ storeName: string }>();
   const location = useLocation();
 
-  // Enhanced store context detection
+  // Enhanced store context detection with proper typing
   const currentStoreContext = React.useMemo(() => {
     if (storeName) {
       return storeName.toLowerCase();
@@ -50,13 +50,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     
     if (location.pathname === '/cart') {
       try {
-        const storeContext = persistenceUtils.getItem(LocalStorageKeys.STORE_CONTEXT);
-        if (storeContext) {
+        const storeContext = persistenceUtils.getItem<{ storeName: string }>(LocalStorageKeys.STORE_CONTEXT);
+        if (storeContext && typeof storeContext.storeName === 'string') {
           return storeContext.storeName;
         }
         
-        const lastVisitedStore = persistenceUtils.getItem(LocalStorageKeys.LAST_VISITED_STORE);
-        if (lastVisitedStore) {
+        const lastVisitedStore = persistenceUtils.getItem<string>(LocalStorageKeys.LAST_VISITED_STORE);
+        if (lastVisitedStore && typeof lastVisitedStore === 'string') {
           return lastVisitedStore;
         }
       } catch (error) {
@@ -85,7 +85,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   // Generate or get session ID with enhanced backup
   const getSessionId = () => {
-    let sessionId = persistenceUtils.getItem(LocalStorageKeys.CART_SESSION);
+    let sessionId = persistenceUtils.getItem<string>(LocalStorageKeys.CART_SESSION);
     if (!sessionId) {
       sessionId = crypto.randomUUID();
       persistenceUtils.setItem(LocalStorageKeys.CART_SESSION, sessionId);
@@ -318,7 +318,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     getTotalPrice,
     getItemCount,
     isLoading,
-    currentStore: currentStoreContext?.toLowerCase()
+    currentStore: currentStoreContext?.toLowerCase() || undefined
   };
 
   return (
