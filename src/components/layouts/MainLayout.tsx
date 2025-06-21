@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Package, ShoppingCart, Settings, BarChart2, Users, Menu, X, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -31,35 +32,71 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   };
 
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-100 md:flex-row">
+    <div className="flex flex-col min-h-screen bg-gray-100 lg:flex-row">
       {/* Mobile Header */}
-      <header className="md:hidden flex items-center justify-between p-4 border-b bg-white shadow-md">
-        <Link to="/" className="text-2xl font-bold text-purple-700">
+      <header className="lg:hidden flex items-center justify-between p-4 border-b bg-white shadow-sm z-30 relative">
+        <Link to="/" className="text-xl font-bold text-purple-700">
           ShopZap.io
         </Link>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
-          {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        <button 
+          onClick={() => setIsSidebarOpen(true)} 
+          className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          <Menu className="w-6 h-6" />
         </button>
       </header>
 
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-md flex flex-col transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out`}>
-        <div className="p-4 border-b hidden md:block">
-          <Link to="/" className="text-2xl font-bold text-purple-700">
+      <aside className={cn(
+        "fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-80 bg-white shadow-lg flex flex-col transform transition-transform duration-300 ease-in-out lg:transform-none lg:w-64",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
+        {/* Desktop Logo */}
+        <div className="hidden lg:block p-4 border-b">
+          <Link to="/" className="text-xl font-bold text-purple-700">
             ShopZap.io
           </Link>
         </div>
-        <div className="p-4 flex items-center space-x-3 border-b">
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+
+        {/* Mobile Header with Close Button */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b">
+          <Link to="/" onClick={closeSidebar} className="text-xl font-bold text-purple-700">
+            ShopZap.io
+          </Link>
+          <button 
+            onClick={closeSidebar}
+            className="p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* User Info */}
+        <div className="p-4 flex items-center space-x-3 border-b bg-gray-50">
+          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
             <Users className="w-6 h-6 text-gray-600" />
           </div>
-          <div>
-            <p className="font-semibold">shaikh sadique</p>
-            <p className="text-sm text-gray-500">Logged in</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-sm truncate">shaikh sadique</p>
+            <p className="text-xs text-gray-500">Logged in</p>
           </div>
         </div>
-        <nav className="flex-1 px-2 py-4 space-y-2">
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -67,33 +104,39 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center space-x-3 p-2 rounded-md ${isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-700 hover:bg-gray-100'}`}
-                onClick={() => setIsSidebarOpen(false)} // Close sidebar on navigation
+                onClick={closeSidebar}
+                className={cn(
+                  "flex items-center space-x-3 p-3 rounded-lg text-sm font-medium transition-colors",
+                  isActive 
+                    ? "bg-purple-100 text-purple-700" 
+                    : "text-gray-700 hover:bg-gray-100"
+                )}
               >
-                <Icon className="w-5 h-5" />
-                <span>{item.name}</span>
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="truncate">{item.name}</span>
               </Link>
             );
           })}
         </nav>
+
+        {/* Sign Out Button */}
         <div className="p-4 border-t">
           <button 
             onClick={handleSignOut}
-            className="flex items-center space-x-3 p-2 text-red-500 hover:bg-red-50 rounded-md w-full text-left"
+            className="flex items-center space-x-3 p-3 text-red-500 hover:bg-red-50 rounded-lg w-full text-left text-sm font-medium transition-colors"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-5 h-5 flex-shrink-0" />
             <span>Log Out</span>
           </button>
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
-      {isSidebarOpen && <div className="fixed inset-0 bg-black opacity-50 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
-
-      {/* Content Area - Enhanced spacing */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 xl:p-12">
-        <div className="max-w-7xl mx-auto w-full">
-          {children}
+      {/* Content Area */}
+      <main className="flex-1 overflow-hidden lg:overflow-auto">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </div>
       </main>
     </div>

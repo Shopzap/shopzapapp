@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,9 @@ import {
   Store,
   FileText,
   CreditCard,
-  Building2
+  Building2,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -25,6 +27,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { storeData } = useStore();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigationItems = [
     {
@@ -79,21 +82,71 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     await signOut();
   };
 
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">
+            {storeData?.name || 'Dashboard'}
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 z-40 bg-black/50"
+          onClick={closeMobileMenu}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
+      <div className={cn(
+        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:transform-none",
+        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+      )}>
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="p-6">
+          {/* Desktop Header */}
+          <div className="hidden lg:block p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-800">
               {storeData?.name || 'Dashboard'}
             </h2>
-            <p className="text-sm text-gray-600">{user?.email}</p>
+            <p className="text-sm text-gray-600 truncate">{user?.email}</p>
+          </div>
+
+          {/* Mobile Header */}
+          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">
+                {storeData?.name || 'Dashboard'}
+              </h2>
+              <p className="text-sm text-gray-600 truncate">{user?.email}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeMobileMenu}
+              className="p-2"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 pb-4">
+          <nav className="flex-1 px-4 py-4 overflow-y-auto">
             <ul className="space-y-1">
               {navigationItems.map((item) => {
                 const isActive = location.pathname === item.href;
@@ -101,15 +154,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                   <li key={item.href}>
                     <Link
                       to={item.href}
+                      onClick={closeMobileMenu}
                       className={cn(
-                        "flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                        "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
                         isActive
                           ? "bg-primary text-primary-foreground"
                           : "text-gray-700 hover:bg-gray-100"
                       )}
                     >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.title}
+                      <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                      <span className="truncate">{item.title}</span>
                     </Link>
                   </li>
                 );
@@ -118,11 +172,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t">
+          <div className="p-4 border-t border-gray-200">
             <Button
               onClick={handleSignOut}
               variant="outline"
               className="w-full"
+              size="sm"
             >
               Sign Out
             </Button>
@@ -131,9 +186,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        {/* Mobile spacing for fixed header */}
+        <div className="lg:hidden h-16"></div>
+        
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>
