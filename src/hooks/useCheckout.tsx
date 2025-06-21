@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/contexts/StoreContext';
+import { useCart } from '@/hooks/useCart';
 
 interface FormData {
   fullName: string;
@@ -15,24 +17,12 @@ interface FormData {
   specialInstructions?: string;
 }
 
-interface OrderItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  image: string;
-  variant?: {
-    id: string;
-    options: any;
-    name: string;
-  };
-}
-
 export const useCheckout = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const { storeData: contextStoreData } = useStore();
+  const { items, getTotalPrice, getItemCount } = useCart();
   
   const [storeData, setStoreData] = useState<{ id: string; name: string; payment_settings?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,28 +33,21 @@ export const useCheckout = () => {
   const [sellerAllowsCOD, setSellerAllowsCOD] = useState(true);
   const [sellerAllowsOnline, setSellerAllowsOnline] = useState(true);
 
-  const [orderItems, setOrderItems] = useState<OrderItem[]>(location.state?.orderItems || [
-    {
-      id: 1,
-      name: 'Wireless Earbuds',
-      price: 1999,
-      quantity: 1,
-      image: 'https://placehold.co/80x80'
-    },
-    {
-      id: 2,
-      name: 'Phone Case',
-      price: 499,
-      quantity: 2,
-      image: 'https://placehold.co/80x80'
-    }
-  ]);
+  // Get order items from cart
+  const orderItems = items.map((item, index) => ({
+    id: index + 1,
+    name: item.product.name,
+    price: parseFloat(item.product.price.toString()),
+    quantity: item.quantity,
+    image: item.product.image_url || 'https://placehold.co/80x80',
+    variant: undefined
+  }));
 
-  const subtotal = orderItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const subtotal = getTotalPrice();
   const shipping = 0;
   const total = subtotal + shipping;
 
-  // Check Razorpay availability and fetch key
+  // Check Razorpay availability
   useEffect(() => {
     const checkRazorpayAvailability = async () => {
       try {
@@ -76,7 +59,6 @@ export const useCheckout = () => {
           setRazorpayAvailable(true);
           setPaymentMode(data.mode || 'test');
           setRazorpayKeyId(data.keyId || '');
-          console.log('Razorpay key ID set:', data.keyId);
         } else {
           console.log('Razorpay not available, error:', error);
           setRazorpayAvailable(false);
@@ -92,35 +74,31 @@ export const useCheckout = () => {
     checkRazorpayAvailability();
   }, []);
 
-  // Fetch store payment settings and set initial payment method
+  // Fetch store payment settings
   useEffect(() => {
     const fetchStorePaymentSettings = async () => {
       if (contextStoreData) {
         console.log('Using real store data:', contextStoreData);
         
-        // Get payment settings from store theme/settings
         const storeSettings = contextStoreData.theme && typeof contextStoreData.theme === 'object' 
           ? (contextStoreData.theme as any) 
           : {};
         
-        // Check what payment methods the seller allows
-        const allowsCOD = storeSettings.allow_cod !== false; // Default to true if not set
-        const allowsOnline = storeSettings.allow_online !== false; // Default to true if not set
+        const allowsCOD = storeSettings.allow_cod !== false;
+        const allowsOnline = storeSettings.allow_online !== false;
         
         console.log('Store payment settings:', { allowsCOD, allowsOnline, storeSettings });
         
         setSellerAllowsCOD(allowsCOD);
         setSellerAllowsOnline(allowsOnline);
         
-        // Set default payment method based on what's available
         if (allowsCOD && !allowsOnline) {
           setPaymentMethod('cod');
         } else if (!allowsCOD && allowsOnline) {
           setPaymentMethod('online');
         } else if (allowsCOD && allowsOnline) {
-          setPaymentMethod('cod'); // Default to COD if both are allowed
+          setPaymentMethod('cod');
         } else {
-          // Neither is allowed - this shouldn't happen, but default to COD
           setPaymentMethod('cod');
           console.warn('No payment methods are enabled for this store');
         }
@@ -188,14 +166,12 @@ export const useCheckout = () => {
         description: "Store information is not available. Please try again.",
         variant: "destructive"
       });
-      setIsLoading(false);
       return;
     }
     
     setIsLoading(true);
     
     try {
-      // Format the complete address
       const fullAddress = `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`;
       
       const orderData = {
@@ -214,22 +190,13 @@ export const useCheckout = () => {
           priceAtPurchase: item.price,
           name: item.name,
           image: item.image,
-          variant: item.variant ? {
-            id: item.variant.id,
-            name: item.variant.name,
-            options: item.variant.options
-          } : undefined
+          variant: item.variant
         }))
       };
 
-      console.log('Order data prepared with complete buyer info:', { 
-        ...orderData, 
-        paymentMethod, 
-        totalInRupees: total 
-      });
+      console.log('Order data prepared:', { ...orderData, paymentMethod, total });
 
       if (paymentMethod === 'online') {
-        // Check if seller allows online payment and Razorpay is available
         if (!sellerAllowsOnline) {
           toast({
             title: "Payment Method Not Available",
@@ -251,81 +218,64 @@ export const useCheckout = () => {
         }
 
         const razorpay = await loadRazorpay();
-
         if (!razorpay) {
           toast({
             title: "Payment Error",
-            description: "Payment system failed to load. Please try Cash on Delivery or refresh the page.",
+            description: "Payment system failed to load. Please try Cash on Delivery.",
             variant: "destructive"
           });
           setIsLoading(false);
           return;
         }
 
-        console.log('Creating Razorpay order with key:', razorpayKeyId);
-
         try {
-          // Send amount in rupees, not paise - the backend will handle conversion
           const { data: razorpayOrder, error: razorpayError } = await supabase.functions.invoke('create-razorpay-order', {
             body: {
-              amount: total, // Send total as rupees (e.g., 410, not 41000)
+              amount: total,
               currency: 'INR',
               receipt: `order_${Date.now()}`
             }
           });
 
           if (razorpayError) {
-            console.error('Razorpay order creation failed:', razorpayError);
             throw new Error('Failed to create payment order. Please try again or use Cash on Delivery.');
           }
 
-          console.log('Razorpay order created:', razorpayOrder);
-
           const options = {
             key: razorpayKeyId,
-            amount: razorpayOrder.amount, // This will be in paise from backend
+            amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             name: storeData.name,
             description: 'Secure online payment',
             order_id: razorpayOrder.razorpayOrderId,
             handler: async function (response: any) {
               try {
-                console.log('Payment successful, verifying...', response);
-                
                 const { data: verificationData, error: verificationError } = await supabase.functions.invoke('verify-payment', {
                   body: {
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_payment_id: response.razorpay_payment_id,
                     razorpay_signature: response.razorpay_signature,
-                    orderData: {
-                      ...orderData,
-                      paymentMethod: 'online' // Explicitly set online payment
-                    }
+                    orderData: { ...orderData, paymentMethod: 'online' }
                   }
                 });
 
                 if (verificationError) {
-                  console.error('Payment verification failed:', verificationError);
                   toast({
                     title: "Payment Verification Failed",
-                    description: "Your payment was processed but verification failed. Please contact support with your payment ID: " + response.razorpay_payment_id,
+                    description: "Your payment was processed but verification failed. Please contact support.",
                     variant: "destructive"
                   });
                   setIsLoading(false);
                   return;
                 }
 
-                console.log('Payment verified successfully:', verificationData);
-
-                // Update referral if exists
                 await updateReferralOnOrder(verificationData.orderId);
-
                 navigate(`/thank-you?order_id=${verificationData.orderId}`);
               } catch (error) {
                 console.error('Error in payment handler:', error);
                 toast({
                   title: "Payment Processing Error",
-                  description: "There was an error processing your payment. Please contact support with payment ID: " + response.razorpay_payment_id,
+                  description: "There was an error processing your payment. Please contact support.",
                   variant: "destructive"
                 });
                 setIsLoading(false);
@@ -336,29 +286,20 @@ export const useCheckout = () => {
               email: values.email,
               contact: values.phone
             },
-            notes: {
-              order_id: razorpayOrder.razorpayOrderId,
-              store_name: storeData.name
-            },
-            theme: {
-              color: '#7b3fe4'
-            },
+            theme: { color: '#7b3fe4' },
             modal: {
               ondismiss: function() {
-                console.log('Payment modal dismissed');
                 setIsLoading(false);
               }
             }
           };
 
-          console.log('Opening Razorpay with options:', { ...options, amount: `${options.amount} paise (₹${total})` });
           const rzp1 = new (window as any).Razorpay(options);
           
           rzp1.on('payment.failed', function (response: any) {
-            console.error('Razorpay payment failed:', response);
             toast({
               title: "Payment Failed",
-              description: response.error?.description || "Your payment failed. Please try again or use Cash on Delivery.",
+              description: response.error?.description || "Your payment failed. Please try again.",
               variant: "destructive"
             });
             setIsLoading(false);
@@ -366,7 +307,6 @@ export const useCheckout = () => {
           
           rzp1.open();
         } catch (createOrderError) {
-          console.error('Error creating Razorpay order:', createOrderError);
           toast({
             title: "Payment Setup Failed",
             description: "Unable to set up online payment. Please try Cash on Delivery.",
@@ -387,32 +327,22 @@ export const useCheckout = () => {
         }
 
         try {
-          console.log('Creating COD order...');
           const { data: orderResult, error: orderError } = await supabase.functions.invoke('verify-payment', {
             body: {
               razorpay_order_id: '',
               razorpay_payment_id: '',
               razorpay_signature: '',
-              orderData: {
-                ...orderData,
-                paymentMethod: 'cod' // Explicitly set COD
-              }
+              orderData: { ...orderData, paymentMethod: 'cod' }
             }
           });
 
           if (orderError) {
-            console.error('COD order creation failed:', orderError);
             throw new Error('Failed to create Cash on Delivery order. Please try again.');
           }
 
-          console.log('COD order created successfully:', orderResult);
-
-          // Update referral if exists
           await updateReferralOnOrder(orderResult.orderId);
-          
           navigate(`/thank-you?order_id=${orderResult.orderId}`);
         } catch (codError) {
-          console.error('COD order error:', codError);
           toast({
             title: "Order Failed",
             description: "Failed to create your Cash on Delivery order. Please try again.",

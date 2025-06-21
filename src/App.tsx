@@ -1,145 +1,56 @@
-
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
-import React, { Suspense, lazy } from 'react';
+import { CartProvider } from '@/hooks/useCart';
 
 // Pages
-import Index from "./pages/Index";
-import Pricing from "./pages/Pricing";
-import Features from "./pages/Features";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import StoreBuilder from "./pages/StoreBuilder";
-import EmbedGenerator from "./pages/EmbedGenerator";
-import Dashboard from "./pages/Dashboard";
-import ProductManager from './pages/ProductManager';
-import Analytics from './pages/Analytics';
-import Orders from "./pages/Orders";
-import CustomizeStore from "./pages/CustomizeStore";
-import Settings from "./pages/Settings";
-import Invoices from "./pages/Invoices";
-import Payouts from "./pages/Payouts";
-import BankDetails from "./pages/BankDetails";
-import NotFound from "./pages/NotFound";
-import Verify from "./pages/Verify"; 
-import AuthCallback from "./pages/AuthCallback";
-import OrderTracking from "./pages/OrderTracking";
-const Storefront = lazy(() => import("./pages/Storefront"));
-const ProductDetails = lazy(() => import("./pages/ProductDetails"));
-import Checkout from "./pages/Checkout";
-import OrderSuccess from "./pages/OrderSuccess";
-import OrderRedirect from "./pages/OrderRedirect";
-
-// Auth components
-import { AuthProvider } from "./contexts/AuthContext"; 
-import { StoreProvider } from './contexts/StoreContext';
-import { SellerProvider } from './contexts/SellerContext';
-import { CartProvider } from './hooks/useCart';
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import ErrorBoundary from "./components/ErrorBoundary";
-import DashboardLayout from "./components/layouts/DashboardLayout";
+import Index from '@/pages/Index';
+import Dashboard from '@/pages/Dashboard';
+import Login from '@/pages/Login';
+import Signup from '@/pages/Signup';
+import ProductDetails from '@/pages/ProductDetails';
+import Cart from '@/pages/Cart';
+import Checkout from '@/pages/Checkout';
+import StoreCheckout from '@/pages/StoreCheckout';
+import Storefront from '@/pages/Storefront';
+import StoreProducts from '@/pages/StoreProducts';
+import OrderSuccess from '@/pages/OrderSuccess';
+import ThankYou from '@/pages/ThankYou';
 
 const queryClient = new QueryClient();
 
-// Create a separate App component wrapper to ensure proper provider nesting
-const AppContent = () => (
-  <Routes>
-    {/* Public routes */}
-    <Route path="/" element={<Index />} />
-    <Route path="/pricing" element={<Pricing />} />
-    <Route path="/features" element={<Features />} />
-    <Route path="*" element={<NotFound />} />
-
-    {/* Existing routes, potentially nested under MainLayout or ProtectedRoute */}
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/verify" element={<Verify />} /> 
-    <Route path="/auth-callback" element={<AuthCallback />} />
-    
-    {/* Storefront routes wrapped with CartProvider */}
-    <Route path="/store/:storeName" element={
-      <CartProvider>
-        <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading store...</p></div>}>
-            <Storefront />
-          </Suspense>
-        </ErrorBoundary>
-      </CartProvider>
-    } />
-    <Route path="/store/:storeName/product/:productSlug" element={
-      <CartProvider>
-        <ErrorBoundary>
-          <Suspense fallback={<div className="min-h-screen flex flex-col items-center justify-center"><div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-primary rounded-full"></div><p className="mt-4 text-muted-foreground">Loading product...</p></div>}>
-            <ProductDetails />
-          </Suspense>
-        </ErrorBoundary>
-      </CartProvider>
-    } />
-    <Route path="/store/:storeName/checkout" element={
-      <CartProvider>
-        <Checkout />
-      </CartProvider>
-    } />
-    
-    <Route path="/order-success" element={<OrderSuccess />} />
-    <Route path="/order" element={<OrderRedirect />} />
-    <Route path="/track-order" element={<OrderTracking />} />
-    
-    {/* Protected routes */}
-    <Route path="/onboarding" element={
-      <ProtectedRoute>
-        <Onboarding />
-      </ProtectedRoute>
-    } />
-    <Route path="/store-builder" element={
-      <ProtectedRoute>
-        <StoreBuilder />
-      </ProtectedRoute>
-    } />
-    <Route path="/embed-generator" element={
-      <ProtectedRoute>
-        <EmbedGenerator />
-      </ProtectedRoute>
-    } />
-    <Route path="/dashboard/*" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Routes>
-            <Route index element={<Dashboard />} />
-            <Route path="products" element={<ProductManager />} />
-            <Route path="orders" element={<Orders />} />
-            <Route path="customize-store" element={<CustomizeStore />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="invoices" element={<Invoices />} />
-            <Route path="payouts" element={<Payouts />} />
-            <Route path="bank-details" element={<BankDetails />} />
-          </Routes>
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-  </Routes>
-);
-
-// Main App component with properly nested providers
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <SellerProvider>
-            <StoreProvider>
-              <AppContent />
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <CartProvider>
+          <Router>
+            <div className="min-h-screen bg-background">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/checkout/:id" element={<Checkout />} />
+                <Route path="/store/:storeName" element={<Storefront />} />
+                <Route path="/store/:storeName/products" element={<StoreProducts />} />
+                <Route path="/store/:storeName/cart" element={<Cart />} />
+                <Route path="/store/:storeName/checkout" element={<StoreCheckout />} />
+                <Route path="/store/:storeName/product/:productId" element={<ProductDetails />} />
+                <Route path="/order-success" element={<OrderSuccess />} />
+                <Route path="/thank-you" element={<ThankYou />} />
+              </Routes>
               <Toaster />
-              <Sonner />
-            </StoreProvider>
-          </SellerProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            </div>
+          </Router>
+        </CartProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
