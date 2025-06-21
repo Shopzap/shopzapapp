@@ -4,6 +4,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { StoreProvider } from '@/contexts/StoreContext';
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from '@/hooks/useCart';
 
@@ -26,26 +27,28 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <Router>
         <AuthProvider>
-          <CartProvider>
-            <div className="min-h-screen bg-background">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Auth />} />
-                <Route path="/signup" element={<Auth />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/checkout/:id" element={<Checkout />} />
-                <Route path="/store/:storeName" element={<Storefront />} />
-                <Route path="/store/:storeName/cart" element={<Cart />} />
-                <Route path="/store/:storeName/checkout" element={<StoreCheckout />} />
-                <Route path="/store/:storeName/product/:productId" element={<ProductDetails />} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/thank-you" element={<ThankYou />} />
-              </Routes>
-              <Toaster />
-            </div>
-          </CartProvider>
+          <StoreProvider>
+            <CartProvider>
+              <div className="min-h-screen bg-background">
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Auth />} />
+                  <Route path="/signup" element={<Auth />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/checkout/:id" element={<Checkout />} />
+                  <Route path="/store/:storeName" element={<Storefront />} />
+                  <Route path="/store/:storeName/cart" element={<Cart />} />
+                  <Route path="/store/:storeName/checkout" element={<StoreCheckout />} />
+                  <Route path="/store/:storeName/product/:productId" element={<ProductDetails />} />
+                  <Route path="/order-success" element={<OrderSuccess />} />
+                  <Route path="/thank-you" element={<ThankYou />} />
+                </Routes>
+                <Toaster />
+              </div>
+            </CartProvider>
+          </StoreProvider>
         </AuthProvider>
       </Router>
     </QueryClientProvider>
