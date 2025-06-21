@@ -21,11 +21,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
   ];
 
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100 md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 border-b bg-white shadow-md">
-        <h1 className="text-2xl font-bold text-purple-700">ShopZap.io</h1>
+        <Link to="/" className="text-2xl font-bold text-purple-700">
+          ShopZap.io
+        </Link>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
           {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
@@ -34,7 +46,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-md flex flex-col transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-200 ease-in-out`}>
         <div className="p-4 border-b hidden md:block">
-          <h1 className="text-2xl font-bold text-purple-700">ShopZap.io</h1>
+          <Link to="/" className="text-2xl font-bold text-purple-700">
+            ShopZap.io
+          </Link>
         </div>
         <div className="p-4 flex items-center space-x-3 border-b">
           <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
@@ -64,14 +78,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </nav>
         <div className="p-4 border-t">
           <button 
-            onClick={async () => {
-              try {
-                await supabase.auth.signOut({ scope: 'global' });
-                window.location.href = '/';
-              } catch (error) {
-                console.error('Error signing out:', error);
-              }
-            }} 
+            onClick={handleSignOut}
             className="flex items-center space-x-3 p-2 text-red-500 hover:bg-red-50 rounded-md w-full text-left"
           >
             <LogOut className="w-5 h-5" />

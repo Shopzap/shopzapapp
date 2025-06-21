@@ -74,6 +74,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     },
   ];
 
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await signOut();
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
@@ -115,7 +120,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           {/* Footer */}
           <div className="p-4 border-t">
             <Button
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               variant="outline"
               className="w-full"
             >
