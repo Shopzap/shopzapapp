@@ -18,6 +18,14 @@ import StoreCheckout from '@/pages/StoreCheckout';
 import Storefront from '@/pages/Storefront';
 import OrderSuccess from '@/pages/OrderSuccess';
 import ThankYou from '@/pages/ThankYou';
+import ProductManager from '@/pages/ProductManager';
+import Orders from '@/pages/Orders';
+import Analytics from '@/pages/Analytics';
+import Invoices from '@/pages/Invoices';
+import Payouts from '@/pages/Payouts';
+import BankDetails from '@/pages/BankDetails';
+import CustomizeStore from '@/pages/CustomizeStore';
+import Settings from '@/pages/Settings';
 
 // Layout
 import DashboardLayout from '@/components/layouts/DashboardLayout';
@@ -42,14 +50,14 @@ function App() {
                     <DashboardLayout>
                       <Routes>
                         <Route index element={<Dashboard />} />
-                        <Route path="products" element={<Dashboard />} />
-                        <Route path="orders" element={<Dashboard />} />
-                        <Route path="analytics" element={<Dashboard />} />
-                        <Route path="invoices" element={<Dashboard />} />
-                        <Route path="payouts" element={<Dashboard />} />
-                        <Route path="bank-details" element={<Dashboard />} />
-                        <Route path="customize-store" element={<Dashboard />} />
-                        <Route path="settings" element={<Dashboard />} />
+                        <Route path="products" element={<ProductManager />} />
+                        <Route path="orders" element={<Orders />} />
+                        <Route path="analytics" element={<Analytics />} />
+                        <Route path="invoices" element={<Invoices />} />
+                        <Route path="payouts" element={<Payouts />} />
+                        <Route path="bank-details" element={<BankDetails />} />
+                        <Route path="customize-store" element={<CustomizeStore />} />
+                        <Route path="settings" element={<Settings />} />
                       </Routes>
                     </DashboardLayout>
                   } />
