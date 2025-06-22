@@ -19,6 +19,11 @@ interface OrderEmailRequest {
     name: string;
     quantity: number;
     price: number;
+    variant?: {
+      id: string;
+      options: Record<string, string>;
+      name: string;
+    };
   }>;
   totalAmount: number;
   storeName: string;
@@ -55,6 +60,8 @@ const generateOrderConfirmationHTML = (data: OrderEmailRequest) => {
         .info-card { background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #7b3fe4; }
         .info-label { font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
         .info-value { color: #222; font-weight: 500; }
+        .variant-info { font-size: 12px; color: #666; margin-top: 4px; }
+        .required-field { color: #dc3545; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -79,19 +86,19 @@ const generateOrderConfirmationHTML = (data: OrderEmailRequest) => {
                 <div class="info-grid">
                     <div class="info-card">
                         <div class="info-label">Customer Name</div>
-                        <div class="info-value">${data.buyerName || 'Not provided'}</div>
+                        <div class="info-value">${data.buyerName || '<span class="required-field">Name Required</span>'}</div>
                     </div>
                     <div class="info-card">
                         <div class="info-label">Contact Email</div>
-                        <div class="info-value">${data.buyerEmail || 'Not provided'}</div>
+                        <div class="info-value">${data.buyerEmail || '<span class="required-field">Email Required</span>'}</div>
                     </div>
                     <div class="info-card">
                         <div class="info-label">Phone Number</div>
-                        <div class="info-value">${data.buyerPhone || 'Not provided'}</div>
+                        <div class="info-value">${data.buyerPhone || '<span class="required-field">Phone Number Required</span>'}</div>
                     </div>
                     <div class="info-card">
-                        <div class="info-label">Estimated Delivery</div>
-                        <div class="info-value">${estimatedDelivery}</div>
+                        <div class="info-label">Payment Method</div>
+                        <div class="info-value">${data.paymentMethod ? (data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment') : '<span class="required-field">Payment Method Required</span>'}</div>
                     </div>
                 </div>
                 ${data.buyerAddress ? `
@@ -99,7 +106,16 @@ const generateOrderConfirmationHTML = (data: OrderEmailRequest) => {
                     <div class="info-label">Delivery Address</div>
                     <div class="info-value">${data.buyerAddress}</div>
                 </div>
-                ` : ''}
+                ` : `
+                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #dc3545; margin-top: 15px;">
+                    <div class="info-label">Delivery Address</div>
+                    <div class="info-value required-field">Address Required - Please contact customer</div>
+                </div>
+                `}
+                <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #17a2b8; margin-top: 15px;">
+                    <div class="info-label">Estimated Delivery</div>
+                    <div class="info-value">${estimatedDelivery}</div>
+                </div>
             </div>
             
             <div class="section-title">Order Summary</div>
@@ -112,6 +128,11 @@ const generateOrderConfirmationHTML = (data: OrderEmailRequest) => {
                     <div>
                         <div style="font-weight: 500; margin-bottom: 5px;">${item.name}</div>
                         <div style="font-size: 14px; color: #666;">Qty: ${item.quantity} × ₹${item.price.toLocaleString()}</div>
+                        ${item.variant ? `
+                        <div class="variant-info">
+                            <strong>Variant:</strong> ${Object.entries(item.variant.options).map(([key, value]) => `${key}: ${value}`).join(', ')}
+                        </div>
+                        ` : ''}
                     </div>
                     <div style="font-weight: 600;">₹${(item.price * item.quantity).toLocaleString()}</div>
                 </div>
@@ -148,10 +169,10 @@ const generateOrderConfirmationHTML = (data: OrderEmailRequest) => {
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://shopzap.io/thank-you?order_id=${data.orderId}" class="button">
+                <a href="${window.location.origin}/thank-you?order_id=${data.orderId}" class="button">
                     🧾 View Order Details
                 </a>
-                <a href="https://shopzap.io" class="button" style="background: #666;">
+                <a href="${window.location.origin}" class="button" style="background: #666;">
                     🛒 Continue Shopping
                 </a>
             </div>
@@ -213,12 +234,12 @@ const handler = async (req: Request): Promise<Response> => {
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3>Order Details:</h3>
             <p><strong>Order ID:</strong> #${emailData.orderId.slice(-8)}</p>
-            <p><strong>Customer:</strong> ${emailData.buyerName || 'Not provided'}</p>
-            <p><strong>Email:</strong> ${emailData.buyerEmail || 'Not provided'}</p>
-            <p><strong>Phone:</strong> ${emailData.buyerPhone || 'Not provided'}</p>
-            <p><strong>Address:</strong> ${emailData.buyerAddress || 'Not provided'}</p>
+            <p><strong>Customer:</strong> ${emailData.buyerName || '<span style="color: #dc3545;">Name Missing</span>'}</p>
+            <p><strong>Email:</strong> ${emailData.buyerEmail || '<span style="color: #dc3545;">Email Missing</span>'}</p>
+            <p><strong>Phone:</strong> ${emailData.buyerPhone || '<span style="color: #dc3545;">Phone Number Missing - Contact Required</span>'}</p>
+            <p><strong>Address:</strong> ${emailData.buyerAddress || '<span style="color: #dc3545;">Address Missing - Contact Customer</span>'}</p>
             <p><strong>Total Amount:</strong> ₹${emailData.totalAmount.toLocaleString()}</p>
-            <p><strong>Payment Method:</strong> ${emailData.paymentMethod || 'Not specified'}</p>
+            <p><strong>Payment Method:</strong> ${emailData.paymentMethod ? (emailData.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment') : '<span style="color: #dc3545;">Payment Method Not Specified</span>'}</p>
           </div>
           
           <h3>Items:</h3>
@@ -226,8 +247,15 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
               <strong>${item.name}</strong><br>
               Qty: ${item.quantity} × ₹${item.price.toLocaleString()} = ₹${(item.price * item.quantity).toLocaleString()}
+              ${item.variant ? `<br><small style="color: #666;"><strong>Variant:</strong> ${Object.entries(item.variant.options).map(([key, value]) => `${key}: ${value}`).join(', ')}</small>` : ''}
             </div>
           `).join('')}
+          
+          ${(!emailData.buyerPhone || !emailData.buyerAddress) ? `
+          <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <strong style="color: #856404;">⚠️ Important:</strong> Some customer details are missing. Please contact the customer to get complete information before processing the order.
+          </div>
+          ` : ''}
           
           <p style="margin-top: 20px;">Please process this order as soon as possible.</p>
           

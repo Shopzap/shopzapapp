@@ -168,6 +168,16 @@ export const useCheckout = () => {
       });
       return;
     }
+
+    // Validate required fields
+    if (!values.fullName || !values.email || !values.phone || !values.address) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields including phone number and address.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsLoading(true);
     
@@ -187,14 +197,23 @@ export const useCheckout = () => {
         totalPrice: total,
         paymentMethod: paymentMethod,
         specialInstructions: values.specialInstructions || '',
-        items: orderItems.map(item => ({
-          productId: items.find(cartItem => cartItem.product.name === item.name)?.product.id || `product-${item.id}`,
-          quantity: item.quantity,
-          priceAtPurchase: item.price,
-          name: item.name,
-          image: item.image,
-          variant: item.variant
-        }))
+        items: orderItems.map(item => {
+          const cartItem = items.find(cartItem => cartItem.product.name === item.name);
+          const variant = cartItem?.variant;
+          
+          return {
+            productId: cartItem?.product.id || `product-${item.id}`,
+            quantity: item.quantity,
+            priceAtPurchase: item.price,
+            name: item.name,
+            image: item.image,
+            variant: variant ? {
+              id: variant.id || '',
+              options: variant.options || {},
+              name: variant.name || Object.values(variant.options || {}).join(' / ')
+            } : undefined
+          };
+        })
       };
 
       console.log('Order data prepared:', { ...orderData, paymentMethod, total, sessionId });
