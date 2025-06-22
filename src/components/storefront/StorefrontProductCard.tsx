@@ -30,12 +30,13 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
       return;
     }
     
-    if (storeUsername && productId) {
-      const productRoute = `/store/${storeUsername}/product/${productId}`;
+    if (productId) {
+      // Use relative path for product details
+      const productRoute = `/product/${productId}`;
       console.log('Navigating to product:', productRoute);
       navigate(productRoute);
     } else {
-      console.error('Missing store username or product ID:', { storeUsername, productId });
+      console.error('Missing product ID:', { productId });
       toast.error('Unable to navigate to product details');
     }
   };
@@ -48,7 +49,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const productUrl = `${window.location.origin}/store/${storeUsername}/product/${productId}`;
+    const productUrl = `${window.location.origin}/product/${productId}`;
     
     if (navigator.share) {
       try {

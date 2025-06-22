@@ -3,9 +3,10 @@ import React from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Eye } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Product } from './types';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +15,13 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onEdit, onDelete }) => {
+  const navigate = useNavigate();
+
+  const handleViewProduct = () => {
+    // Navigate to product details using relative path
+    navigate(`/product/${product.id}`);
+  };
+
   return (
     <Card key={product.id} className="overflow-hidden">
       <div className="relative h-48 bg-accent flex items-center justify-center overflow-hidden">
@@ -51,6 +59,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onEdit, onDelete }) 
           </span>
         )}
         <div className="flex gap-2">
+          <Button 
+            size="icon" 
+            variant="outline"
+            onClick={handleViewProduct}
+            title="View Product"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
           <Button 
             size="icon" 
             variant="outline"

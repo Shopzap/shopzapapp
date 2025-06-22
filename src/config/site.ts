@@ -3,8 +3,8 @@
 export const siteConfig = {
   name: 'ShopZap',
   description: 'Create your WhatsApp store in minutes',
-  url: 'https://shopzap.io',
-  ogImage: 'https://shopzap.io/opengraph-image.png',
+  url: import.meta.env.PROD ? 'https://shopzap.io' : window.location.origin,
+  ogImage: '/opengraph-image.png',
   links: {
     twitter: 'https://twitter.com/shopzap',
     github: 'https://github.com/shopzap',
@@ -12,10 +12,10 @@ export const siteConfig = {
     facebook: 'https://www.facebook.com/profile.php?id=61576632031395&sk='
   },
   api: {
-    baseUrl: import.meta.env.DEV ? 'http://localhost:3000/api' : 'https://shopzap.io/api',
+    baseUrl: import.meta.env.DEV ? `${window.location.origin}/api` : 'https://shopzap.io/api',
   },
   store: {
-    baseUrl: import.meta.env.DEV ? 'http://localhost:8080/store' : 'https://shopzap.io/store',
-    generateUrl: (storeName: string) => import.meta.env.DEV ? `http://localhost:8080/store/${storeName}` : `https://shopzap.io/store/${storeName}`
+    baseUrl: import.meta.env.DEV ? `${window.location.origin}/store` : 'https://shopzap.io/store',
+    generateUrl: (storeName: string) => import.meta.env.DEV ? `${window.location.origin}/store/${storeName}` : `https://shopzap.io/store/${storeName}`
   }
 }

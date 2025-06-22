@@ -62,6 +62,9 @@ function App() {
                     </DashboardLayout>
                   } />
                   
+                  {/* Product details route - now using relative path */}
+                  <Route path="/product/:productId" element={<ProductDetails />} />
+                  
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/checkout/:id" element={<Checkout />} />

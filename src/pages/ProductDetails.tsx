@@ -15,10 +15,7 @@ import { ProductVariant } from '@/components/product/types';
 import { Json } from '@/integrations/supabase/types';
 
 const ProductDetails: React.FC = () => {
-  const { storeName: storeUsername, productSlug } = useParams<{ 
-    storeName: string; 
-    productSlug: string; 
-  }>();
+  const { productId } = useParams<{ productId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -32,66 +29,55 @@ const ProductDetails: React.FC = () => {
     }
   });
 
+  // Set dynamic meta tags for SEO
+  useEffect(() => {
+    if (productId) {
+      // Update page title and meta tags
+      document.title = `Product Details - ShopZap`;
+      
+      // Add/update meta tags
+      const updateMetaTag = (name: string, content: string) => {
+        let meta = document.querySelector(`meta[name="${name}"]`) || 
+                   document.querySelector(`meta[property="${name}"]`);
+        if (!meta) {
+          meta = document.createElement('meta');
+          if (name.startsWith('og:')) {
+            meta.setAttribute('property', name);
+          } else {
+            meta.setAttribute('name', name);
+          }
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', content);
+      };
+
+      updateMetaTag('description', 'View product details and specifications');
+      updateMetaTag('og:title', 'Product Details - ShopZap');
+      updateMetaTag('og:description', 'View product details and specifications');
+      updateMetaTag('og:url', window.location.href);
+      updateMetaTag('og:type', 'product');
+    }
+  }, [productId]);
+
   const fetchProductData = async () => {
-    if (!storeUsername || !productSlug) {
-      throw new Error('Missing store username or product slug');
+    if (!productId) {
+      throw new Error('Missing product ID');
     }
 
     try {
-      console.log('Fetching product:', { storeUsername, productSlug });
+      console.log('Fetching product:', { productId });
 
-      const normalizedStoreUsername = storeUsername.toLowerCase().trim();
-
-      const { data: storeData, error: storeError } = await supabase
-        .from('stores')
-        .select('id, name, username')
-        .eq('username', normalizedStoreUsername)
-        .maybeSingle();
-
-      if (storeError) {
-        console.error('Store query error:', storeError);
-        throw new Error(`Store query failed: ${storeError.message}`);
-      }
-
-      if (!storeData) {
-        console.error('Store not found:', storeUsername);
-        throw new Error(`Store "${storeUsername}" not found`);
-      }
-
-      console.log('Store found:', storeData);
-
-      const productSelectQuery = `
-        id, name, description, price, image_url, images, status, is_published, 
-        store_id, slug, inventory_count, payment_method, category, created_at, updated_at, product_type
-      `;
-
-      let { data: productData, error: productError } = await supabase
+      const { data: productData, error: productError } = await supabase
         .from('products')
-        .select(productSelectQuery)
-        .eq('store_id', storeData.id)
-        .eq('slug', productSlug)
+        .select(`
+          id, name, description, price, image_url, images, status, is_published, 
+          store_id, slug, inventory_count, payment_method, category, created_at, updated_at, product_type,
+          stores!inner(id, name, username)
+        `)
+        .eq('id', productId)
         .eq('status', 'active')
         .eq('is_published', true)
         .maybeSingle();
-
-      // If not found by slug and it looks like a UUID, try by ID as a fallback
-      if (!productData && !productError && productSlug.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        console.log('Product not found by slug, trying ID fallback.');
-        const fallbackResult = await supabase
-          .from('products')
-          .select(productSelectQuery)
-          .eq('store_id', storeData.id)
-          .eq('id', productSlug)
-          .eq('status', 'active')
-          .eq('is_published', true)
-          .maybeSingle();
-        
-        productData = fallbackResult.data;
-        if (fallbackResult.error) {
-            console.error('Product fallback query error:', fallbackResult.error);
-            productError = fallbackResult.error;
-        }
-      }
 
       if (productError) {
         console.error('Product query error:', productError);
@@ -99,11 +85,39 @@ const ProductDetails: React.FC = () => {
       }
 
       if (!productData) {
-        console.error('Product not found:', { productSlug, storeId: storeData.id });
-        throw new Error(`Product "${productSlug}" not found in store "${storeUsername}"`);
+        console.error('Product not found:', { productId });
+        throw new Error(`Product not found`);
       }
 
       console.log('Product found:', productData);
+
+      // Update meta tags with product data
+      if (productData) {
+        document.title = `${productData.name} - ${productData.stores.name}`;
+        
+        const updateMetaTag = (name: string, content: string) => {
+          let meta = document.querySelector(`meta[name="${name}"]`) || 
+                     document.querySelector(`meta[property="${name}"]`);
+          if (!meta) {
+            meta = document.createElement('meta');
+            if (name.startsWith('og:')) {
+              meta.setAttribute('property', name);
+            } else {
+              meta.setAttribute('name', name);
+            }
+            document.head.appendChild(meta);
+          }
+          meta.setAttribute('content', content);
+        };
+
+        updateMetaTag('description', productData.description || `${productData.name} - Available at ${productData.stores.name}`);
+        updateMetaTag('og:title', `${productData.name} - ${productData.stores.name}`);
+        updateMetaTag('og:description', productData.description || `${productData.name} - Available at ${productData.stores.name}`);
+        updateMetaTag('og:image', productData.image_url || '/placeholder.svg');
+        updateMetaTag('og:url', window.location.href);
+        updateMetaTag('product:price:amount', productData.price.toString());
+        updateMetaTag('product:price:currency', 'INR');
+      }
 
       // Fetch variants if product type is variant
       let variants: ProductVariant[] = [];
@@ -116,7 +130,6 @@ const ProductDetails: React.FC = () => {
         if (variantError) {
           console.error('Error fetching variants:', variantError);
         } else {
-          // Transform Json to Record<string, string>
           variants = (variantData || []).map(variant => ({
             ...variant,
             options: typeof variant.options === 'object' && variant.options !== null 
@@ -128,7 +141,7 @@ const ProductDetails: React.FC = () => {
 
       return {
         ...productData,
-        store_name: storeData.name,
+        store_name: productData.stores.name,
         variants,
         product_type: (productData.product_type === 'variant' ? 'variant' : 'simple') as 'simple' | 'variant'
       };
@@ -140,21 +153,12 @@ const ProductDetails: React.FC = () => {
   };
 
   const { data: product, isLoading, error } = useQuery({
-    queryKey: ['product', storeUsername, productSlug],
+    queryKey: ['product', productId],
     queryFn: fetchProductData,
-    enabled: !!storeUsername && !!productSlug,
+    enabled: !!productId,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
-
-  useEffect(() => {
-    // If the query is successful and the product slug doesn't match the URL slug,
-    // it means we fetched via UUID and need to redirect to the correct slug-based URL.
-    if (product && product.slug && productSlug && product.slug !== productSlug) {
-      console.log(`URL slug "${productSlug}" is not correct. Redirecting to "${product.slug}".`);
-      navigate(`/store/${storeUsername}/product/${product.slug}`, { replace: true });
-    }
-  }, [product, productSlug, storeUsername, navigate]);
 
   const { shouldShowLoading, hasTimedOut } = useDelayedLoading(isLoading, {
     delay: 200,
@@ -209,9 +213,9 @@ const ProductDetails: React.FC = () => {
         description: `${product.name} has been added to your cart`,
       });
       
-      // Navigate to checkout with proper username-based URL
+      // Navigate to checkout with relative path
       setTimeout(() => {
-        navigate(`/store/${storeUsername}/checkout`, { 
+        navigate('/checkout', { 
           state: { 
             orderItems: [orderItem],
             fromBuyNow: true
@@ -230,18 +234,14 @@ const ProductDetails: React.FC = () => {
   };
 
   const handleBack = () => {
-    if (storeUsername) {
-      navigate(`/store/${storeUsername}`);
-    } else {
-      navigate('/');
-    }
+    navigate(-1);
   };
 
   useEffect(() => {
-    if (!storeUsername || !productSlug) {
+    if (!productId) {
       navigate('/', { replace: true });
     }
-  }, [storeUsername, productSlug, navigate]);
+  }, [productId, navigate]);
 
   if (shouldShowLoading) {
     return (
@@ -258,8 +258,8 @@ const ProductDetails: React.FC = () => {
       <ResponsiveLayout>
         <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <ProductNotFound
-            productName={productSlug}
-            storeName={storeUsername}
+            productName={productId}
+            storeName=""
             onRetry={canRetry ? retry : undefined}
           />
         </div>

@@ -39,8 +39,8 @@ const ModernProductCard: React.FC<ModernProductCardProps> = memo(({
       return;
     }
     
-    // Navigate to product details page with proper routing
-    const productRoute = `/store/${storeName}/product/${product.id}`;
+    // Navigate to product details page using relative path
+    const productRoute = `/product/${product.id}`;
     console.log('Navigating to product:', productRoute);
     navigate(productRoute);
   };
