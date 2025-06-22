@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ShoppingCart, Plus } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Tables } from '@/integrations/supabase/types';
+import { toast } from 'sonner';
 
 interface AddToCartButtonProps {
   product: Tables<'products'>;
@@ -24,8 +25,10 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   const navigate = useNavigate();
   const [isAdding, setIsAdding] = useState(false);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsAdding(true);
+    
     try {
       await addToCart(product);
       
@@ -34,14 +37,13 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
         localStorage.setItem('currentStore', storeName);
         localStorage.setItem('lastVisitedStore', storeName);
       }
+      
+      toast.success(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast.error('Failed to add item to cart. Please try again.');
     } finally {
       setIsAdding(false);
-    }
-  };
-
-  const handleGoToCart = () => {
-    if (storeName) {
-      navigate(`/store/${storeName}/cart`);
     }
   };
 

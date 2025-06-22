@@ -33,8 +33,16 @@ const ModernProductCard: React.FC<ModernProductCardProps> = memo(({
     }).format(amount);
   };
 
-  const handleProductClick = () => {
-    navigate(`/store/${storeName}/product/${product.id}`);
+  const handleProductClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on the add to cart button
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    // Navigate to product details page with proper routing
+    const productRoute = `/store/${storeName}/product/${product.id}`;
+    console.log('Navigating to product:', productRoute);
+    navigate(productRoute);
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {

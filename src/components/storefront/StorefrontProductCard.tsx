@@ -23,14 +23,19 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   const [isWishlisted, setIsWishlisted] = useState(false);
   
   const storeUsername = location.pathname.split('/store/')[1]?.split('/')[0];
-  const productSlug = product.slug || product.id;
+  const productId = product.id;
   
-  const handleViewDetails = () => {
-    if (storeUsername && productSlug) {
-      console.log('Navigating to product:', { storeUsername, productSlug });
-      navigate(`/store/${storeUsername}/product/${productSlug}`);
+  const handleViewDetails = (e?: React.MouseEvent) => {
+    if (e && (e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    if (storeUsername && productId) {
+      const productRoute = `/store/${storeUsername}/product/${productId}`;
+      console.log('Navigating to product:', productRoute);
+      navigate(productRoute);
     } else {
-      console.error('Missing store username or product slug:', { storeUsername, productSlug });
+      console.error('Missing store username or product ID:', { storeUsername, productId });
       toast.error('Unable to navigate to product details');
     }
   };
@@ -43,7 +48,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
 
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const productUrl = `${window.location.origin}/store/${storeUsername}/product/${productSlug}`;
+    const productUrl = `${window.location.origin}/store/${storeUsername}/product/${productId}`;
     
     if (navigator.share) {
       try {
@@ -91,7 +96,7 @@ const StorefrontProductCard: React.FC<StorefrontProductCardProps> = ({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full bg-white">
+    <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group h-full bg-white cursor-pointer" onClick={handleViewDetails}>
       <div className="aspect-square overflow-hidden relative">
         <ProductCardImage
           imageUrl={imageUrl}

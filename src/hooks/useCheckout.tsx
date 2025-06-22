@@ -22,7 +22,7 @@ export const useCheckout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { storeData: contextStoreData } = useStore();
-  const { items, getTotalPrice, getItemCount } = useCart();
+  const { items, getTotalPrice, getItemCount, clearCart } = useCart();
   
   const [storeData, setStoreData] = useState<{ id: string; name: string; payment_settings?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -174,6 +174,9 @@ export const useCheckout = () => {
     try {
       const fullAddress = `${values.address}, ${values.city}, ${values.state} ${values.zipCode}`;
       
+      // Generate a unique session ID for this order
+      const sessionId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       const orderData = {
         storeId: storeData.id,
         storeName: storeData.name,
@@ -185,7 +188,7 @@ export const useCheckout = () => {
         paymentMethod: paymentMethod,
         specialInstructions: values.specialInstructions || '',
         items: orderItems.map(item => ({
-          productId: `product-${item.id}`,
+          productId: items.find(cartItem => cartItem.product.name === item.name)?.product.id || `product-${item.id}`,
           quantity: item.quantity,
           priceAtPurchase: item.price,
           name: item.name,
@@ -194,7 +197,7 @@ export const useCheckout = () => {
         }))
       };
 
-      console.log('Order data prepared:', { ...orderData, paymentMethod, total });
+      console.log('Order data prepared:', { ...orderData, paymentMethod, total, sessionId });
 
       if (paymentMethod === 'online') {
         if (!sellerAllowsOnline) {
@@ -233,7 +236,7 @@ export const useCheckout = () => {
             body: {
               amount: total,
               currency: 'INR',
-              receipt: `order_${Date.now()}`
+              receipt: sessionId
             }
           });
 
@@ -270,6 +273,7 @@ export const useCheckout = () => {
                 }
 
                 await updateReferralOnOrder(verificationData.orderId);
+                clearCart();
                 navigate(`/thank-you?order_id=${verificationData.orderId}`);
               } catch (error) {
                 console.error('Error in payment handler:', error);
@@ -337,15 +341,17 @@ export const useCheckout = () => {
           });
 
           if (orderError) {
-            throw new Error('Failed to create Cash on Delivery order. Please try again.');
+            throw new Error(orderError.message || 'Failed to create Cash on Delivery order. Please try again.');
           }
 
           await updateReferralOnOrder(orderResult.orderId);
+          clearCart();
           navigate(`/thank-you?order_id=${orderResult.orderId}`);
         } catch (codError) {
+          console.error('COD order creation failed:', codError);
           toast({
             title: "Order Failed",
-            description: "Failed to create your Cash on Delivery order. Please try again.",
+            description: "Failed to create your Cash on Delivery order. Please check your details and try again.",
             variant: "destructive"
           });
         }
