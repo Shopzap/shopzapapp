@@ -16,7 +16,8 @@ import {
   CreditCard,
   Building2,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -86,6 +87,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     setIsMobileMenuOpen(false);
   };
 
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return location.pathname === '/dashboard';
+    }
+    return location.pathname.startsWith(href);
+  };
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Mobile Header */}
@@ -115,78 +123,77 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:transform-none",
+        "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:transform-none flex flex-col",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
-        <div className="flex flex-col h-full">
-          {/* Desktop Header */}
-          <div className="hidden lg:block p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-800">
+        {/* Desktop Header */}
+        <div className="hidden lg:block p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-800">
+            {storeData?.name || 'Dashboard'}
+          </h2>
+          <p className="text-sm text-gray-600 truncate">{user?.email}</p>
+        </div>
+
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
               {storeData?.name || 'Dashboard'}
             </h2>
             <p className="text-sm text-gray-600 truncate">{user?.email}</p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={closeMobileMenu}
+            className="p-2"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
 
-          {/* Mobile Header */}
-          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                {storeData?.name || 'Dashboard'}
-              </h2>
-              <p className="text-sm text-gray-600 truncate">{user?.email}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={closeMobileMenu}
-              className="p-2"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+        {/* Navigation */}
+        <nav className="flex-1 px-4 py-4 overflow-y-auto">
+          <ul className="space-y-1">
+            {navigationItems.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    to={item.href}
+                    onClick={closeMobileMenu}
+                    className={cn(
+                      "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
+                    <span className="truncate">{item.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 overflow-y-auto">
-            <ul className="space-y-1">
-              {navigationItems.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <li key={item.href}>
-                    <Link
-                      to={item.href}
-                      onClick={closeMobileMenu}
-                      className={cn(
-                        "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-gray-700 hover:bg-gray-100"
-                      )}
-                    >
-                      <item.icon className="mr-3 h-5 w-5 flex-shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-200">
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="w-full"
-              size="sm"
-            >
-              Sign Out
-            </Button>
-          </div>
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2"
+            size="sm"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile spacing for fixed header */}
         <div className="lg:hidden h-16"></div>
         

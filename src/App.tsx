@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -20,6 +19,9 @@ import Storefront from '@/pages/Storefront';
 import OrderSuccess from '@/pages/OrderSuccess';
 import ThankYou from '@/pages/ThankYou';
 
+// Layout
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+
 const queryClient = new QueryClient();
 
 function App() {
@@ -34,7 +36,24 @@ function App() {
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Auth />} />
                   <Route path="/signup" element={<Auth />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  
+                  {/* Dashboard routes with persistent layout */}
+                  <Route path="/dashboard/*" element={
+                    <DashboardLayout>
+                      <Routes>
+                        <Route index element={<Dashboard />} />
+                        <Route path="products" element={<Dashboard />} />
+                        <Route path="orders" element={<Dashboard />} />
+                        <Route path="analytics" element={<Dashboard />} />
+                        <Route path="invoices" element={<Dashboard />} />
+                        <Route path="payouts" element={<Dashboard />} />
+                        <Route path="bank-details" element={<Dashboard />} />
+                        <Route path="customize-store" element={<Dashboard />} />
+                        <Route path="settings" element={<Dashboard />} />
+                      </Routes>
+                    </DashboardLayout>
+                  } />
+                  
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/checkout" element={<Checkout />} />
                   <Route path="/checkout/:id" element={<Checkout />} />
